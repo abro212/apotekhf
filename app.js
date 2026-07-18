@@ -1711,17 +1711,36 @@ async function submitAddKas(e) {
 }
 
 // --------------------------------------------------------------------------
-// 11. SUPPLIER & PELANGGAN
+// 11. SUPPLIER & PELANGGAN (PAGINATED)
 // --------------------------------------------------------------------------
+let currentSupplierPage = 1;
+let currentSupplierPageSize = 10;
+let currentPelangganPage = 1;
+let currentPelangganPageSize = 10;
+
 async function loadSupplierPelanggan() {
+    loadSuppliers(1);
+    loadPelanggan(1);
+}
+
+async function loadSuppliers(page = currentSupplierPage, pageSize = currentSupplierPageSize) {
     if (!supabaseClient) return;
+    currentSupplierPage = page;
+    currentSupplierPageSize = pageSize;
     
-    // Load suppliers
     try {
-        const { data: sups } = await supabaseClient.from('supplier').select('*').order('supplier');
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data: sups, count, error } = await supabaseClient
+            .from('supplier')
+            .select('*', { count: 'exact' })
+            .order('supplier')
+            .range(from, to);
+            
         const sBody = document.getElementById('supplier-table-body');
         sBody.innerHTML = '';
-        if (sups) {
+        if (!error && sups) {
             sups.forEach(s => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1732,17 +1751,32 @@ async function loadSupplierPelanggan() {
                 `;
                 sBody.appendChild(tr);
             });
+            const totalPages = Math.ceil((count !== null ? count : sups.length) / pageSize);
+            renderPaginationControls('supplier-pagination', page, totalPages, pageSize, 'loadSuppliers');
         }
     } catch (e) {
-        console.error(e);
+        console.error('Error loading suppliers:', e);
     }
+}
+
+async function loadPelanggan(page = currentPelangganPage, pageSize = currentPelangganPageSize) {
+    if (!supabaseClient) return;
+    currentPelangganPage = page;
+    currentPelangganPageSize = pageSize;
     
-    // Load customers
     try {
-        const { data: csts } = await supabaseClient.from('pelanggan').select('*').order('nama');
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data: csts, count, error } = await supabaseClient
+            .from('pelanggan')
+            .select('*', { count: 'exact' })
+            .order('nama')
+            .range(from, to);
+            
         const cBody = document.getElementById('pelanggan-table-body');
         cBody.innerHTML = '';
-        if (csts) {
+        if (!error && csts) {
             csts.forEach(c => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1753,9 +1787,11 @@ async function loadSupplierPelanggan() {
                 `;
                 cBody.appendChild(tr);
             });
+            const totalPages = Math.ceil((count !== null ? count : csts.length) / pageSize);
+            renderPaginationControls('pelanggan-pagination', page, totalPages, pageSize, 'loadPelanggan');
         }
     } catch (e) {
-        console.error(e);
+        console.error('Error loading pelanggan:', e);
     }
 }
 
