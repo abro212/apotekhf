@@ -1026,16 +1026,6 @@ body {
    RESPONSIVENESS AND MEDIA QUERIES
    ========================================================================== */
 
-@media(max-width: 992px) {
-    .pos-layout {
-        grid-template-columns: 1fr;
-    }
-    .pos-cart {
-        position: static;
-        max-height: none;
-    }
-}
-
 @media(max-width: 768px) {
     :root {
         --sidebar-width: 0px;
@@ -1047,27 +1037,30 @@ body {
     
     .main-area {
         margin-left: 0 !important;
-        margin-bottom: 60px; /* Space for bottom nav */
+        margin-bottom: 72px; /* Space for bottom nav */
     }
     
     .header {
-        padding: 0 15px;
+        padding: 0 12px;
+        height: 56px;
     }
     
     .header-left h1 {
         font-size: 15px;
+        font-weight: 700;
     }
     
     .header-search {
-        width: 140px;
+        width: 130px;
     }
     
     .header-search input {
         font-size: 11px;
+        padding: 6px 10px 6px 30px;
     }
     
     .user-badge {
-        padding: 4px;
+        padding: 4px 8px;
     }
     
     .user-badge span:not(.user-badge-avatar) {
@@ -1075,16 +1068,34 @@ body {
     }
     
     .content-container {
-        padding: 15px;
+        padding: 12px;
     }
     
+    .view-card {
+        padding: 16px !important;
+        border-radius: var(--radius-md);
+    }
+
+    /* Mobile 2-Column Menu Grid */
     .menu-grid {
-        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px;
+    }
+    
+    .menu-card {
+        padding: 14px;
+        border-radius: var(--radius-md);
+        touch-action: manipulation;
+    }
+    
+    .menu-card:active {
+        transform: scale(0.96);
+        background: rgba(13, 148, 136, 0.05);
     }
     
     .menu-card-icon-wrapper {
-        height: 80px;
+        height: 64px;
+        margin-bottom: 8px;
     }
     
     .menu-icon {
@@ -1094,27 +1105,32 @@ body {
     
     .menu-card-title {
         font-size: 11px;
-        padding: 8px;
+        padding: 0;
+        font-weight: 600;
     }
     
     .dashboard-main-layout {
         grid-template-columns: 1fr !important;
+        gap: 16px;
     }
 
+    /* Glassmorphism Mobile Bottom Navigation */
     .bottom-nav {
         display: flex;
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        height: 60px;
-        background-color: var(--bg-card);
+        height: 64px;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-top: 1px solid var(--border-color);
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
         z-index: 1000;
         justify-content: space-around;
         align-items: center;
-        padding: 5px 0;
+        padding: 4px 8px max(6px, env(safe-area-inset-bottom));
     }
 
     .bottom-nav-item {
@@ -1126,18 +1142,26 @@ body {
         text-decoration: none;
         font-size: 10px;
         font-weight: 600;
-        gap: 4px;
+        gap: 3px;
         flex: 1;
-        transition: var(--transition);
+        height: 100%;
+        border-radius: 12px;
+        transition: all 0.2s ease;
     }
 
     .bottom-nav-item svg {
-        width: 18px;
-        height: 18px;
+        width: 20px;
+        height: 20px;
+        transition: transform 0.2s ease;
     }
 
     .bottom-nav-item.active {
         color: var(--primary-color);
+        font-weight: 700;
+    }
+
+    .bottom-nav-item.active svg {
+        transform: translateY(-2px);
     }
 
     /* POS mobile tabs styling */
@@ -1146,26 +1170,30 @@ body {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: var(--radius-md);
-        margin-bottom: 16px;
+        margin-bottom: 14px;
         overflow: hidden;
+        padding: 3px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.03);
     }
     
     .pos-tab {
         flex: 1;
         border: none;
         background: none;
-        padding: 12px;
-        font-size: 13px;
+        padding: 10px;
+        font-size: 12px;
         font-weight: 700;
         color: var(--text-muted);
         cursor: pointer;
-        transition: var(--transition);
+        border-radius: var(--radius-sm);
+        transition: all 0.2s ease;
         text-align: center;
     }
     
     .pos-tab.active {
         background-color: var(--primary-color);
         color: white;
+        box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
     }
     
     .mobile-hidden {
@@ -1174,6 +1202,69 @@ body {
     
     .desktop-only-title {
         display: none !important;
+    }
+
+    /* Responsive Tables for Mobile */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: var(--radius-sm);
+    }
+
+    .data-table {
+        min-width: 540px; /* Ensures table scrolls horizontally cleanly */
+        font-size: 12px;
+    }
+
+    .data-table th, .data-table td {
+        padding: 8px 10px;
+    }
+
+    /* Mobile Pagination */
+    .pagination-wrapper {
+        justify-content: center;
+        margin-top: 14px;
+    }
+
+    .pagination-pill-bar {
+        padding: 4px 10px;
+        gap: 3px;
+        max-width: 100%;
+    }
+
+    .pagination-jump-group {
+        display: none; /* Hide jump to input on narrow mobile screens */
+    }
+
+    /* Force all 2-column grid forms into 1-column on mobile */
+    div[style*="grid-template-columns: 1fr 1fr"],
+    div[style*="grid-template-columns: repeat(4, 1fr)"] {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+}
+
+/* Extra Mobile Adjustments (< 576px) */
+@media(max-width: 576px) {
+    .modal-content {
+        width: 95% !important;
+        max-height: 90vh !important;
+        padding: 20px 16px !important;
+        border-radius: var(--radius-md) !important;
+        margin: auto;
+    }
+
+    .header-left {
+        gap: 8px;
+    }
+
+    .header-search {
+        display: none; /* Hide header search on small phones to save space */
+    }
+
+    .btn {
+        padding: 8px 14px;
+        font-size: 12px;
     }
 }
 
