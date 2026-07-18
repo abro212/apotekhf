@@ -783,6 +783,68 @@
                 </div>
             </form>
         </div>
+    <!-- Edit Obat -->
+    <div id="modal-edit-obat" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3>Edit Detail Obat</h3>
+            <form id="form-edit-obat" onsubmit="submitEditObat(event)">
+                <input type="hidden" id="edit-obat-id">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <div class="form-group">
+                        <label>Nama Obat</label>
+                        <input type="text" id="edit-obat-nama" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <input type="text" id="edit-obat-kategori" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Rak Tempat (Lokasi)</label>
+                        <input type="text" id="edit-obat-rak" class="form-control" placeholder="Contoh: RAK A-1">
+                    </div>
+                    <div class="form-group">
+                        <label>Stok Minimal</label>
+                        <input type="number" id="edit-obat-stokmin" class="form-control" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Stok Saat Ini (Unit Kecil)</label>
+                        <input type="number" id="edit-obat-stok" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Satuan 1 (Kecil)</label>
+                        <input type="text" id="edit-obat-sat1" class="form-control" placeholder="Pcs" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Satuan 2 (Menengah)</label>
+                        <input type="text" id="edit-obat-sat2" class="form-control" placeholder="Strip">
+                    </div>
+                    <div class="form-group">
+                        <label>Satuan 3 (Besar)</label>
+                        <input type="text" id="edit-obat-sat3" class="form-control" placeholder="Box">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Beli Satuan 1</label>
+                        <input type="number" id="edit-obat-beli1" class="form-control" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Jual L1 Satuan 1</label>
+                        <input type="number" id="edit-obat-l1s1" class="form-control" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Jual L1 Satuan 2</label>
+                        <input type="number" id="edit-obat-l1s2" class="form-control" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Jual L1 Satuan 3</label>
+                        <input type="number" id="edit-obat-l1s3" class="form-control" value="0">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-obat')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Add Supplier -->

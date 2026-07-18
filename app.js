@@ -1015,6 +1015,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     <td>${o.satuan_1 || 'Pcs'}</td>
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                     <td>
+                        <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${o.id_obat}')">Edit</button>
                         <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
                     </td>
                 `;
@@ -1085,6 +1086,67 @@ async function deleteObat(id) {
     } catch (e) {
         console.error(e);
         alert('Gagal menghapus obat.');
+    }
+}
+
+async function editObat(id) {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).single();
+        if (error) throw error;
+
+        document.getElementById('edit-obat-id').value = data.id_obat;
+        document.getElementById('edit-obat-nama').value = data.nama_obat || '';
+        document.getElementById('edit-obat-kategori').value = data.kategori || '';
+        document.getElementById('edit-obat-rak').value = data.rak_tempat || '';
+        document.getElementById('edit-obat-stokmin').value = data.stok_minimal || '5';
+        document.getElementById('edit-obat-stok').value = data.stok_unit_kecil || '0';
+        document.getElementById('edit-obat-sat1').value = data.satuan_1 || 'Pcs';
+        document.getElementById('edit-obat-sat2').value = data.satuan_2 || '';
+        document.getElementById('edit-obat-sat3').value = data.satuan_3 || '';
+        document.getElementById('edit-obat-beli1').value = data.harga_beli_sat_1 || '0';
+        document.getElementById('edit-obat-l1s1').value = data.harga_l1_s1 || '0';
+        document.getElementById('edit-obat-l1s2').value = data.harga_l1_s2 || '0';
+        document.getElementById('edit-obat-l1s3').value = data.harga_l1_s3 || '0';
+
+        document.getElementById('modal-edit-obat').classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        alert('Gagal mengambil data detail obat.');
+    }
+}
+
+async function submitEditObat(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-obat-id').value;
+    
+    const updatedObat = {
+        nama_obat: document.getElementById('edit-obat-nama').value,
+        kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
+        rak_tempat: document.getElementById('edit-obat-rak').value || '',
+        stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
+        stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',
+        satuan_1: document.getElementById('edit-obat-sat1').value,
+        label_satuan_kecil: document.getElementById('edit-obat-sat1').value,
+        satuan_2: document.getElementById('edit-obat-sat2').value || '',
+        satuan_3: document.getElementById('edit-obat-sat3').value || '',
+        harga_beli_sat_1: document.getElementById('edit-obat-beli1').value || '0',
+        harga_l1_s1: document.getElementById('edit-obat-l1s1').value || '0',
+        harga_l1_s2: document.getElementById('edit-obat-l1s2').value || '0',
+        harga_l1_s3: document.getElementById('edit-obat-l1s3').value || '0'
+    };
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('master_obat').update(updatedObat).eq('id_obat', id);
+        if (error) throw error;
+        
+        alert('Data obat berhasil diperbarui!');
+        closeModal('modal-edit-obat');
+        loadMasterObat();
+    } catch (e) {
+        console.error(e);
+        alert(`Gagal memperbarui data obat: ${e.message}`);
     }
 }
 
