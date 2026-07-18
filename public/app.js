@@ -1,0 +1,1720 @@
+// Global Application State
+let currentUser = null;
+let currentView = 'view-login';
+let pinBuffer = '';
+let cart = [];
+let purchaseItems = [];
+let customers = [];
+let suppliers = [];
+let medicinesList = []; // local cache for dropdowns
+let activeCustomer = null;
+
+// Supabase client instance
+let supabaseClient = null;
+
+// Initialize App on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+    if (!checkSupabaseConfig()) {
+        switchView('view-login');
+        showSupabaseConfigForm();
+    } else {
+        checkSession();
+    }
+    setupEventListeners();
+});
+
+// Setup navigation and event listeners
+function setupEventListeners() {
+    // Desktop Sidebar Navigation items
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentUser) {
+                const targetView = link.getAttribute('data-target');
+                if (targetView) switchView(targetView);
+            }
+        });
+    });
+
+    // Sidebar Logout Button
+    const logoutBtn = document.getElementById('sidebar-logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            logout();
+        });
+    }
+
+    // Mobile Navigation items (Bottom Nav)
+    document.getElementById('bottom-nav-home').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentUser) switchView('view-dashboard');
+    });
+
+    document.getElementById('bottom-nav-search').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentUser) switchView('view-cek-harga');
+    });
+
+    document.getElementById('bottom-nav-pos').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentUser) switchView('view-kasir');
+    });
+
+    document.getElementById('bottom-nav-info').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentUser) {
+            switchView('view-info');
+            loadInfoStats();
+        }
+    });
+
+    document.getElementById('bottom-nav-logout').addEventListener('click', (e) => {
+        e.preventDefault();
+        logout();
+    });
+
+    document.getElementById('btn-sync').addEventListener('click', () => {
+        alert('Sinkronisasi cloud Supabase berhasil dilakukan secara real-time!');
+    });
+
+    // Global Search (filters menu items on dashboard)
+    document.getElementById('global-search').addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const cards = document.querySelectorAll('.menu-card');
+        cards.forEach(card => {
+            const title = card.querySelector('.menu-card-title').textContent.toLowerCase();
+            if (title.includes(query)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+}
+
+// --------------------------------------------------------------------------
+// Supabase Configuration Management
+// --------------------------------------------------------------------------
+function checkSupabaseConfig() {
+    const url = localStorage.getItem('supabaseUrl');
+    const key = localStorage.getItem('supabaseAnonKey');
+    if (url && key && window.supabase) {
+        supabaseClient = window.supabase.createClient(url, key);
+        return true;
+    }
+    return false;
+}
+
+function showSupabaseConfigForm() {
+    const pinContainer = document.getElementById('login-pin-container');
+    const supabaseContainer = document.getElementById('login-supabase-container');
+    
+    if (pinContainer) pinContainer.classList.add('hidden');
+    if (supabaseContainer) supabaseContainer.classList.remove('hidden');
+    
+    // Autofill values if configured
+    const url = localStorage.getItem('supabaseUrl');
+    const key = localStorage.getItem('supabaseAnonKey');
+    const urlInput = document.getElementById('setup-db-url');
+    const keyInput = document.getElementById('setup-db-key');
+    if (url && urlInput) urlInput.value = url;
+    if (key && keyInput) keyInput.value = key;
+
+    const cancelBtn = document.getElementById('btn-cancel-db-config');
+    if (cancelBtn) {
+        if (url && key) {
+            cancelBtn.classList.remove('hidden');
+        } else {
+            cancelBtn.classList.add('hidden');
+        }
+    }
+}
+
+function hideSupabaseConfigForm() {
+    const pinContainer = document.getElementById('login-pin-container');
+    const supabaseContainer = document.getElementById('login-supabase-container');
+    if (pinContainer) pinContainer.classList.remove('hidden');
+    if (supabaseContainer) supabaseContainer.classList.add('hidden');
+}
+
+function saveSupabaseConfig() {
+    const urlInput = document.getElementById('setup-db-url');
+    const keyInput = document.getElementById('setup-db-key');
+    const url = urlInput ? urlInput.value.trim() : '';
+    const key = keyInput ? keyInput.value.trim() : '';
+    
+    if (!url || !key) {
+        alert('Supabase URL dan Anon Key tidak boleh kosong!');
+        return;
+    }
+    
+    localStorage.setItem('supabaseUrl', url);
+    localStorage.setItem('supabaseAnonKey', key);
+    
+    if (checkSupabaseConfig()) {
+        alert('Database Supabase berhasil terhubung!');
+        hideSupabaseConfigForm();
+        loadLoginUsers();
+    } else {
+        alert('Gagal menginisialisasi client Supabase. Pastikan URL dan Key benar!');
+    }
+}
+
+// Session Management
+function checkSession() {
+    const savedUser = sessionStorage.getItem('activeUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        updateUserHeader();
+        switchView('view-dashboard');
+        loadDashboard();
+        loadAllDropdowns();
+    } else {
+        loadLoginUsers();
+        switchView('view-login');
+    }
+}
+
+function updateUserHeader() {
+    const header = document.getElementById('header-user-badge');
+    const avatar = document.getElementById('header-avatar');
+    const username = document.getElementById('header-username');
+    
+    const sAvatar = document.getElementById('sidebar-avatar');
+    const sUsername = document.getElementById('sidebar-username');
+    const sRole = document.getElementById('sidebar-role');
+    
+    if (currentUser) {
+        header.classList.remove('hidden');
+        avatar.textContent = currentUser.nama_staf.substring(0, 1).toUpperCase();
+        username.textContent = currentUser.nama_staf;
+        
+        if (sAvatar) sAvatar.textContent = currentUser.nama_staf.substring(0, 1).toUpperCase();
+        if (sUsername) sUsername.textContent = currentUser.nama_staf;
+        if (sRole) sRole.textContent = currentUser.role;
+    } else {
+        header.classList.add('hidden');
+    }
+}
+
+function logout() {
+    currentUser = null;
+    sessionStorage.removeItem('activeUser');
+    updateUserHeader();
+    loadLoginUsers();
+    switchView('view-login');
+}
+
+// Load Users into Login Dropdown from Supabase
+async function loadLoginUsers() {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('user_login').select('*');
+        const select = document.getElementById('login-user-select');
+        select.innerHTML = '<option value="" disabled selected>Pilih Staf...</option>';
+        
+        if (!error && data) {
+            data.forEach(user => {
+                const opt = document.createElement('option');
+                opt.value = JSON.stringify(user);
+                opt.textContent = `${user.nama_staf} (${user.role})`;
+                select.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error('Error loading login users:', e);
+    }
+}
+
+// Keyboard PIN Entry Logic
+function pressKey(num) {
+    if (pinBuffer.length < 6) {
+        pinBuffer += num;
+        updatePinDots();
+    }
+}
+
+function clearPin() {
+    pinBuffer = '';
+    updatePinDots();
+}
+
+function updatePinDots() {
+    for (let i = 1; i <= 6; i++) {
+        const dot = document.getElementById(`pin-${i}`);
+        if (i <= pinBuffer.length) {
+            dot.classList.add('active');
+        } else {
+            dot.classList.remove('active');
+        }
+    }
+}
+
+function submitPin() {
+    const select = document.getElementById('login-user-select');
+    if (!select.value) {
+        alert('Pilih staf terlebih dahulu!');
+        clearPin();
+        return;
+    }
+    
+    const user = JSON.parse(select.value);
+    if (pinBuffer === user.pin) {
+        currentUser = user;
+        sessionStorage.setItem('activeUser', JSON.stringify(user));
+        updateUserHeader();
+        switchView('view-dashboard');
+        loadDashboard();
+        loadAllDropdowns();
+        clearPin();
+    } else {
+        alert('PIN Salah! Silakan coba lagi.');
+        clearPin();
+    }
+}
+
+// Global View Switcher
+function switchView(viewId) {
+    if (viewId === 'view-login') {
+        document.getElementById('main-app-shell').classList.add('hidden');
+        document.getElementById('view-login').classList.remove('hidden');
+        return;
+    } else {
+        document.getElementById('main-app-shell').classList.remove('hidden');
+        document.getElementById('view-login').classList.add('hidden');
+    }
+
+    document.querySelectorAll('section').forEach(sec => {
+        sec.classList.add('hidden');
+    });
+    
+    const target = document.getElementById(viewId);
+    if (target) {
+        target.classList.remove('hidden');
+        currentView = viewId;
+    }
+    
+    // Toggle mobile bottom nav visibility
+    const mNav = document.getElementById('mobile-bottom-nav');
+    if (mNav) {
+        if (viewId === 'view-login') {
+            mNav.classList.add('hidden');
+        } else {
+            mNav.classList.remove('hidden');
+        }
+    }
+    
+    // Reset active nav items on sidebar
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('data-target') === viewId) {
+            link.classList.add('active');
+        }
+    });
+    
+    // Reset active nav items on bottom nav
+    document.querySelectorAll('.bottom-nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Set active item based on current view
+    if (viewId === 'view-dashboard') {
+        const bh = document.getElementById('bottom-nav-home');
+        if (bh) bh.classList.add('active');
+    } else if (viewId === 'view-cek-harga') {
+        const bs = document.getElementById('bottom-nav-search');
+        if (bs) bs.classList.add('active');
+    } else if (viewId === 'view-kasir') {
+        const bp = document.getElementById('bottom-nav-pos');
+        if (bp) bp.classList.add('active');
+    } else if (viewId === 'view-info') {
+        const bi = document.getElementById('bottom-nav-info');
+        if (bi) bi.classList.add('active');
+    }
+
+    // Set page header title
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) {
+        const activeLink = document.querySelector(`.sidebar .nav-link[data-target="${viewId}"]`);
+        if (activeLink) {
+            titleEl.textContent = activeLink.querySelector('span').textContent;
+        } else {
+            titleEl.textContent = 'Apotek HF';
+        }
+    }
+    
+    // Load view data
+    if (viewId === 'view-cek-harga') loadCekHargaList();
+    if (viewId === 'view-kasir') initPOS();
+    if (viewId === 'view-master-obat') loadMasterObat();
+    if (viewId === 'view-menu-penjualan') loadRiwayatPenjualan();
+    if (viewId === 'view-menu-pembelian') initPembelian();
+    if (viewId === 'view-menu-laporan') loadLaporanView();
+    if (viewId === 'view-menu-stok-opname') initStokOpname();
+    if (viewId === 'view-cek-kesehatan') initCekKesehatan();
+    if (viewId === 'view-kas') loadKasLedger();
+    if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
+}
+
+// --------------------------------------------------------------------------
+// 1. DASHBOARD VIEW WIDGETS
+// --------------------------------------------------------------------------
+async function loadDashboard() {
+    if (!supabaseClient) return;
+    
+    const menuIcons = {
+        "Cek Harga": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`,
+        "KASIR": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`,
+        "Master Obat": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M10.5 3.5a2.12 2.12 0 0 1 3 0l7 7a2.12 2.12 0 0 1 0 3l-7 7a2.12 2.12 0 0 1-3 0l-7-7a2.12 2.12 0 0 1 0-3l7-7z"></path><path d="m8.5 10.5 5 5"></path></svg>`,
+        "Menu Penjualan": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+        "Menu Pembelian": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`,
+        "Menu Laporan": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
+        "Menu Tagihan": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`,
+        "Dokumentasi Faktur": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`,
+        "Menu Stok Opname": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>`,
+        "Cek Kesehatan": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>`,
+        "KAS": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="12" y1="4" x2="12" y2="20"></line><line x1="2" y1="12" x2="22" y2="12"></line></svg>`,
+        "Supplier dan Pelanggan": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`,
+        "Pengaturan Menu & User": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>`
+    };
+
+    if (currentUser) {
+        document.getElementById('dashboard-welcome-name').textContent = currentUser.nama_staf;
+    }
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('dashboard-current-date').textContent = new Date().toLocaleDateString('id-ID', dateOptions);
+
+    // 1. Fetch KPI summary stats
+    try {
+        const dateObj = new Date();
+        const yy = String(dateObj.getFullYear()).substring(2);
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const todayPattern = `${dd}/${mm}/20${yy}%`;
+
+        // Fetch sales today
+        const { data: salesTx } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', todayPattern);
+        const salesTodaySum = salesTx ? salesTx.reduce((sum, tx) => sum + parseFloat(tx.total_bayar || 0), 0) : 0;
+        const countTodayVal = salesTx ? salesTx.length : 0;
+        
+        // Fetch low stock items count from view
+        const { count: lowStockCountVal } = await supabaseClient.from('view_low_stock').select('*', { count: 'exact', head: true });
+
+        document.getElementById('dash-kpi-sales').textContent = `Rp ${formatMoney(salesTodaySum)}`;
+        document.getElementById('dash-kpi-tx').textContent = `${countTodayVal} Transaksi`;
+        document.getElementById('dash-kpi-lowstock').textContent = `${lowStockCountVal || 0} Item`;
+    } catch (e) {
+        console.error('Error fetching KPI summary:', e);
+    }
+
+    // 2. Fetch Low Stock warnings list from view
+    try {
+        const { data: lowStockData } = await supabaseClient.from('view_low_stock').select('*').limit(10);
+        const lowstockList = document.getElementById('dash-lowstock-list');
+        lowstockList.innerHTML = '';
+        if (lowStockData && lowStockData.length > 0) {
+            lowStockData.forEach(o => {
+                const item = document.createElement('div');
+                item.style.padding = '8px 12px';
+                item.style.backgroundColor = '#fef2f2';
+                item.style.borderRadius = '6px';
+                item.style.borderLeft = '3px solid #ef4444';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.innerHTML = `
+                    <span><strong>${o.nama_obat}</strong></span>
+                    <span style="color: #b91c1c;">Stok: ${o.stok_unit_kecil || 0} / Min: ${o.stok_minimal}</span>
+                `;
+                lowstockList.appendChild(item);
+            });
+        } else {
+            lowstockList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 10px;">Semua stok aman!</div>';
+        }
+    } catch (e) {
+        console.error('Error fetching low stock warning list:', e);
+    }
+
+    // 3. Fetch Recent Sales
+    try {
+        const { data: recentTx } = await supabaseClient.from('transaksi_jual').select('*').order('tanggal', { ascending: false }).limit(5);
+        const recentList = document.getElementById('dash-recent-sales');
+        recentList.innerHTML = '';
+        if (recentTx && recentTx.length > 0) {
+            recentTx.forEach(tx => {
+                const item = document.createElement('div');
+                item.style.padding = '8px 12px';
+                item.style.backgroundColor = '#f0fdf4';
+                item.style.borderRadius = '6px';
+                item.style.borderLeft = '3px solid var(--primary-color)';
+                item.style.display = 'flex';
+                item.style.flexDirection = 'column';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                        <span>${tx.id_jual}</span>
+                        <span>Rp ${formatMoney(tx.total_bayar)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        <span>Kasir: ${tx.user}</span>
+                        <span>Metode: ${tx.metode_bayar}</span>
+                    </div>
+                `;
+                recentList.appendChild(item);
+            });
+        } else {
+            recentList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 10px;">Belum ada penjualan terbaru.</div>';
+        }
+    } catch (e) {
+        console.error('Error fetching recent sales:', e);
+    }
+
+    // 4. Render Menu grid
+    try {
+        const { data: menusData } = await supabaseClient.from('menu').select('*');
+        const grid = document.getElementById('dashboard-menu-grid');
+        grid.innerHTML = '';
+        
+        if (menusData) {
+            menusData.forEach(item => {
+                if (item.menu === 'SETTINGS' || item.judul === 'LOG OUT' || item.judul === 'LOG IN') return;
+                
+                let viewTarget = '';
+                if (item.menu === 'Cek Harga') viewTarget = 'view-cek-harga';
+                else if (item.menu === 'KASIR') viewTarget = 'view-kasir';
+                else if (item.menu === 'Master Obat') viewTarget = 'view-master-obat';
+                else if (item.menu === 'Menu Penjualan') viewTarget = 'view-menu-penjualan';
+                else if (item.menu === 'Menu Pembelian') viewTarget = 'view-menu-pembelian';
+                else if (item.menu === 'Menu Laporan') viewTarget = 'view-menu-laporan';
+                else if (item.menu === 'Menu Tagihan') viewTarget = 'view-menu-tagihan';
+                else if (item.menu === 'Dokumentasi Faktur') viewTarget = 'view-dokumentasi-faktur';
+                else if (item.menu === 'Menu Stok Opname') viewTarget = 'view-menu-stok-opname';
+                else if (item.menu === 'Cek Kesehatan') viewTarget = 'view-cek-kesehatan';
+                else if (item.menu === 'KAS') viewTarget = 'view-kas';
+                else if (item.menu === 'Supplier dan Pelanggan') viewTarget = 'view-supplier-pelanggan';
+                else return;
+                
+                const card = document.createElement('div');
+                card.className = 'menu-card';
+                card.onclick = () => switchView(viewTarget);
+                
+                const svgIcon = menuIcons[item.menu] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="12" cy="12" r="10"></circle></svg>`;
+                
+                card.innerHTML = `
+                    <div class="menu-card-icon-wrapper">
+                        ${svgIcon}
+                    </div>
+                    <div class="menu-card-title">${item.judul}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+    } catch (e) {
+        console.error('Error rendering dashboard menus:', e);
+    }
+}
+
+// --------------------------------------------------------------------------
+// 2. CEK HARGA OBAT
+// --------------------------------------------------------------------------
+async function loadCekHargaList() {
+    searchHarga();
+}
+
+async function searchHarga() {
+    const q = document.getElementById('cek-harga-search').value.trim();
+    try {
+        if (!supabaseClient) return;
+        let query = supabaseClient.from('master_obat').select('*');
+        if (q) {
+            query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%,kategori.ilike.%${q}%`);
+        }
+        
+        const { data, error } = await query.order('nama_obat').limit(50);
+        const tbody = document.getElementById('cek-harga-table-body');
+        tbody.innerHTML = '';
+        
+        if (!error && data) {
+            data.forEach(o => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${o.id_obat}</strong></td>
+                    <td>${o.nama_obat}</td>
+                    <td>${o.kategori || '-'}</td>
+                    <td>${o.rak_tempat || '-'}</td>
+                    <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
+                    <td>Rp ${formatMoney(o.harga_l1_s1)} / ${o.satuan_1 || 'Pcs'}</td>
+                    <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${o.satuan_2}` : '-'}</td>
+                    <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${o.satuan_3}` : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error('Error searching prices:', e);
+    }
+}
+
+// --------------------------------------------------------------------------
+// 3. KASIR (POS)
+// --------------------------------------------------------------------------
+async function initPOS() {
+    cart = [];
+    updateCartUI();
+    switchPOSTab('catalog');
+    
+    // Load customers
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('pelanggan').select('*').order('nama');
+        const select = document.getElementById('pos-customer-select');
+        select.innerHTML = '';
+        customers = data || [];
+        
+        customers.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id_pelanggan;
+            opt.textContent = c.nama;
+            if (c.nama === 'UMUM') {
+                opt.selected = true;
+                activeCustomer = c;
+            }
+            select.appendChild(opt);
+        });
+        
+        posChangeCustomer();
+    } catch (e) {
+        console.error('Error initializing customers in POS:', e);
+    }
+}
+
+function posChangeCustomer() {
+    const id = document.getElementById('pos-customer-select').value;
+    activeCustomer = customers.find(c => c.id_pelanggan === id);
+    const badge = document.getElementById('pos-customer-level');
+    badge.textContent = activeCustomer ? activeCustomer.level_harga : 'Level 1';
+    
+    // Update prices in cart based on customer level
+    cart.forEach(item => {
+        item.harga = getPriceForLevel(item.obat, item.satuan, activeCustomer.level_harga);
+    });
+    updateCartUI();
+}
+
+async function posSearchObat() {
+    const q = document.getElementById('pos-search-input').value.trim();
+    if (!q) {
+        document.getElementById('pos-search-results').innerHTML = '';
+        return;
+    }
+    
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('master_obat')
+            .select('*')
+            .or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`)
+            .limit(10);
+            
+        const results = document.getElementById('pos-search-results');
+        results.innerHTML = '';
+        
+        if (!error && data) {
+            data.forEach(o => {
+                const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
+                const row = document.createElement('div');
+                row.className = 'pos-item-row';
+                row.onclick = () => addToCart(o);
+                row.innerHTML = `
+                    <div class="pos-item-details">
+                        <span class="pos-item-name">${o.nama_obat}</span>
+                        <span class="pos-item-stock">Stok: ${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</span>
+                    </div>
+                    <span class="pos-item-price-pill">Rp ${formatMoney(price)}</span>
+                `;
+                results.appendChild(row);
+            });
+        }
+    } catch (e) {
+        console.error('Error searching obat in POS:', e);
+    }
+}
+
+function addToCart(o) {
+    const existing = cart.find(item => item.id_obat === o.id_obat);
+    const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
+    
+    if (existing) {
+        existing.jumlah += 1;
+    } else {
+        cart.push({
+            id_obat: o.id_obat,
+            nama_obat: o.nama_obat,
+            satuan: 'Satuan 1', // Default
+            satuan_nama: o.satuan_1 || 'Pcs',
+            jumlah: 1,
+            harga: price,
+            konversi: 1,
+            obat: o
+        });
+    }
+    
+    updateCartUI();
+    posSearchObat();
+}
+
+function changeCartQty(id, qty) {
+    const item = cart.find(i => i.id_obat === id);
+    if (item) {
+        item.jumlah = parseFloat(qty) || 1;
+        updateCartUI();
+    }
+}
+
+function changeCartUnit(id, selectEl) {
+    const item = cart.find(i => i.id_obat === id);
+    if (item) {
+        const satVal = selectEl.value; // 'Satuan 1', 'Satuan 2', 'Satuan 3'
+        item.satuan = satVal;
+        
+        const o = item.obat;
+        if (satVal === 'Satuan 1') {
+            item.satuan_nama = o.satuan_1 || 'Pcs';
+            item.konversi = 1;
+        } else if (satVal === 'Satuan 2') {
+            item.satuan_nama = o.satuan_2;
+            item.konversi = parseFloat(o.isi_2_ke_1 || 1);
+        } else if (satVal === 'Satuan 3') {
+            item.satuan_nama = o.satuan_3;
+            item.konversi = parseFloat(o.isi_3_ke_2 || 1) * parseFloat(o.isi_2_ke_1 || 1);
+        }
+        
+        item.harga = getPriceForLevel(o, satVal, activeCustomer ? activeCustomer.level_harga : 'Level 1');
+        updateCartUI();
+    }
+}
+
+function removeCartItem(id) {
+    cart = cart.filter(i => i.id_obat !== id);
+    updateCartUI();
+}
+
+function updateCartUI() {
+    const container = document.getElementById('pos-cart-items');
+    container.innerHTML = '';
+    
+    let grandTotal = 0;
+    let totalQty = 0;
+    cart.forEach(item => {
+        const o = item.obat;
+        const subtotal = item.jumlah * item.harga;
+        grandTotal += subtotal;
+        totalQty += Number(item.jumlah);
+        
+        let unitOptions = `<option value="Satuan 1" ${item.satuan === 'Satuan 1' ? 'selected' : ''}>${o.satuan_1 || 'Satuan 1'}</option>`;
+        if (o.satuan_2) {
+            unitOptions += `<option value="Satuan 2" ${item.satuan === 'Satuan 2' ? 'selected' : ''}>${o.satuan_2}</option>`;
+        }
+        if (o.satuan_3) {
+            unitOptions += `<option value="Satuan 3" ${item.satuan === 'Satuan 3' ? 'selected' : ''}>${o.satuan_3}</option>`;
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'cart-item';
+        div.innerHTML = `
+            <div class="cart-item-header">
+                <span>${item.nama_obat}</span>
+                <strong>Rp ${formatMoney(subtotal)}</strong>
+            </div>
+            <div class="cart-item-details">
+                <div>
+                    <input type="number" class="cart-qty-input" value="${item.jumlah}" min="1" onchange="changeCartQty('${item.id_obat}', this.value)" style="width:50px; text-align:center; padding: 2px;">
+                    <select class="form-control" style="width: auto; display: inline-block; height: 28px; padding: 2px 5px; font-size: 12px; margin-left: 8px;" onchange="changeCartUnit('${item.id_obat}', this)">
+                        ${unitOptions}
+                    </select>
+                </div>
+                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="removeCartItem('${item.id_obat}')">Hapus</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+    
+    document.getElementById('pos-grand-total').textContent = `Rp ${formatMoney(grandTotal)}`;
+    const badge = document.getElementById('pos-cart-count-badge');
+    if (badge) {
+        badge.textContent = totalQty;
+    }
+}
+
+async function posCheckout() {
+    if (cart.length === 0) {
+        alert('Keranjang belanja kosong!');
+        return;
+    }
+    
+    try {
+        if (!supabaseClient) return;
+        
+        // ID Jual YYMMDD-user-suffix
+        const dateObj = new Date();
+        const yy = String(dateObj.getFullYear()).substring(2);
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${yy}${mm}${dd}`;
+        const suffix = Math.random().toString(36).substring(2, 6).toLowerCase();
+        const id_jual = `${dateStr}-${(currentUser?.nama_staf || 'cashier').toLowerCase()}-${suffix}`;
+
+        // Date formatter DD/MM/YYYY hh.mm.ss
+        const formatJSDate = (d) => {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const mins = String(d.getMinutes()).padStart(2, '0');
+            const secs = String(d.getSeconds()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}.${mins}.${secs}`;
+        };
+        const tanggalStr = formatJSDate(dateObj);
+
+        let total_bayar = 0;
+        const detailsToInsert = [];
+        const stockUpdates = [];
+
+        for (const item of cart) {
+            const qty = parseFloat(item.jumlah);
+            const price = parseFloat(item.harga);
+            const subtotal = qty * price;
+            total_bayar += subtotal;
+
+            const o = item.obat;
+            let hpp_unit = 0;
+            if (item.satuan === 'Satuan 1') hpp_unit = parseFloat(o.harga_beli_sat_1 || 0);
+            else if (item.satuan === 'Satuan 2') hpp_unit = parseFloat(o.harga_beli_sat_2 || 0);
+            else if (item.satuan === 'Satuan 3') hpp_unit = parseFloat(o.harga_beli_sat_3 || 0);
+
+            const total_hpp = qty * hpp_unit;
+            const laba_bersih = subtotal - total_hpp;
+            const detailId = Math.random().toString(36).substring(2, 10);
+
+            detailsToInsert.push({
+                id_detail: detailId,
+                id_jual: id_jual,
+                id_obat: item.id_obat,
+                nama_obat: item.nama_obat,
+                satuan_dipilih: item.satuan_nama,
+                jumlah_beli: String(qty),
+                harga_satuan: String(price),
+                subtotal: String(subtotal),
+                konversi_keluar: String(item.konversi),
+                jenis_transaksi: 'PENJUALAN',
+                tanggal: tanggalStr,
+                user: currentUser?.nama_staf || 'cashier',
+                total_hpp: String(total_hpp),
+                laba_bersih: String(laba_bersih)
+            });
+
+            // Calculate new stock
+            const qtyInSmallestUnit = qty * item.konversi;
+            const currentStock = parseFloat(o.stok_unit_kecil || 0);
+            const newStock = currentStock - qtyInSmallestUnit;
+            
+            stockUpdates.push({
+                id_obat: item.id_obat,
+                stok_unit_kecil: String(newStock)
+            });
+        }
+
+        // 1. Insert into transaksi_jual
+        const payMethod = document.getElementById('pos-pay-method').value;
+        const { error: txErr } = await supabaseClient.from('transaksi_jual').insert([{
+            id_jual: id_jual,
+            tanggal: tanggalStr,
+            metode_bayar: payMethod,
+            total_bayar: String(total_bayar),
+            nama_pelanggan: activeCustomer?.id_pelanggan || 'UMUM',
+            jenis_transaksi: 'PENJUALAN',
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (txErr) throw txErr;
+
+        // 2. Insert into detail_jual
+        const { error: dtlErr } = await supabaseClient.from('detail_jual').insert(detailsToInsert);
+        if (dtlErr) throw dtlErr;
+
+        // 3. Update stock in master_obat
+        for (const update of stockUpdates) {
+            await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
+        }
+
+        alert('Checkout Berhasil!');
+        showReceipt(id_jual, total_bayar, tanggalStr);
+        initPOS();
+    } catch (e) {
+        console.error('Checkout failed:', e);
+        alert(`Checkout gagal: ${e.message}`);
+    }
+}
+
+// --------------------------------------------------------------------------
+// 4. DATA MASTER OBAT
+// --------------------------------------------------------------------------
+let obatPageLimit = 50;
+let obatPageOffset = 0;
+
+async function loadMasterObat() {
+    const q = document.getElementById('master-obat-search').value.trim();
+    try {
+        if (!supabaseClient) return;
+        let query = supabaseClient.from('master_obat').select('*');
+        if (q) {
+            query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
+        }
+        
+        const { data, error } = await query.order('nama_obat').limit(50);
+        const tbody = document.getElementById('master-obat-table-body');
+        tbody.innerHTML = '';
+        
+        if (!error && data) {
+            data.forEach(o => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${o.id_obat}</strong></td>
+                    <td>${o.nama_obat}</td>
+                    <td>${o.kategori || '-'}</td>
+                    <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
+                    <td>${o.satuan_1 || 'Pcs'}</td>
+                    <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
+                    <td>
+                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error('Error loading Master Obat:', e);
+    }
+}
+
+function showAddObatModal() {
+    document.getElementById('modal-add-obat').classList.remove('hidden');
+}
+
+async function submitAddObat(e) {
+    e.preventDefault();
+    try {
+        if (!supabaseClient) return;
+        
+        // Generate new ID (Format HFXXXXX)
+        const { data: maxRow } = await supabaseClient.from('master_obat').select('id_obat').like('id_obat', 'HF%').order('id_obat', { ascending: false }).limit(1);
+        let nextId = 'HF00001';
+        if (maxRow && maxRow.length > 0) {
+            const lastNum = parseInt(maxRow[0].id_obat.replace('HF', ''));
+            nextId = 'HF' + String(lastNum + 1).padStart(5, '0');
+        }
+
+        const newObat = {
+            id_obat: nextId,
+            nama_obat: document.getElementById('add-obat-nama').value,
+            kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
+            satuan_1: document.getElementById('add-obat-sat1').value,
+            label_satuan_kecil: document.getElementById('add-obat-sat1').value,
+            satuan_2: document.getElementById('add-obat-sat2').value || '',
+            isi_2_ke_1: document.getElementById('add-obat-isi2').value || '0',
+            stok_unit_kecil: document.getElementById('add-obat-stok').value || '0',
+            harga_beli_sat_1: document.getElementById('add-obat-l1s1').value || '0',
+            harga_beli_sat_2: document.getElementById('add-obat-l1s2').value || '0',
+            harga_l1_s1: document.getElementById('add-obat-l1s1').value || '0',
+            harga_l1_s2: document.getElementById('add-obat-l1s2').value || '0'
+        };
+
+        const { error } = await supabaseClient.from('master_obat').insert([newObat]);
+        if (error) throw error;
+        
+        alert('Obat berhasil didaftarkan!');
+        closeModal('modal-add-obat');
+        document.getElementById('form-add-obat').reset();
+        loadMasterObat();
+    } catch (e) {
+        console.error(e);
+        alert(`Gagal menambah obat: ${e.message}`);
+    }
+}
+
+async function deleteObat(id) {
+    if (!confirm('Apakah Anda yakin ingin menghapus obat ini?')) return;
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('master_obat').delete().eq('id_obat', id);
+        if (error) throw error;
+        alert('Obat berhasil dihapus.');
+        loadMasterObat();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menghapus obat.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// 5. RIWAYAT PENJUALAN
+// --------------------------------------------------------------------------
+async function loadRiwayatPenjualan() {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('transaksi_jual').select('*').order('tanggal', { ascending: false });
+        const tbody = document.getElementById('penjualan-table-body');
+        tbody.innerHTML = '';
+        
+        if (!error && data) {
+            data.forEach(tx => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${tx.id_jual}</strong></td>
+                    <td>${tx.tanggal}</td>
+                    <td>${tx.nama_pelanggan || 'UMUM'}</td>
+                    <td>${tx.user}</td>
+                    <td><span class="badge badge-info">${tx.metode_bayar}</span></td>
+                    <td>Rp ${formatMoney(tx.total_bayar)}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showReceiptDetail('${tx.id_jual}')">Detail</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error('Error loading penjualan history:', e);
+    }
+}
+
+async function showReceiptDetail(id_jual) {
+    try {
+        if (!supabaseClient) return;
+        const { data: tx } = await supabaseClient.from('transaksi_jual').select('*').eq('id_jual', id_jual).single();
+        const { data: details } = await supabaseClient.from('detail_jual').select('*').eq('id_jual', id_jual);
+        
+        if (tx && details) {
+            let html = `
+APOTEK HF PORTAL RECEIPT
+ID Jual : ${tx.id_jual}
+Tanggal : ${tx.tanggal}
+Kasir   : ${tx.user}
+Metode  : ${tx.metode_bayar}
+Pelanggan: ${tx.nama_pelanggan || 'UMUM'}
+------------------------------------
+`;
+            details.forEach(d => {
+                html += `${d.nama_obat}\n   ${d.jumlah_beli} ${d.satuan_dipilih} x Rp ${formatMoney(d.harga_satuan)} = Rp ${formatMoney(d.subtotal)}\n`;
+            });
+            html += `------------------------------------
+Total   : Rp ${formatMoney(tx.total_bayar)}
+TERIMA KASIH ATAS KUNJUNGAN ANDA`;
+
+            const printArea = document.getElementById('receipt-print-area');
+            printArea.innerHTML = `<pre>${html}</pre>`;
+            document.getElementById('modal-receipt').classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memuat struk detail.');
+    }
+}
+
+function showReceipt(id_jual, total, tanggal) {
+    let html = `
+APOTEK HF PORTAL RECEIPT
+ID Jual : ${id_jual}
+Tanggal : ${tanggal}
+Kasir   : ${currentUser ? currentUser.nama_staf : 'cashier'}
+Metode  : ${document.getElementById('pos-pay-method').value}
+------------------------------------
+`;
+    cart.forEach(item => {
+        const subtotal = item.jumlah * item.harga;
+        html += `${item.nama_obat}\n   ${item.jumlah} ${item.satuan_nama} x Rp ${formatMoney(item.harga)} = Rp ${formatMoney(subtotal)}\n`;
+    });
+    html += `------------------------------------
+Total   : Rp ${formatMoney(total)}
+TERIMA KASIH ATAS KUNJUNGAN ANDA`;
+
+    const printArea = document.getElementById('receipt-print-area');
+    printArea.innerHTML = `<pre>${html}</pre>`;
+    document.getElementById('modal-receipt').classList.remove('hidden');
+}
+
+function printReceipt() {
+    window.print();
+}
+
+function closeReceiptModal() {
+    document.getElementById('modal-receipt').classList.add('hidden');
+}
+
+// --------------------------------------------------------------------------
+// 6. PEMBELIAN STOK (RESTOCKING)
+// --------------------------------------------------------------------------
+function initPembelian() {
+    purchaseItems = [];
+    renderPurchaseGrid();
+    populateObatDropdown('purchase-item-obat');
+    
+    // Load suppliers dropdown
+    try {
+        if (!supabaseClient) return;
+        supabaseClient.from('supplier').select('*').order('supplier').then(({ data }) => {
+            const select = document.getElementById('purchase-supplier-select');
+            select.innerHTML = '';
+            if (data) {
+                data.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id_supplier;
+                    opt.textContent = s.supplier;
+                    select.appendChild(opt);
+                });
+            }
+        });
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function addPurchaseItemToGrid() {
+    const obatSelect = document.getElementById('purchase-item-obat');
+    if (!obatSelect.value) return;
+    
+    const o = JSON.parse(obatSelect.value);
+    const sat = document.getElementById('purchase-item-satuan').value;
+    const konv = parseFloat(document.getElementById('purchase-item-konversi').value) || 1;
+    const qty = parseFloat(document.getElementById('purchase-item-qty').value) || 0;
+    const price = parseFloat(document.getElementById('purchase-item-price').value) || 0;
+    
+    purchaseItems.push({
+        id_obat: o.id_obat,
+        nama_obat: o.nama_obat,
+        satuan: sat,
+        konversi: konv,
+        jumlah: qty,
+        harga_beli: price,
+        total: qty * price
+    });
+    
+    renderPurchaseGrid();
+}
+
+function renderPurchaseGrid() {
+    const tbody = document.getElementById('purchase-items-body');
+    tbody.innerHTML = '';
+    purchaseItems.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.nama_obat}</td>
+            <td>${item.satuan}</td>
+            <td>${item.konversi}</td>
+            <td>${item.jumlah}</td>
+            <td>Rp ${formatMoney(item.harga_beli)}</td>
+            <td>Rp ${formatMoney(item.total)}</td>
+            <td><button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function removePurchaseItem(idx) {
+    purchaseItems.splice(idx, 1);
+    renderPurchaseGrid();
+}
+
+async function submitPurchaseInvoice() {
+    const nomor_faktur = document.getElementById('purchase-faktur-no').value.trim();
+    const supplier = document.getElementById('purchase-supplier-select').value;
+    const metode_bayar = document.getElementById('purchase-pay-method').value;
+    
+    if (!nomor_faktur || purchaseItems.length === 0) {
+        alert('Isi nomor faktur dan masukkan minimal 1 barang!');
+        return;
+    }
+    
+    try {
+        if (!supabaseClient) return;
+        const id_faktur = Math.random().toString(36).substring(2, 10);
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        // 1. Insert into faktur_beli
+        const { error: fkErr } = await supabaseClient.from('faktur_beli').insert([{
+            id_faktur: id_faktur,
+            nomor_faktur: nomor_faktur,
+            tanggal_masuk: dateStr,
+            supplier: supplier,
+            jenis_transaksi: 'PEMBELIAN',
+            metode_bayar: metode_bayar,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (fkErr) throw fkErr;
+
+        // 2. Insert detail logs & Update Stocks
+        for (const item of purchaseItems) {
+            const id_beli = 'B' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const total_harga = item.harga_beli * item.jumlah;
+            
+            // Fetch current stock to add
+            const { data: currentMed } = await supabaseClient.from('master_obat').select('stok_unit_kecil').eq('id_obat', item.id_obat).single();
+            const currentStock = currentMed ? parseFloat(currentMed.stok_unit_kecil || 0) : 0;
+            const newStock = currentStock + (item.jumlah * item.konversi);
+
+            // Log Beli
+            const { error: logErr } = await supabaseClient.from('log_beli').insert([{
+                id_beli: id_beli,
+                tanggal_masuk: dateStr,
+                id_obat: item.id_obat,
+                satuan_masuk: item.satuan,
+                harga_beli_item: String(item.harga_beli),
+                jumlah_masuk: String(item.jumlah),
+                konversi_masuk: String(item.konversi),
+                id_faktur: id_faktur,
+                total_harga: String(total_harga),
+                jenis_transaksi: 'PEMBELIAN',
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+
+            if (logErr) throw logErr;
+
+            // Update master_obat stock
+            await supabaseClient.from('master_obat').update({ stok_unit_kecil: String(newStock) }).eq('id_obat', item.id_obat);
+        }
+
+        alert('Faktur Pembelian Stok Berhasil Disimpan!');
+        initPembelian();
+    } catch (e) {
+        console.error(e);
+        alert(`Gagal menyimpan faktur: ${e.message}`);
+    }
+}
+
+// --------------------------------------------------------------------------
+// 7. STOK OPNAME
+// --------------------------------------------------------------------------
+async function initStokOpname() {
+    populateObatDropdown('opname-obat-select');
+    document.getElementById('opname-obat-select').onchange = (e) => {
+        if (!e.target.value) return;
+        const o = JSON.parse(e.target.value);
+        document.getElementById('opname-current-stock').value = `${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}`;
+    };
+    document.getElementById('opname-physical-stock').value = '';
+    document.getElementById('opname-reason').value = '';
+}
+
+async function submitStokOpname() {
+    const select = document.getElementById('opname-obat-select');
+    const physical = document.getElementById('opname-physical-stock').value;
+    const reason = document.getElementById('opname-reason').value.trim();
+    
+    if (!select.value || !physical) {
+        alert('Pilih obat dan tentukan jumlah stok fisik!');
+        return;
+    }
+    
+    const o = JSON.parse(select.value);
+    const physicalStock = parseFloat(physical);
+    const currentStock = parseFloat(o.stok_unit_kecil || 0);
+    const difference = physicalStock - currentStock;
+    
+    try {
+        if (!supabaseClient) return;
+        
+        // 1. Update master_obat
+        const { error: opnErr } = await supabaseClient.from('master_obat').update({ stok_unit_kecil: String(physicalStock) }).eq('id_obat', o.id_obat);
+        if (opnErr) throw opnErr;
+
+        // 2. Log in log_beli as STOK OPNAME
+        const id_beli = 'SO' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        const { error: logErr } = await supabaseClient.from('log_beli').insert([{
+            id_beli: id_beli,
+            tanggal_masuk: dateStr,
+            id_obat: o.id_obat,
+            jumlah_masuk: String(difference),
+            konversi_masuk: '1.0',
+            total_harga: '0.0',
+            jenis_transaksi: 'STOK OPNAME',
+            alasan_retur: reason || 'Penyesuaian Stok Opname',
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (logErr) throw logErr;
+
+        alert('Penyesuaian stok opname berhasil disimpan!');
+        initStokOpname();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memproses penyesuaian stok opname.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// 8. REKAM KESEHATAN & PELAYANAN
+// --------------------------------------------------------------------------
+async function initCekKesehatan() {
+    // Load patients
+    try {
+        if (!supabaseClient) return;
+        const { data } = await supabaseClient.from('pasien').select('*').order('nama_pasien');
+        const select = document.getElementById('checkup-pasien-select');
+        select.innerHTML = '<option value="" disabled selected>Pilih Pasien...</option>';
+        if (data) {
+            data.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id_pasien;
+                opt.textContent = `${p.nama_pasien} (${p.whatsapp})`;
+                select.appendChild(opt);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    
+    // Clear inputs
+    document.getElementById('checkup-tensi').value = '';
+    document.getElementById('checkup-gula').value = '';
+    document.getElementById('checkup-asam-urat').value = '';
+    document.getElementById('checkup-kolesterol').value = '';
+    document.getElementById('checkup-obat').value = '';
+    document.getElementById('checkup-keterangan').value = '';
+    document.getElementById('checkup-history-list').innerHTML = '<div style="color:var(--text-muted); text-align:center;">Pilih pasien untuk melihat riwayat.</div>';
+}
+
+async function checkupChangePasien() {
+    const id_pasien = document.getElementById('checkup-pasien-select').value;
+    if (!id_pasien) return;
+    
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('rekam_kesehatan')
+            .select('*')
+            .eq('id_pasien', id_pasien)
+            .order('tanggal', { ascending: false });
+            
+        const container = document.getElementById('checkup-history-list');
+        container.innerHTML = '';
+        
+        if (data && data.length > 0) {
+            data.forEach(r => {
+                const div = document.createElement('div');
+                div.style.padding = '12px';
+                div.style.borderBottom = '1px solid var(--border-color)';
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; font-weight:700; font-size:12px;">
+                        <span>Tgl: ${r.tanggal}</span>
+                        <span style="color:var(--primary-color);">Tensi: ${r.tensi || '-'}</span>
+                    </div>
+                    <div style="margin-top:6px; font-size:11.5px; color:var(--text-muted);">
+                        Gula: ${r.gula_darah || '-'} | Asam Urat: ${r.asam_urat || '-'} | Kolest: ${r.kolesterol || '-'}
+                    </div>
+                    ${r.rekomendasi_obat ? `<div style="margin-top:4px; font-size:12px;"><strong>Obat:</strong> ${r.rekomendasi_obat}</div>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        } else {
+            container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:15px;">Belum ada riwayat kontrol untuk pasien ini.</div>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function submitCheckup() {
+    const id_pasien = document.getElementById('checkup-pasien-select').value;
+    if (!id_pasien) {
+        alert('Pilih pasien terlebih dahulu!');
+        return;
+    }
+    
+    const rekam = {
+        id_rekam: Math.random().toString(36).substring(2, 10).toUpperCase(),
+        id_pasien: id_pasien,
+        tanggal: new Date().toLocaleDateString('id-ID'),
+        tensi: document.getElementById('checkup-tensi').value,
+        gula_darah: document.getElementById('checkup-gula').value,
+        asam_urat: document.getElementById('checkup-asam-urat').value,
+        kolesterol: document.getElementById('checkup-kolesterol').value,
+        rekomendasi_obat: document.getElementById('checkup-obat').value,
+        keterangan: document.getElementById('checkup-keterangan').value,
+        user: currentUser?.nama_staf || 'cashier'
+    };
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('rekam_kesehatan').insert([rekam]);
+        if (error) throw error;
+        alert('Rekam kontrol kesehatan berhasil disimpan!');
+        checkupChangePasien();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menyimpan rekam medis.');
+    }
+}
+
+function showAddPasienModal() {
+    document.getElementById('modal-add-pasien').classList.remove('hidden');
+}
+
+async function submitAddPasien(e) {
+    e.preventDefault();
+    const nama = document.getElementById('add-pas-nama').value.trim();
+    const alamat = document.getElementById('add-pas-alamat').value.trim();
+    const whatsapp = document.getElementById('add-pas-telp').value.trim();
+    
+    try {
+        if (!supabaseClient) return;
+        const id_pasien = 'P' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const { error } = await supabaseClient.from('pasien').insert([{
+            id_pasien,
+            nama_pasien: nama,
+            alamat,
+            whatsapp
+        }]);
+        
+        if (error) throw error;
+        alert('Pasien baru berhasil didaftarkan!');
+        closeModal('modal-add-pasien');
+        document.getElementById('form-add-pasien').reset();
+        initCekKesehatan();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal mendaftarkan pasien.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// 9. LAPORAN GRAFIK & LAPORAN HARIAN SHIFT
+// --------------------------------------------------------------------------
+async function loadLaporanView() {
+    if (!supabaseClient) return;
+    try {
+        const dateObj = new Date();
+        const yy = String(dateObj.getFullYear()).substring(2);
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const todayPattern = `${dd}/${mm}/20${yy}%`;
+        const monthPattern = `%/20${yy}%`;
+
+        // Fetch sales today
+        const { data: salesTodayData } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', todayPattern);
+        const salesToday = salesTodayData ? salesTodayData.reduce((sum, tx) => sum + parseFloat(tx.total_bayar || 0), 0) : 0;
+        const countToday = salesTodayData ? salesTodayData.length : 0;
+        
+        // Month total sales
+        const { data: salesMonthData } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', monthPattern);
+        const salesMonth = salesMonthData ? salesMonthData.reduce((sum, tx) => sum + parseFloat(tx.total_bayar || 0), 0) : 0;
+
+        // Month profit
+        const { data: profitMonthData } = await supabaseClient.from('detail_jual').select('laba_bersih').like('tanggal', monthPattern);
+        const profitMonth = profitMonthData ? profitMonthData.reduce((sum, d) => sum + parseFloat(d.laba_bersih || 0), 0) : 0;
+
+        document.getElementById('report-sales-today').textContent = `Rp ${formatMoney(salesToday)}`;
+        document.getElementById('report-tx-today').textContent = countToday;
+        document.getElementById('report-sales-month').textContent = `Rp ${formatMoney(salesMonth)}`;
+        document.getElementById('report-profit-month').textContent = `Rp ${formatMoney(profitMonth)}`;
+    } catch (e) {
+        console.error('Error loading reports:', e);
+    }
+    
+    // Load shift logs (laporan_harian)
+    try {
+        const { data, error } = await supabaseClient.from('laporan_harian').select('*').order('tanggal', { ascending: false }).limit(100);
+        const tbody = document.getElementById('report-shift-body');
+        tbody.innerHTML = '';
+        if (data) {
+            data.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${s.tanggal || '-'}</td>
+                    <td>${s.shift || '-'}</td>
+                    <td>${s.nama || s.user || '-'}</td>
+                    <td>Rp ${formatMoney(s.modal || 0)}</td>
+                    <td>Rp ${formatMoney(s.total_uang || 0)}</td>
+                    <td>Rp ${formatMoney(s.masuk || 0)}</td>
+                    <td>${s.catatan || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error('Error loading shift logs:', e);
+    }
+}
+
+// --------------------------------------------------------------------------
+// 10. KAS OPERASIONAL
+// --------------------------------------------------------------------------
+async function loadKasLedger() {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('kas').select('*').order('tanggal', { ascending: false });
+        const tbody = document.getElementById('kas-table-body');
+        tbody.innerHTML = '';
+        
+        if (data) {
+            data.forEach(k => {
+                const tr = document.createElement('tr');
+                const isOut = k.jenis_kas === 'KELUAR';
+                tr.innerHTML = `
+                    <td><strong>${k.id_kas}</strong></td>
+                    <td>${k.tanggal}</td>
+                    <td><span class="badge ${isOut ? 'badge-danger' : 'badge-info'}" style="background-color:${isOut ? '#fee2e2':'#ecfdf5'}; color:${isOut ? '#ef4444':'#10b981'};">${k.jenis_kas}</span></td>
+                    <td>${k.kategori || '-'}</td>
+                    <td style="font-weight:700; color:${isOut ? '#ef4444':'#10b981'};">${isOut ? '-' : '+'} Rp ${formatMoney(k.jumlah)}</td>
+                    <td>${k.keterangan || '-'}</td>
+                    <td>${k.user || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error('Error loading kas ledger:', e);
+    }
+}
+
+function showAddKasModal() {
+    document.getElementById('modal-add-kas').classList.remove('hidden');
+}
+
+async function submitAddKas(e) {
+    e.preventDefault();
+    const jenis = document.getElementById('add-kas-jenis').value;
+    const kategori = document.getElementById('add-kas-kategori').value.trim();
+    const jumlah = document.getElementById('add-kas-jumlah').value;
+    const keterangan = document.getElementById('add-kas-keterangan').value.trim();
+    
+    try {
+        if (!supabaseClient) return;
+        const id_kas = 'K' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const dateStr = new Date().toLocaleDateString('id-ID');
+        
+        const { error } = await supabaseClient.from('kas').insert([{
+            id_kas,
+            tanggal: dateStr,
+            jenis_kas: jenis,
+            kategori,
+            jumlah: String(jumlah),
+            keterangan,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (error) throw error;
+        alert('Transaksi kas berhasil disimpan!');
+        closeModal('modal-add-kas');
+        document.getElementById('form-add-kas').reset();
+        loadKasLedger();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menyimpan mutasi kas.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// 11. SUPPLIER & PELANGGAN
+// --------------------------------------------------------------------------
+async function loadSupplierPelanggan() {
+    if (!supabaseClient) return;
+    
+    // Load suppliers
+    try {
+        const { data: sups } = await supabaseClient.from('supplier').select('*').order('supplier');
+        const sBody = document.getElementById('supplier-table-body');
+        sBody.innerHTML = '';
+        if (sups) {
+            sups.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${s.id_supplier}</strong></td>
+                    <td>${s.supplier}</td>
+                    <td>${s.alamat_supplier || '-'}</td>
+                    <td>${s.kontak_supplier || '-'}</td>
+                `;
+                sBody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    
+    // Load customers
+    try {
+        const { data: csts } = await supabaseClient.from('pelanggan').select('*').order('nama');
+        const cBody = document.getElementById('pelanggan-table-body');
+        cBody.innerHTML = '';
+        if (csts) {
+            csts.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${c.id_pelanggan}</strong></td>
+                    <td>${c.nama}</td>
+                    <td>${c.alamat || '-'}</td>
+                    <td><span class="badge badge-info">${c.level_harga || 'Level 1'}</span></td>
+                `;
+                cBody.appendChild(tr);
+            });
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function showAddSupplierModal() {
+    document.getElementById('modal-add-supplier').classList.remove('hidden');
+}
+
+async function submitAddSupplier(e) {
+    e.preventDefault();
+    const nama = document.getElementById('add-sup-nama').value.trim();
+    const alamat = document.getElementById('add-sup-alamat').value.trim();
+    const telp = document.getElementById('add-sup-telp').value.trim();
+    
+    try {
+        if (!supabaseClient) return;
+        const id_supplier = 'S' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        const { error } = await supabaseClient.from('supplier').insert([{
+            id_supplier,
+            supplier: nama,
+            alamat_supplier: alamat,
+            kontak_supplier: telp
+        }]);
+
+        if (error) throw error;
+        alert('Supplier berhasil disimpan!');
+        closeModal('modal-add-supplier');
+        document.getElementById('form-add-supplier').reset();
+        loadSupplierPelanggan();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menambah supplier.');
+    }
+}
+
+function showAddPelangganModal() {
+    document.getElementById('modal-add-pelanggan').classList.remove('hidden');
+}
+
+async function submitAddPelanggan(e) {
+    e.preventDefault();
+    const nama = document.getElementById('add-pel-nama').value.trim();
+    const alamat = document.getElementById('add-pel-alamat').value.trim();
+    const telp = document.getElementById('add-pel-telp').value.trim();
+    const level = document.getElementById('add-pel-level').value;
+    
+    try {
+        if (!supabaseClient) return;
+        const id_pelanggan = 'PL' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        const { error } = await supabaseClient.from('pelanggan').insert([{
+            id_pelanggan,
+            nama,
+            alamat,
+            kontak: telp,
+            level_harga: level
+        }]);
+
+        if (error) throw error;
+        alert('Pelanggan berhasil disimpan!');
+        closeModal('modal-add-pelanggan');
+        document.getElementById('form-add-pelanggan').reset();
+        loadSupplierPelanggan();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menambah pelanggan.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// 12. INFO APLIKASI & STATS
+// --------------------------------------------------------------------------
+async function loadInfoStats() {
+    try {
+        if (!supabaseClient) return;
+        const { count: totalObat } = await supabaseClient.from('master_obat').select('*', { count: 'exact', head: true });
+        const { count: totalTrans } = await supabaseClient.from('transaksi_jual').select('*', { count: 'exact', head: true });
+        const { count: totalPel } = await supabaseClient.from('pelanggan').select('*', { count: 'exact', head: true });
+        const { count: totalSup } = await supabaseClient.from('supplier').select('*', { count: 'exact', head: true });
+        
+        document.getElementById('info-total-obat').textContent = totalObat || '0';
+        document.getElementById('info-total-transaksi').textContent = totalTrans || '0';
+        document.getElementById('info-total-pelanggan').textContent = totalPel || '0';
+        document.getElementById('info-total-supplier').textContent = totalSup || '0';
+    } catch (e) {
+        console.error('Error loading stats:', e);
+    }
+}
+
+// --------------------------------------------------------------------------
+// HELPERS & UTILITIES
+// --------------------------------------------------------------------------
+async function loadAllDropdowns() {
+    try {
+        if (!supabaseClient) return;
+        const { data } = await supabaseClient.from('master_obat').select('*').order('nama_obat').limit(500);
+        medicinesList = data || [];
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function populateObatDropdown(elementId) {
+    const select = document.getElementById(elementId);
+    select.innerHTML = '<option value="" disabled selected>Pilih Obat...</option>';
+    medicinesList.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = JSON.stringify(o);
+        opt.textContent = `${o.id_obat} - ${o.nama_obat}`;
+        select.appendChild(opt);
+    });
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function formatMoney(amount) {
+    if (amount === undefined || amount === null || isNaN(amount)) return '0';
+    return Number(amount).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function getPriceForLevel(o, satLevel, custLevel) {
+    const lvlNum = custLevel === 'Level 3' ? 3 : (custLevel === 'Level 2' ? 2 : 1);
+    const satNum = satLevel === 'Satuan 3' ? 3 : (satLevel === 'Satuan 2' ? 2 : 1);
+    
+    const key = `harga_l${lvlNum}_s${satNum}`;
+    const fallbackKey = `harga_l1_s${satNum}`;
+    
+    let price = parseFloat(o[key] || 0);
+    if (price === 0) {
+        price = parseFloat(o[fallbackKey] || 0);
+    }
+    return price;
+}
+
+// Mobile POS Tab Switching
+function switchPOSTab(tabName) {
+    const catTab = document.getElementById('pos-tab-catalog');
+    const cartTab = document.getElementById('pos-tab-cart');
+    const catCont = document.getElementById('pos-catalog-container');
+    const cartCont = document.getElementById('pos-cart-container');
+    
+    if (!catTab || !cartTab || !catCont || !cartCont) return;
+
+    if (tabName === 'catalog') {
+        catTab.classList.add('active');
+        cartTab.classList.remove('active');
+        catCont.classList.remove('mobile-hidden');
+        cartCont.classList.add('mobile-hidden');
+    } else {
+        catTab.classList.remove('active');
+        cartTab.classList.add('active');
+        cartTab.classList.add('active');
+        catTab.classList.remove('active');
+        catCont.classList.add('mobile-hidden');
+        cartCont.classList.remove('mobile-hidden');
+    }
+}

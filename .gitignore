@@ -1,26 +1,20 @@
-# Secrets, never commit API keys
-.env
-.env.*
-!.env.example
-
 # Dependencies
 node_modules/
+/dist
+/build
 
-# promptfoo eval artifacts
-.promptfoo/
-benchmarks/output*
-benchmarks/benchmark-local-results.json
+# Local data & databases (contains sensitive business operations)
+/data/apotek.db
+/data/*.xlsx
+/data/*.xls
+/data/*.csv
 
-# Python
-__pycache__/
+# Environment variables
+.env
+.env.local
 
-# one-off social/announcement art, not repo content
-announce-*.png
-changelog-*.png
-ponytail-*.gif
-
-# Claude Code local settings (machine-specific permission grants)
-.claude/settings.local.json
-
-# agentic benchmark workspaces (agent output, kept locally for inspection)
-benchmarks/agentic/runs/
+# IDEs & System files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
