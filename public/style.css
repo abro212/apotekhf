@@ -1071,6 +1071,37 @@ body {
         padding: 12px;
     }
     
+    /* Mobile KPI Cards 2-Row Compact Grid */
+    .dashboard-kpi-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 14px !important;
+    }
+    
+    .dashboard-kpi-row .view-card {
+        padding: 12px 14px !important;
+    }
+    
+    .kpi-card-stock {
+        grid-column: span 2;
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .kpi-card-stock .kpi-val {
+        margin-top: 0 !important;
+    }
+
+    .kpi-label {
+        font-size: 9.5px;
+    }
+
+    .kpi-val {
+        font-size: 16px;
+        margin-top: 3px;
+    }
+
     .view-card {
         padding: 16px !important;
         border-radius: var(--radius-md);
