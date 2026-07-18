@@ -875,46 +875,46 @@ function renderPaginationControls(containerId, currentPage, totalPages, pageSize
     
     let html = `<div class="pagination-wrapper"><div class="pagination-pill-bar">`;
     
-    // Chevron Left <
+    // Chevron Left ‹
     const prevDisabled = currentPage <= 1 ? 'disabled' : '';
     html += `<button type="button" class="pagination-pill-btn" ${prevDisabled} onclick="${onPageChangeName}(${currentPage - 1}, ${pageSize})">‹</button>`;
-    
-    // Calculate page range window
+
+    // Page number buttons (window of max 5)
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, startPage + 4);
-    if (endPage - startPage < 4) {
-        startPage = Math.max(1, endPage - 4);
-    }
-    
+    if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+
     for (let p = startPage; p <= endPage; p++) {
         const activeClass = p === currentPage ? 'active' : '';
         html += `<button type="button" class="pagination-pill-btn ${activeClass}" onclick="${onPageChangeName}(${p}, ${pageSize})">${p}</button>`;
     }
-    
-    // Chevron Right >
+
+    // Chevron Right ›
     const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
     html += `<button type="button" class="pagination-pill-btn" ${nextDisabled} onclick="${onPageChangeName}(${currentPage + 1}, ${pageSize})">›</button>`;
-    
-    // Page Size Select (10 / page, 25 / page, 50 / page, 100 / page)
-    html += `
-        <select class="pagination-size-select" onchange="${onPageChangeName}(1, parseInt(this.value))">
-            <option value="10" ${pageSize === 10 ? 'selected' : ''}>10 / page</option>
-            <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 / page</option>
-            <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 / page</option>
-            <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 / page</option>
-        </select>
-    `;
-    
-    // Jump to Page Input
-    html += `
-        <div class="pagination-jump-group">
-            <span>Go to</span>
-            <input type="number" class="pagination-jump-input" min="1" max="${totalPages}" value="${currentPage}" 
-                onkeydown="if(event.key === 'Enter'){ let page = parseInt(this.value) || 1; page = Math.max(1, Math.min(${totalPages}, page)); ${onPageChangeName}(page, ${pageSize}); }">
-            <span>Page</span>
-        </div>
-    `;
-    
+
+    // Divider
+    html += `<div class="pagination-divider"></div>`;
+
+    // Page size selector
+    html += `<select class="pagination-size-select" onchange="${onPageChangeName}(1, parseInt(this.value))">
+        <option value="10" ${pageSize === 10 ? 'selected' : ''}>10 / page</option>
+        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 / page</option>
+        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 / page</option>
+        <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 / page</option>
+    </select>`;
+
+    // Divider
+    html += `<div class="pagination-divider"></div>`;
+
+    // Jump-to-page
+    html += `<div class="pagination-jump-group">
+        <span>Go to</span>
+        <input type="number" class="pagination-jump-input" min="1" max="${totalPages}" value="${currentPage}"
+            onkeydown="if(event.key==='Enter'){let p=Math.max(1,Math.min(${totalPages},parseInt(this.value)||1));${onPageChangeName}(p,${pageSize});}">
+        <span>Page</span>
+    </div>`;
+
     html += `</div></div>`;
     container.innerHTML = html;
 }
