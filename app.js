@@ -93,12 +93,16 @@ function setupEventListeners() {
     });
 }
 
+// Default Supabase Credentials (Pre-configured)
+const DEFAULT_SUPABASE_URL = 'https://tcibuqljlsfslylewrhk.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ1cWxqbHNmc2x5bGV3cmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzOTI1ODQsImV4cCI6MjA5OTk2ODU4NH0.1PqqtuKJMtaFoyZVJjLJDR-kIx7bzoEMLcQVjYHdSSw';
+
 // --------------------------------------------------------------------------
 // Supabase Configuration Management
 // --------------------------------------------------------------------------
 function checkSupabaseConfig() {
-    const url = localStorage.getItem('supabaseUrl');
-    const key = localStorage.getItem('supabaseAnonKey');
+    const url = localStorage.getItem('supabaseUrl') || DEFAULT_SUPABASE_URL;
+    const key = localStorage.getItem('supabaseAnonKey') || DEFAULT_SUPABASE_KEY;
     if (url && key && window.supabase) {
         supabaseClient = window.supabase.createClient(url, key);
         return true;
