@@ -1084,9 +1084,22 @@ function initPembelian() {
     }
 }
 
+function updatePurchaseSubtotalPreview() {
+    const qty = parseFloat(document.getElementById('purchase-item-qty').value) || 0;
+    const price = parseFloat(document.getElementById('purchase-item-price').value) || 0;
+    const subtotal = qty * price;
+    const previewEl = document.getElementById('purchase-item-preview-badge');
+    if (previewEl) {
+        previewEl.textContent = `Subtotal: Rp ${formatMoney(subtotal)}`;
+    }
+}
+
 function addPurchaseItemToGrid() {
     const obatSelect = document.getElementById('purchase-item-obat');
-    if (!obatSelect.value) return;
+    if (!obatSelect.value) {
+        alert('Pilih obat terlebih dahulu!');
+        return;
+    }
     
     const o = JSON.parse(obatSelect.value);
     const sat = document.getElementById('purchase-item-satuan').value;
@@ -1094,6 +1107,11 @@ function addPurchaseItemToGrid() {
     const qty = parseFloat(document.getElementById('purchase-item-qty').value) || 0;
     const price = parseFloat(document.getElementById('purchase-item-price').value) || 0;
     
+    if (qty <= 0) {
+        alert('Masukkan jumlah Qty masuk yang valid!');
+        return;
+    }
+
     purchaseItems.push({
         id_obat: o.id_obat,
         nama_obat: o.nama_obat,
@@ -1104,25 +1122,42 @@ function addPurchaseItemToGrid() {
         total: qty * price
     });
     
+    // Reset item inputs
+    document.getElementById('purchase-item-qty').value = 1;
+    document.getElementById('purchase-item-price').value = 0;
+    updatePurchaseSubtotalPreview();
+    
     renderPurchaseGrid();
 }
 
 function renderPurchaseGrid() {
     const tbody = document.getElementById('purchase-items-body');
     tbody.innerHTML = '';
-    purchaseItems.forEach((item, idx) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${item.nama_obat}</td>
-            <td>${item.satuan}</td>
-            <td>${item.konversi}</td>
-            <td>${item.jumlah}</td>
-            <td>Rp ${formatMoney(item.harga_beli)}</td>
-            <td>Rp ${formatMoney(item.total)}</td>
-            <td><button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
+    let grandTotal = 0;
+
+    if (purchaseItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 20px;">Belum ada item barang dalam faktur ini.</td></tr>';
+    } else {
+        purchaseItems.forEach((item, idx) => {
+            grandTotal += item.total;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${item.nama_obat}</strong></td>
+                <td><span class="badge badge-info">${item.satuan}</span></td>
+                <td>${item.jumlah}</td>
+                <td>Rp ${formatMoney(item.harga_beli)}</td>
+                <td><strong>Rp ${formatMoney(item.total)}</strong></td>
+                <td><button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    const countBadge = document.getElementById('purchase-item-count-badge');
+    if (countBadge) countBadge.textContent = `${purchaseItems.length} Item`;
+
+    const grandTotalEl = document.getElementById('purchase-grand-total');
+    if (grandTotalEl) grandTotalEl.textContent = `Rp ${formatMoney(grandTotal)}`;
 }
 
 function removePurchaseItem(idx) {
