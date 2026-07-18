@@ -540,23 +540,66 @@ async function searchHarga() {
         
         const { data, error } = await query.order('nama_obat').limit(50);
         const tbody = document.getElementById('cek-harga-table-body');
+        const mobileList = document.getElementById('cek-harga-mobile-list');
+        
         tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
         
         if (!error && data) {
-            data.forEach(o => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${o.id_obat}</strong></td>
-                    <td>${o.nama_obat}</td>
-                    <td>${o.kategori || '-'}</td>
-                    <td>${o.rak_tempat || '-'}</td>
-                    <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
-                    <td>Rp ${formatMoney(o.harga_l1_s1)} / ${o.satuan_1 || 'Pcs'}</td>
-                    <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${o.satuan_2}` : '-'}</td>
-                    <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${o.satuan_3}` : '-'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 20px;">Obat tidak ditemukan.</td></tr>';
+                if (mobileList) mobileList.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px;">Obat tidak ditemukan.</div>';
+            } else {
+                data.forEach(o => {
+                    // Desktop table row
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${o.id_obat}</strong></td>
+                        <td>${o.nama_obat}</td>
+                        <td>${o.kategori || '-'}</td>
+                        <td>${o.rak_tempat || '-'}</td>
+                        <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
+                        <td>Rp ${formatMoney(o.harga_l1_s1)} / ${o.satuan_1 || 'Pcs'}</td>
+                        <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${o.satuan_2}` : '-'}</td>
+                        <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${o.satuan_3}` : '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Mobile price card
+                    if (mobileList) {
+                        const card = document.createElement('div');
+                        card.className = 'price-card-mobile';
+                        
+                        let pricesHtml = `<div class="price-pill primary"><span>${o.satuan_1 || 'Pcs'}:</span> <strong>Rp ${formatMoney(o.harga_l1_s1)}</strong></div>`;
+                        if (o.satuan_2 && parseFloat(o.harga_l1_s2 || 0) > 0) {
+                            pricesHtml += `<div class="price-pill"><span>${o.satuan_2}:</span> <strong>Rp ${formatMoney(o.harga_l1_s2)}</strong></div>`;
+                        }
+                        if (o.satuan_3 && parseFloat(o.harga_l1_s3 || 0) > 0) {
+                            pricesHtml += `<div class="price-pill"><span>${o.satuan_3}:</span> <strong>Rp ${formatMoney(o.harga_l1_s3)}</strong></div>`;
+                        }
+
+                        const stockNum = parseFloat(o.stok_unit_kecil || 0);
+                        const stockMin = parseFloat(o.stok_minimal || 5);
+                        const stockBadgeStyle = stockNum <= stockMin 
+                            ? 'background-color:#fee2e2; color:#ef4444;' 
+                            : 'background-color:#ecfdf5; color:#10b981;';
+
+                        card.innerHTML = `
+                            <div class="price-card-header">
+                                <div style="flex:1;">
+                                    <div class="price-card-title">${o.nama_obat}</div>
+                                    <div class="price-card-sub">ID: ${o.id_obat} • Rak: ${o.rak_tempat || '-'} • Kat: ${o.kategori || '-'}</div>
+                                </div>
+                                <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
+                            </div>
+                            <div class="price-pills-row">
+                                ${pricesHtml}
+                            </div>
+                        `;
+                        mobileList.appendChild(card);
+                    }
+                });
+            }
         }
     } catch (e) {
         console.error('Error searching prices:', e);

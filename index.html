@@ -254,11 +254,11 @@
                 <!-- 2. VIEW: CEK HARGA -->
                 <section id="view-cek-harga" class="hidden">
                     <div class="view-card">
-                        <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                            <input type="text" id="cek-harga-search" class="form-control" placeholder="Ketik nama obat atau scan ID obat...">
-                            <button class="btn btn-primary" onclick="searchHarga()">Cari</button>
+                        <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 16px;">
+                            <input type="text" id="cek-harga-search" class="form-control" placeholder="Ketik nama obat, kategori, atau ID obat..." oninput="searchHarga()">
+                            <button class="btn btn-primary" onclick="searchHarga()">🔍 Cari</button>
                         </div>
-                        <div class="table-container">
+                        <div class="table-container desktop-only-table">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -275,6 +275,8 @@
                                 <tbody id="cek-harga-table-body"></tbody>
                             </table>
                         </div>
+                        <!-- Mobile Card List View -->
+                        <div id="cek-harga-mobile-list" class="cek-harga-mobile-container"></div>
                     </div>
                 </section>
 

@@ -1026,6 +1026,10 @@ body {
    RESPONSIVENESS AND MEDIA QUERIES
    ========================================================================== */
 
+.cek-harga-mobile-container {
+    display: none;
+}
+
 @media(max-width: 768px) {
     :root {
         --sidebar-width: 0px;
@@ -1265,6 +1269,74 @@ body {
 
     .pagination-jump-group {
         display: none; /* Hide jump to input on narrow mobile screens */
+    }
+
+    /* Cek Harga Mobile Cards Styling */
+    .desktop-only-table {
+        display: none !important;
+    }
+
+    .cek-harga-mobile-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .price-card-mobile {
+        background: var(--bg-main);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 12px 14px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    }
+
+    .price-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .price-card-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 2px;
+    }
+
+    .price-card-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+    }
+
+    .price-pills-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .price-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        color: var(--text-main);
+    }
+
+    .price-pill.primary {
+        background: rgba(13, 148, 136, 0.08);
+        border-color: rgba(13, 148, 136, 0.3);
+        color: var(--primary-color);
+    }
+
+    .price-pill.primary strong {
+        color: var(--primary-color);
     }
 
     /* Force all 2-column grid forms into 1-column on mobile */
