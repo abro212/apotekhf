@@ -74,10 +74,12 @@ function setupEventListeners() {
         logout();
     });
 
-    document.getElementById('btn-sync').addEventListener('click', () => {
-        loadDashboard();
-        alert('Data berhasil disinkronkan dari Supabase Cloud!');
-    });
+    const syncBtn = document.getElementById('btn-sync');
+    if (syncBtn) {
+        syncBtn.addEventListener('click', () => {
+            loadDashboard();
+        });
+    }
 
     // Global Search (filters menu items on dashboard)
     document.getElementById('global-search').addEventListener('input', (e) => {
