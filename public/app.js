@@ -1013,12 +1013,13 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${o.id_obat}</strong></td>
-                    <td>${o.nama_obat}</td>
+                    <td><a href="#" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${o.id_obat}')">${o.nama_obat}</a></td>
                     <td>${o.kategori || '-'}</td>
                     <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
                     <td>${o.satuan_1 || 'Pcs'}</td>
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                     <td>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${o.id_obat}')">Detail</button>
                         <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${o.id_obat}')">Edit</button>
                         <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
                     </td>
@@ -1038,9 +1039,9 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         
                     card.innerHTML = `
                         <div class="price-card-header">
-                            <div style="flex:1;">
-                                <div class="price-card-title">${o.nama_obat}</div>
-                                <div class="price-card-sub">ID: ${o.id_obat} • Kategori: ${o.kategori || '-'}</div>
+                            <div style="flex:1;" onclick="previewObat('${o.id_obat}')">
+                                <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
+                                <div class="price-card-sub">ID: ${o.id_obat} • Kategori: ${o.kategori || '-'} • Rak: ${o.rak || '-'}</div>
                             </div>
                             <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
                         </div>
@@ -1049,6 +1050,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                                 Satuan: <strong>${o.satuan_1 || 'Pcs'}</strong> • Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong>
                             </div>
                             <div style="display:flex; gap:6px;">
+                                <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${o.id_obat}')">Detail</button>
                                 <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${o.id_obat}')">Edit</button>
                                 <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
                             </div>
@@ -1134,7 +1136,7 @@ async function editObat(id) {
         document.getElementById('edit-obat-id').value = data.id_obat;
         document.getElementById('edit-obat-nama').value = data.nama_obat || '';
         document.getElementById('edit-obat-kategori').value = data.kategori || '';
-        document.getElementById('edit-obat-rak').value = data.rak_tempat || '';
+        document.getElementById('edit-obat-rak').value = data.rak || '';
         document.getElementById('edit-obat-stokmin').value = data.stok_minimal || '5';
         document.getElementById('edit-obat-stok').value = data.stok_unit_kecil || '0';
         document.getElementById('edit-obat-sat1').value = data.satuan_1 || 'Pcs';
@@ -1159,7 +1161,7 @@ async function submitEditObat(e) {
     const updatedObat = {
         nama_obat: document.getElementById('edit-obat-nama').value,
         kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
-        rak_tempat: document.getElementById('edit-obat-rak').value || '',
+        rak: document.getElementById('edit-obat-rak').value || '',
         stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
         stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',
         satuan_1: document.getElementById('edit-obat-sat1').value,
@@ -1183,6 +1185,69 @@ async function submitEditObat(e) {
     } catch (e) {
         console.error(e);
         alert(`Gagal memperbarui data obat: ${e.message}`);
+    }
+}
+
+async function previewObat(id) {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).single();
+        if (error) throw error;
+
+        document.getElementById('preview-obat-title').textContent = data.nama_obat || 'Detail Obat';
+        document.getElementById('preview-obat-id').textContent = data.id_obat;
+        document.getElementById('preview-obat-kategori').textContent = data.kategori || '-';
+        document.getElementById('preview-obat-rak').textContent = data.rak || '-';
+        document.getElementById('preview-obat-supplier').textContent = data.supplier || '-';
+        document.getElementById('preview-obat-stok').textContent = `${data.stok_unit_kecil || 0} ${data.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-stok-gudang').textContent = `${data.stok_gudang || 0} ${data.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-stok-min').textContent = `${data.stok_minimal || 0} ${data.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-jenis').textContent = data.jenis_item || '-';
+
+        const tbody = document.getElementById('preview-obat-prices-body');
+        tbody.innerHTML = '';
+
+        // Row for Satuan 1
+        const tr1 = document.createElement('tr');
+        tr1.innerHTML = `
+            <td><strong>${data.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
+            <td>Rp ${formatMoney(data.harga_l1_s1)}</td>
+            <td>Rp ${formatMoney(data.harga_l2_s1)}</td>
+            <td>Rp ${formatMoney(data.harga_l3_s1)}</td>
+            <td>Rp ${formatMoney(data.harga_beli_sat_1)}</td>
+        `;
+        tbody.appendChild(tr1);
+
+        // Row for Satuan 2
+        if (data.satuan_2) {
+            const tr2 = document.createElement('tr');
+            tr2.innerHTML = `
+                <td><strong>${data.satuan_2}</strong> (Isi: ${data.isi_2_ke_1 || 0})</td>
+                <td>Rp ${formatMoney(data.harga_l1_s2)}</td>
+                <td>Rp ${formatMoney(data.harga_l2_s2)}</td>
+                <td>Rp ${formatMoney(data.harga_l3_s2)}</td>
+                <td>Rp ${formatMoney(data.harga_beli_sat_2)}</td>
+            `;
+            tbody.appendChild(tr2);
+        }
+
+        // Row for Satuan 3
+        if (data.satuan_3) {
+            const tr3 = document.createElement('tr');
+            tr3.innerHTML = `
+                <td><strong>${data.satuan_3}</strong> (Isi: ${data.isi_3_ke_2 || 0})</td>
+                <td>Rp ${formatMoney(data.harga_l1_s3)}</td>
+                <td>Rp ${formatMoney(data.harga_l2_s3)}</td>
+                <td>Rp ${formatMoney(data.harga_l3_s3)}</td>
+                <td>Rp ${formatMoney(data.harga_beli_sat_3)}</td>
+            `;
+            tbody.appendChild(tr3);
+        }
+
+        document.getElementById('modal-preview-obat').classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menampilkan detail preview obat.');
     }
 }
 

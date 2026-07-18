@@ -847,6 +847,49 @@
                 </div>
             </form>
         </div>
+    <!-- Preview Detail Obat Modal -->
+    <div id="modal-preview-obat" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 id="preview-obat-title" style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-color);">Detail Obat</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-preview-obat')">✕ Tutup</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13.5px; margin-bottom: 20px;">
+                <div>
+                    <p style="margin-bottom: 8px;"><strong>ID Obat:</strong> <span id="preview-obat-id">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Kategori:</strong> <span id="preview-obat-kategori">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Lokasi Rak:</strong> <span id="preview-obat-rak">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Supplier Utama:</strong> <span id="preview-obat-supplier">-</span></p>
+                </div>
+                <div>
+                    <p style="margin-bottom: 8px;"><strong>Stok Saat Ini:</strong> <span id="preview-obat-stok" class="badge badge-info">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Stok Gudang:</strong> <span id="preview-obat-stok-gudang">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Stok Minimal:</strong> <span id="preview-obat-stok-min">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Jenis Item:</strong> <span id="preview-obat-jenis">-</span></p>
+                </div>
+            </div>
+
+            <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Daftar Satuan & Rincian Harga</h4>
+            <div class="table-container">
+                <table class="data-table" style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>Satuan</th>
+                            <th>Harga Jual (Level 1)</th>
+                            <th>Harga Jual (Level 2)</th>
+                            <th>Harga Jual (Level 3)</th>
+                            <th>Harga Beli</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-obat-prices-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-preview-obat')">Tutup</button>
+            </div>
+        </div>
     </div>
 
     <!-- Add Supplier -->
