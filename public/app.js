@@ -75,7 +75,8 @@ function setupEventListeners() {
     });
 
     document.getElementById('btn-sync').addEventListener('click', () => {
-        alert('Sinkronisasi cloud Supabase berhasil dilakukan secara real-time!');
+        loadDashboard();
+        alert('Data berhasil disinkronkan dari Supabase Cloud!');
     });
 
     // Global Search (filters menu items on dashboard)
@@ -362,6 +363,7 @@ function switchView(viewId) {
     if (viewId === 'view-cek-kesehatan') initCekKesehatan();
     if (viewId === 'view-kas') loadKasLedger();
     if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
+    if (viewId === 'view-info') loadInfoStats();
 }
 
 // --------------------------------------------------------------------------
@@ -566,6 +568,7 @@ async function searchHarga() {
 // --------------------------------------------------------------------------
 async function initPOS() {
     cart = [];
+    activeCustomer = null;
     updateCartUI();
     switchPOSTab('catalog');
     
@@ -596,13 +599,14 @@ async function initPOS() {
 
 function posChangeCustomer() {
     const id = document.getElementById('pos-customer-select').value;
-    activeCustomer = customers.find(c => c.id_pelanggan === id);
+    activeCustomer = customers.find(c => c.id_pelanggan === id) || null;
     const badge = document.getElementById('pos-customer-level');
-    badge.textContent = activeCustomer ? activeCustomer.level_harga : 'Level 1';
+    const level = activeCustomer ? activeCustomer.level_harga : 'Level 1';
+    if (badge) badge.textContent = level;
     
     // Update prices in cart based on customer level
     cart.forEach(item => {
-        item.harga = getPriceForLevel(item.obat, item.satuan, activeCustomer.level_harga);
+        item.harga = getPriceForLevel(item.obat, item.satuan, level);
     });
     updateCartUI();
 }
@@ -1262,12 +1266,16 @@ async function submitPurchaseInvoice() {
         const id_faktur = Math.random().toString(36).substring(2, 10);
         const dateStr = new Date().toISOString().split('T')[0];
 
+        let grandTotalFaktur = 0;
+        purchaseItems.forEach(i => { grandTotalFaktur += i.total; });
+
         // 1. Insert into faktur_beli
         const { error: fkErr } = await supabaseClient.from('faktur_beli').insert([{
             id_faktur: id_faktur,
             nomor_faktur: nomor_faktur,
             tanggal_masuk: dateStr,
             supplier: supplier,
+            total_harga: String(grandTotalFaktur),
             jenis_transaksi: 'PEMBELIAN',
             metode_bayar: metode_bayar,
             user: currentUser?.nama_staf || 'cashier'
@@ -1358,6 +1366,8 @@ async function submitStokOpname() {
             id_beli: id_beli,
             tanggal_masuk: dateStr,
             id_obat: o.id_obat,
+            satuan_masuk: o.label_satuan_kecil || 'Pcs',
+            harga_beli_item: '0',
             jumlah_masuk: String(difference),
             konversi_masuk: '1.0',
             total_harga: '0.0',
@@ -1472,6 +1482,12 @@ async function submitCheckup() {
         const { error } = await supabaseClient.from('rekam_kesehatan').insert([rekam]);
         if (error) throw error;
         alert('Rekam kontrol kesehatan berhasil disimpan!');
+        document.getElementById('checkup-tensi').value = '';
+        document.getElementById('checkup-gula').value = '';
+        document.getElementById('checkup-asam-urat').value = '';
+        document.getElementById('checkup-kolesterol').value = '';
+        document.getElementById('checkup-obat').value = '';
+        document.getElementById('checkup-keterangan').value = '';
         checkupChangePasien();
     } catch (e) {
         console.error(e);
@@ -1521,7 +1537,7 @@ async function loadLaporanView() {
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         const todayPattern = `${dd}/${mm}/20${yy}%`;
-        const monthPattern = `%/20${yy}%`;
+        const monthPattern = `%/${mm}/20${yy}%`;
 
         // Fetch sales today
         const { data: salesTodayData } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', todayPattern);
@@ -1834,8 +1850,6 @@ function switchPOSTab(tabName) {
         catCont.classList.remove('mobile-hidden');
         cartCont.classList.add('mobile-hidden');
     } else {
-        catTab.classList.remove('active');
-        cartTab.classList.add('active');
         cartTab.classList.add('active');
         catTab.classList.remove('active');
         catCont.classList.add('mobile-hidden');
