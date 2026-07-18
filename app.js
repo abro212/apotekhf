@@ -264,7 +264,10 @@ function submitPin() {
     }
     
     const user = JSON.parse(select.value);
-    if (pinBuffer === user.pin) {
+    const cleanUserPin = String(user.pin || '').replace(/\.0$/, '').trim();
+    const cleanInputPin = String(pinBuffer || '').trim();
+
+    if (cleanInputPin === cleanUserPin) {
         currentUser = user;
         sessionStorage.setItem('activeUser', JSON.stringify(user));
         updateUserHeader();
