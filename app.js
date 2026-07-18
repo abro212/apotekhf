@@ -525,22 +525,30 @@ async function loadDashboard() {
 }
 
 // --------------------------------------------------------------------------
-// 2. CEK HARGA OBAT
+// 2. CEK HARGA OBAT (PAGINATED)
 // --------------------------------------------------------------------------
+let currentCekHargaPage = 1;
+let currentCekHargaPageSize = 10;
+
 async function loadCekHargaList() {
-    searchHarga();
+    searchHarga(1);
 }
 
-async function searchHarga() {
+async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHargaPageSize) {
+    currentCekHargaPage = page;
+    currentCekHargaPageSize = pageSize;
     const q = document.getElementById('cek-harga-search').value.trim();
     try {
         if (!supabaseClient) return;
-        let query = supabaseClient.from('master_obat').select('*');
+        let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
         if (q) {
             query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%,kategori.ilike.%${q}%`);
         }
         
-        const { data, error } = await query.order('nama_obat').limit(50);
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, count, error } = await query.order('nama_obat').range(from, to);
         const tbody = document.getElementById('cek-harga-table-body');
         const mobileList = document.getElementById('cek-harga-mobile-list');
         
@@ -551,6 +559,7 @@ async function searchHarga() {
             if (data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding: 20px;">Obat tidak ditemukan.</td></tr>';
                 if (mobileList) mobileList.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px;">Obat tidak ditemukan.</div>';
+                renderPaginationControls('cek-harga-pagination', 1, 1, pageSize, 'searchHarga');
             } else {
                 data.forEach(o => {
                     // Desktop table row
@@ -601,6 +610,9 @@ async function searchHarga() {
                         mobileList.appendChild(card);
                     }
                 });
+
+                const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
+                renderPaginationControls('cek-harga-pagination', page, totalPages, pageSize, 'searchHarga');
             }
         }
     } catch (e) {
