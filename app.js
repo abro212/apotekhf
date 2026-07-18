@@ -1002,10 +1002,14 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
         
         const { data, count, error } = await query.order('nama_obat').range(from, to);
         const tbody = document.getElementById('master-obat-table-body');
+        const mobileList = document.getElementById('master-obat-mobile-list');
+        
         tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
         
         if (!error && data) {
             data.forEach(o => {
+                // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${o.id_obat}</strong></td>
@@ -1020,6 +1024,38 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                // Mobile card
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    
+                    const stockNum = parseFloat(o.stok_unit_kecil || 0);
+                    const stockMin = parseFloat(o.stok_minimal || 5);
+                    const stockBadgeStyle = stockNum <= stockMin 
+                        ? 'background-color:#fee2e2; color:#ef4444;' 
+                        : 'background-color:#ecfdf5; color:#10b981;';
+                        
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div style="flex:1;">
+                                <div class="price-card-title">${o.nama_obat}</div>
+                                <div class="price-card-sub">ID: ${o.id_obat} • Kategori: ${o.kategori || '-'}</div>
+                            </div>
+                            <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                            <div style="font-size:12px; color:var(--text-muted);">
+                                Satuan: <strong>${o.satuan_1 || 'Pcs'}</strong> • Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${o.id_obat}')">Edit</button>
+                                <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
+                            </div>
+                        </div>
+                    `;
+                    mobileList.appendChild(card);
+                }
             });
 
             const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);

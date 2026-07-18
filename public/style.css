@@ -1026,11 +1026,17 @@ body {
    RESPONSIVENESS AND MEDIA QUERIES
    ========================================================================== */
 
-.cek-harga-mobile-container {
+.cek-harga-mobile-container,
+.master-obat-mobile-container {
     display: none;
 }
 
 @media(max-width: 768px) {
+    .master-obat-mobile-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
     :root {
         --sidebar-width: 0px;
     }
