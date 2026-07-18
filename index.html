@@ -24,6 +24,8 @@
 
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo_hf.png">
+    <!-- Camera Barcode & QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
     
@@ -254,9 +256,10 @@
                 <!-- 2. VIEW: CEK HARGA -->
                 <section id="view-cek-harga" class="hidden">
                     <div class="view-card">
-                        <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 16px;">
+                        <div class="form-group" style="display: flex; gap: 8px; margin-bottom: 16px;">
                             <input type="text" id="cek-harga-search" class="form-control" placeholder="Ketik nama obat, kategori, atau ID obat..." oninput="searchHarga()">
-                            <button class="btn btn-primary" onclick="searchHarga()">🔍 Cari</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 8px 14px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('cek-harga-search', searchHarga)" title="Scan Barcode / QR Kamera HP">📷 Scan</button>
+                            <button type="button" class="btn btn-primary" onclick="searchHarga()">Cari</button>
                         </div>
                         <div class="table-container desktop-only-table">
                             <table class="data-table">
@@ -291,8 +294,9 @@
                     <div class="pos-layout">
                         <!-- Left Side: Item Search & Selection -->
                         <div class="view-card pos-section-wrapper" id="pos-catalog-container" style="padding: 20px;">
-                            <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <div class="form-group" style="display: flex; gap: 8px; margin-bottom: 10px;">
                                 <input type="text" id="pos-search-input" class="form-control" placeholder="Cari obat..." oninput="posSearchObat()">
+                                <button type="button" class="btn btn-secondary" style="padding: 8px 14px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">📷 Scan</button>
                             </div>
                             <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 15px;">
                                 <select id="pos-customer-select" class="form-control" style="width: 200px;" onchange="posChangeCustomer()"></select>
@@ -890,6 +894,21 @@
                     <button type="submit" class="btn btn-primary">Simpan Mutasi</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- BARCODE / QR SCANNER MODAL -->
+    <div id="modal-barcode-scanner" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 440px; text-align: center; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;">📷 Scan Barcode / QR Obat</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeCameraScanner()">✕ Tutup</button>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Arahkan kamera HP ke Barcode / QR Code pada kemasan obat.</p>
+            <div id="qr-reader" style="width: 100%; min-height: 240px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid var(--border-color);"></div>
+            <div style="margin-top: 14px;">
+                <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="closeCameraScanner()">Batal</button>
+            </div>
         </div>
     </div>
 

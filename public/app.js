@@ -1899,3 +1899,91 @@ function switchPOSTab(tabName) {
         cartCont.classList.remove('mobile-hidden');
     }
 }
+
+// --------------------------------------------------------------------------
+// CAMERA BARCODE / QR CODE SCANNER
+// --------------------------------------------------------------------------
+let html5QrcodeScannerInstance = null;
+
+function playScanBeep() {
+    try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // High C pitch
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+    } catch (e) {
+        console.log('Audio Context beep:', e);
+    }
+}
+
+async function openCameraScanner(targetInputId, onScanComplete) {
+    const modal = document.getElementById('modal-barcode-scanner');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    if (typeof Html5Qrcode === 'undefined') {
+        alert('Library scanner kamera belum selesai dimuat. Harap periksa jaringan internet Anda.');
+        return;
+    }
+
+    try {
+        if (html5QrcodeScannerInstance) {
+            await stopScannerInstance();
+        }
+
+        html5QrcodeScannerInstance = new Html5Qrcode("qr-reader");
+        const config = { fps: 15, qrbox: { width: 240, height: 150 } };
+
+        // Start back camera ('environment')
+        html5QrcodeScannerInstance.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                playScanBeep();
+                const targetInput = document.getElementById(targetInputId);
+                if (targetInput) {
+                    targetInput.value = decodedText;
+                }
+                closeCameraScanner();
+                if (typeof onScanComplete === 'function') {
+                    onScanComplete();
+                }
+            },
+            (errorMessage) => {
+                // Ignore silent frame errors while scanning
+            }
+        ).catch(err => {
+            console.error('Camera start failed:', err);
+            alert('Tidak dapat membuka kamera. Pastikan izin akses kamera diberikan pada browser HP Anda.');
+            closeCameraScanner();
+        });
+    } catch (err) {
+        console.error('Scanner init error:', err);
+        alert('Gagal mengaktifkan scanner kamera.');
+        closeCameraScanner();
+    }
+}
+
+async function stopScannerInstance() {
+    if (html5QrcodeScannerInstance) {
+        try {
+            await html5QrcodeScannerInstance.stop();
+            html5QrcodeScannerInstance.clear();
+        } catch (e) {
+            console.log('Stop scanner error:', e);
+        }
+        html5QrcodeScannerInstance = null;
+    }
+}
+
+async function closeCameraScanner() {
+    await stopScannerInstance();
+    const modal = document.getElementById('modal-barcode-scanner');
+    if (modal) modal.classList.add('hidden');
+}
