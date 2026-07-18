@@ -862,21 +862,84 @@ async function posCheckout() {
 }
 
 // --------------------------------------------------------------------------
-// 4. DATA MASTER OBAT
+// REUSABLE PAGINATION COMPONENT (Ant Design / Element Plus Pill Style)
 // --------------------------------------------------------------------------
-let obatPageLimit = 50;
-let obatPageOffset = 0;
+function renderPaginationControls(containerId, currentPage, totalPages, pageSize, onPageChangeName) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    if (totalPages <= 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = `<div class="pagination-wrapper"><div class="pagination-pill-bar">`;
+    
+    // Chevron Left <
+    const prevDisabled = currentPage <= 1 ? 'disabled' : '';
+    html += `<button type="button" class="pagination-pill-btn" ${prevDisabled} onclick="${onPageChangeName}(${currentPage - 1}, ${pageSize})">‹</button>`;
+    
+    // Calculate page range window
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let p = startPage; p <= endPage; p++) {
+        const activeClass = p === currentPage ? 'active' : '';
+        html += `<button type="button" class="pagination-pill-btn ${activeClass}" onclick="${onPageChangeName}(${p}, ${pageSize})">${p}</button>`;
+    }
+    
+    // Chevron Right >
+    const nextDisabled = currentPage >= totalPages ? 'disabled' : '';
+    html += `<button type="button" class="pagination-pill-btn" ${nextDisabled} onclick="${onPageChangeName}(${currentPage + 1}, ${pageSize})">›</button>`;
+    
+    // Page Size Select (10 / page, 25 / page, 50 / page, 100 / page)
+    html += `
+        <select class="pagination-size-select" onchange="${onPageChangeName}(1, parseInt(this.value))">
+            <option value="10" ${pageSize === 10 ? 'selected' : ''}>10 / page</option>
+            <option value="25" ${pageSize === 25 ? 'selected' : ''}>25 / page</option>
+            <option value="50" ${pageSize === 50 ? 'selected' : ''}>50 / page</option>
+            <option value="100" ${pageSize === 100 ? 'selected' : ''}>100 / page</option>
+        </select>
+    `;
+    
+    // Jump to Page Input
+    html += `
+        <div class="pagination-jump-group">
+            <span>Go to</span>
+            <input type="number" class="pagination-jump-input" min="1" max="${totalPages}" value="${currentPage}" 
+                onkeydown="if(event.key === 'Enter'){ let page = parseInt(this.value) || 1; page = Math.max(1, Math.min(${totalPages}, page)); ${onPageChangeName}(page, ${pageSize}); }">
+            <span>Page</span>
+        </div>
+    `;
+    
+    html += `</div></div>`;
+    container.innerHTML = html;
+}
 
-async function loadMasterObat() {
+// --------------------------------------------------------------------------
+// 4. MASTER OBAT (PAGINATED)
+// --------------------------------------------------------------------------
+let currentObatPage = 1;
+let currentObatPageSize = 10;
+
+async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
+    currentObatPage = page;
+    currentObatPageSize = pageSize;
     const q = document.getElementById('master-obat-search').value.trim();
     try {
         if (!supabaseClient) return;
-        let query = supabaseClient.from('master_obat').select('*');
+        let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
         if (q) {
             query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
         }
         
-        const { data, error } = await query.order('nama_obat').limit(50);
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        const { data, count, error } = await query.order('nama_obat').range(from, to);
         const tbody = document.getElementById('master-obat-table-body');
         tbody.innerHTML = '';
         
@@ -896,6 +959,9 @@ async function loadMasterObat() {
                 `;
                 tbody.appendChild(tr);
             });
+
+            const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
+            renderPaginationControls('master-obat-pagination', page, totalPages, pageSize, 'loadMasterObat');
         }
     } catch (e) {
         console.error('Error loading Master Obat:', e);
@@ -962,12 +1028,25 @@ async function deleteObat(id) {
 }
 
 // --------------------------------------------------------------------------
-// 5. RIWAYAT PENJUALAN
+// 5. RIWAYAT PENJUALAN (PAGINATED)
 // --------------------------------------------------------------------------
-async function loadRiwayatPenjualan() {
+let currentPenjualanPage = 1;
+let currentPenjualanPageSize = 10;
+
+async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = currentPenjualanPageSize) {
+    currentPenjualanPage = page;
+    currentPenjualanPageSize = pageSize;
     try {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('transaksi_jual').select('*').order('tanggal', { ascending: false });
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        const { data, count, error } = await supabaseClient
+            .from('transaksi_jual')
+            .select('*', { count: 'exact' })
+            .order('tanggal', { ascending: false })
+            .range(from, to);
+
         const tbody = document.getElementById('penjualan-table-body');
         tbody.innerHTML = '';
         
@@ -987,6 +1066,9 @@ async function loadRiwayatPenjualan() {
                 `;
                 tbody.appendChild(tr);
             });
+
+            const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
+            renderPaginationControls('penjualan-pagination', page, totalPages, pageSize, 'loadRiwayatPenjualan');
         }
     } catch (e) {
         console.error('Error loading penjualan history:', e);

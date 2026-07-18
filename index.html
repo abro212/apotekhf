@@ -326,7 +326,7 @@
                 <section id="view-master-obat" class="hidden">
                     <div class="view-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <input type="text" id="master-obat-search" class="form-control" style="max-width: 400px;" placeholder="Cari berdasarkan nama atau ID..." oninput="loadMasterObat()">
+                            <input type="text" id="master-obat-search" class="form-control" style="max-width: 400px;" placeholder="Cari berdasarkan nama atau ID..." oninput="loadMasterObat(1)">
                             <button class="btn btn-primary" onclick="showAddObatModal()">✚ Tambah Obat</button>
                         </div>
                         <div class="table-container">
@@ -345,6 +345,7 @@
                                 <tbody id="master-obat-table-body"></tbody>
                             </table>
                         </div>
+                        <div id="master-obat-pagination"></div>
                     </div>
                 </section>
 
@@ -367,6 +368,7 @@
                                 <tbody id="penjualan-table-body"></tbody>
                             </table>
                         </div>
+                        <div id="penjualan-pagination"></div>
                     </div>
                 </section>
 
