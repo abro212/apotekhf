@@ -1487,15 +1487,9 @@ function renderThermalReceiptHTML(data) {
 
     return `
     <div class="thermal-receipt-container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #000; background: #fff; padding: 15px 10px; border-radius: 4px; max-width: 320px; margin: 0 auto; box-sizing: border-box;">
-        <!-- Logo SVG Black & White -->
-        <div style="text-align: center; margin-bottom: 6px;">
-            <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto; display: block;">
-                <path d="M14 28C14 39.0457 22.0589 48 32 48C41.9411 48 50 39.0457 50 28H14Z" fill="#000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
-                <rect x="20" y="24" width="24" height="4" rx="2" fill="#000"/>
-                <path d="M22 52H42" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-                <path d="M40 12L28 26" stroke="#000" stroke-width="4" stroke-linecap="round"/>
-                <path d="M32 33V43M27 38H37" stroke="#FFF" stroke-width="3" stroke-linecap="round"/>
-            </svg>
+        <!-- Logo Image (Black & White Filter) -->
+        <div style="text-align: center; margin-bottom: 8px;">
+            <img src="logo_hf.png" alt="Apotek HF Logo" style="max-height: 60px; max-width: 120px; width: auto; display: block; margin: 0 auto; filter: grayscale(100%) contrast(180%);">
         </div>
 
         <!-- Store Header -->
