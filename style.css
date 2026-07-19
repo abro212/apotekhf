@@ -1531,6 +1531,11 @@ body {
         max-width: 160px;
     }
 
+    .pos-search-results {
+        max-height: none !important;
+        overflow-y: visible !important;
+    }
+
     #pos-mobile-tabs {
         display: flex !important;
     }
