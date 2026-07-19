@@ -1519,6 +1519,20 @@ async function previewObat(encodedId, e) {
 let currentPenjualanPage = 1;
 let currentPenjualanPageSize = 10;
 
+function searchRiwayatPenjualan() {
+    currentPenjualanPage = 1;
+    loadRiwayatPenjualan(1, currentPenjualanPageSize);
+}
+
+function resetRiwayatPenjualanSearch() {
+    const searchInput = document.getElementById('penjualan-search-input');
+    const filterMetode = document.getElementById('penjualan-filter-metode');
+    if (searchInput) searchInput.value = '';
+    if (filterMetode) filterMetode.value = '';
+    currentPenjualanPage = 1;
+    loadRiwayatPenjualan(1, currentPenjualanPageSize);
+}
+
 async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = currentPenjualanPageSize) {
     currentPenjualanPage = page;
     currentPenjualanPageSize = pageSize;
@@ -1527,9 +1541,20 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        const { data, count, error } = await supabaseClient
-            .from('transaksi_jual')
-            .select('*', { count: 'exact' })
+        const searchQuery = document.getElementById('penjualan-search-input')?.value.trim() || '';
+        const filterMetode = document.getElementById('penjualan-filter-metode')?.value || '';
+
+        let query = supabaseClient.from('transaksi_jual').select('*', { count: 'exact' });
+
+        if (searchQuery) {
+            query = query.or(`id_jual.ilike.%${searchQuery}%,user.ilike.%${searchQuery}%,nama_pelanggan.ilike.%${searchQuery}%`);
+        }
+
+        if (filterMetode) {
+            query = query.eq('metode_bayar', filterMetode);
+        }
+
+        const { data, count, error } = await query
             .order('tanggal', { ascending: false })
             .range(from, to);
 
@@ -1538,7 +1563,7 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
         tbody.innerHTML = '';
         if (mobileList) mobileList.innerHTML = '';
         
-        if (!error && data) {
+        if (!error && data && data.length > 0) {
             data.forEach(tx => {
                 const encId = encodeURIComponent(tx.id_jual || '');
                 const metodeBadge = tx.metode_bayar === 'CASH' 
@@ -1593,6 +1618,10 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
 
             const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
             renderPaginationControls('penjualan-pagination', page, totalPages, pageSize, 'loadRiwayatPenjualan');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada riwayat penjualan ditemukan.</td></tr>';
+            if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:13px;">Tidak ada riwayat penjualan ditemukan.</div>';
+            renderPaginationControls('penjualan-pagination', 1, 1, pageSize, 'loadRiwayatPenjualan');
         }
     } catch (e) {
         console.error('Error loading penjualan history:', e);

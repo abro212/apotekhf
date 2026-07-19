@@ -431,6 +431,30 @@
                 <!-- 5. VIEW: RIWAYAT PENJUALAN -->
                 <section id="view-menu-penjualan" class="hidden">
                     <div class="view-card">
+                        <!-- Filter & Search Bar Riwayat Penjualan -->
+                        <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; gap: 8px; flex: 1; min-width: 280px;">
+                                <input type="text" id="penjualan-search-input" class="form-control" placeholder="🔍 Cari ID Jual / No. Nota, Staf Kasir, atau Pelanggan..." onkeyup="if(event.key==='Enter') searchRiwayatPenjualan()" style="font-size: 13px;">
+                                <button class="btn btn-primary" onclick="searchRiwayatPenjualan()" style="padding: 8px 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
+                                    <span>🔍</span> Cari
+                                </button>
+                                <button class="btn btn-secondary" onclick="resetRiwayatPenjualanSearch()" style="padding: 8px 12px; white-space: nowrap;">
+                                    🔄 Reset
+                                </button>
+                            </div>
+                            
+                            <!-- Filter Metode Pembayaran -->
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin: 0; white-space: nowrap;">Metode Bayar:</label>
+                                <select id="penjualan-filter-metode" class="form-control" onchange="searchRiwayatPenjualan()" style="width: 120px; height: 36px; font-size: 12px;">
+                                    <option value="">Semua Metode</option>
+                                    <option value="CASH">💵 CASH</option>
+                                    <option value="QRIS">📱 QRIS</option>
+                                    <option value="TEMPO">⏳ TEMPO</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="table-container desktop-only-table">
                             <table class="data-table">
                                 <thead>
