@@ -182,6 +182,22 @@ body {
     transition: border-color 0.15s ease;
 }
 
+/* Clickable Dashboard KPI Cards */
+.clickable-kpi {
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+}
+
+.clickable-kpi:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.clickable-kpi:active {
+    transform: translateY(-1px);
+}
+
 .pagination-jump-input:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);

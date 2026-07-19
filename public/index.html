@@ -218,15 +218,15 @@
                     
                     <!-- KPI Cards Row -->
                     <div class="dashboard-kpi-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 25px;">
-                        <div class="view-card kpi-card-sales">
+                        <div class="view-card kpi-card-sales clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Klik untuk melihat Riwayat Penjualan">
                             <h4 class="kpi-label">Penjualan Hari Ini</h4>
                             <h2 class="kpi-val" id="dash-kpi-sales">Rp 0</h2>
                         </div>
-                        <div class="view-card kpi-card-tx">
+                        <div class="view-card kpi-card-tx clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Klik untuk melihat Riwayat Penjualan">
                             <h4 class="kpi-label">Transaksi Hari Ini</h4>
                             <h2 class="kpi-val" id="dash-kpi-tx">0 Transaksi</h2>
                         </div>
-                        <div class="view-card kpi-card-stock">
+                        <div class="view-card kpi-card-stock clickable-kpi" onclick="switchView('view-obat')" title="Klik untuk melihat Stok Master Obat">
                             <h4 class="kpi-label">Stok Obat Tipis</h4>
                             <h2 class="kpi-val" id="dash-kpi-lowstock">0 Item</h2>
                         </div>
