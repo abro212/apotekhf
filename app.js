@@ -3539,8 +3539,8 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
                         ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
                         : '<span class="badge" style="background:#fef2f2;color:#ef4444;">BELUM LUNAS</span>';
 
-                    const encId = encodeURIComponent(tx.id_jual || '');
-                    const encNama = encodeURIComponent(tx.nama_pelanggan || 'UMUM');
+                    const encId = encodeURIComponent(tx.id_jual || '').replace(/'/g, "%27");
+                    const encNama = encodeURIComponent(tx.nama_pelanggan || 'UMUM').replace(/'/g, "%27");
 
                     // Desktop row
                     const tr = document.createElement('tr');
@@ -3661,8 +3661,8 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
                         ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
                         : '<span class="badge" style="background:#fef2f2;color:#ef4444;">BELUM LUNAS</span>';
 
-                    const encId = encodeURIComponent(key || '');
-                    const encNama = encodeURIComponent(fk.supplier || 'Supplier');
+                    const encId = encodeURIComponent(key || '').replace(/'/g, "%27");
+                    const encNama = encodeURIComponent(fk.supplier || 'Supplier').replace(/'/g, "%27");
 
                     // Desktop row
                     const tr = document.createElement('tr');
@@ -3721,23 +3721,42 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
 
 let currentBayarTagihanSisa = 0;
 
-function openBayarTagihanModal(encId, encNama, total, sisa, type) {
-    const id = decodeURIComponent(encId);
-    const nama = decodeURIComponent(encNama);
+window.openBayarTagihanModal = function(encId, encNama, total, sisa, type) {
+    let id = encId || '';
+    let nama = encNama || '';
+    try { id = decodeURIComponent(id); } catch(e) {}
+    try { nama = decodeURIComponent(nama); } catch(e) {}
+
     currentBayarTagihanSisa = parseFloat(sisa) || 0;
 
-    document.getElementById('bayar-tagihan-id').value = id;
-    document.getElementById('bayar-tagihan-type').value = type;
-    document.getElementById('bayar-info-id').textContent = id;
-    document.getElementById('bayar-info-nama').textContent = nama;
-    document.getElementById('bayar-info-total').textContent = `Rp ${formatMoney(total)}`;
-    document.getElementById('bayar-info-sisa').textContent = `Rp ${formatMoney(sisa)}`;
-    document.getElementById('bayar-tagihan-nominal').value = sisa;
-    document.getElementById('bayar-tagihan-title').textContent = type === 'piutang' ? '💳 Terima Pelunasan Piutang Pelanggan' : '📦 Bayar Hutang Supplier';
+    const modal = document.getElementById('modal-bayar-tagihan');
+    if (!modal) {
+        alert('Modal bayar tagihan tidak ditemukan!');
+        return;
+    }
+
+    const idInput = document.getElementById('bayar-tagihan-id');
+    const typeInput = document.getElementById('bayar-tagihan-type');
+    const idInfo = document.getElementById('bayar-info-id');
+    const namaInfo = document.getElementById('bayar-info-nama');
+    const totalInfo = document.getElementById('bayar-info-total');
+    const sisaInfo = document.getElementById('bayar-info-sisa');
+    const nominalInput = document.getElementById('bayar-tagihan-nominal');
+    const titleElem = document.getElementById('modal-bayar-tagihan-title');
+
+    if (idInput) idInput.value = id;
+    if (typeInput) typeInput.value = type;
+    if (idInfo) idInfo.textContent = id;
+    if (namaInfo) namaInfo.textContent = nama;
+    if (totalInfo) totalInfo.textContent = `Rp ${formatMoney(total)}`;
+    if (sisaInfo) sisaInfo.textContent = `Rp ${formatMoney(sisa)}`;
+    if (nominalInput) nominalInput.value = sisa;
+    if (titleElem) titleElem.textContent = type === 'piutang' ? '💳 Terima Pelunasan Piutang Pelanggan' : '📦 Bayar Hutang Supplier';
 
     calculateTagihanRemainingDisplay();
-    document.getElementById('modal-bayar-tagihan').classList.remove('hidden');
-}
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+};
 
 function calculateTagihanRemainingDisplay() {
     const nominal = parseFloat(document.getElementById('bayar-tagihan-nominal')?.value) || 0;
