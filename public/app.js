@@ -48,7 +48,7 @@ function setupEventListeners() {
     // Mobile Navigation items (Bottom Nav)
     document.getElementById('bottom-nav-home').addEventListener('click', (e) => {
         e.preventDefault();
-        if (currentUser) switchView('view-dashboard');
+        if (currentUser) switchView('view-pintasan');
     });
 
     document.getElementById('bottom-nav-search').addEventListener('click', (e) => {
@@ -401,7 +401,7 @@ function switchView(viewId) {
     });
     
     // Set active item based on current view
-    if (viewId === 'view-dashboard') {
+    if (viewId === 'view-dashboard' || viewId === 'view-pintasan') {
         const bh = document.getElementById('bottom-nav-home');
         if (bh) bh.classList.add('active');
     } else if (viewId === 'view-cek-harga') {
