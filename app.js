@@ -1735,12 +1735,35 @@ function renderThermalReceiptHTML(data) {
             Terima kasih atas pembelian Anda!
         </div>
 
+        <!-- Barcode Section (CODE128 for ID Jual / No Pesanan) -->
+        <div style="text-align: center; margin-top: 10px; margin-bottom: 6px;">
+            <svg id="receipt-barcode-svg" style="max-width: 100%; height: auto; display: block; margin: 0 auto;"></svg>
+        </div>
+
         <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
             <span>${tanggal}</span>
             <span>#${id_jual.split('-').pop() || id_jual}</span>
         </div>
     </div>
     `;
+}
+
+function renderReceiptBarcode(id_jual) {
+    if (typeof JsBarcode !== 'undefined' && id_jual) {
+        try {
+            JsBarcode("#receipt-barcode-svg", id_jual, {
+                format: "CODE128",
+                width: 1.5,
+                height: 38,
+                displayValue: true,
+                fontSize: 10,
+                font: "monospace",
+                margin: 4
+            });
+        } catch (e) {
+            console.error('Error rendering receipt barcode:', e);
+        }
+    }
 }
 
 async function showReceiptDetail(id_jual) {
@@ -1768,6 +1791,7 @@ async function showReceiptDetail(id_jual) {
 
             const printArea = document.getElementById('receipt-print-area');
             printArea.innerHTML = html;
+            renderReceiptBarcode(tx.id_jual);
             document.getElementById('modal-receipt').classList.remove('hidden');
         }
     } catch (e) {
@@ -1802,6 +1826,7 @@ function showReceipt(id_jual, total, tanggal, uangBayar, kembalian) {
 
     const printArea = document.getElementById('receipt-print-area');
     printArea.innerHTML = html;
+    renderReceiptBarcode(id_jual);
     document.getElementById('modal-receipt').classList.remove('hidden');
 }
 
