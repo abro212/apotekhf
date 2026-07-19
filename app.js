@@ -363,6 +363,7 @@ function switchView(viewId) {
     if (viewId === 'view-menu-penjualan') loadRiwayatPenjualan();
     if (viewId === 'view-menu-pembelian') initPembelian();
     if (viewId === 'view-menu-laporan') loadLaporanView();
+    if (viewId === 'view-menu-tagihan') loadTagihanData();
     if (viewId === 'view-menu-stok-opname') initStokOpname();
     if (viewId === 'view-cek-kesehatan') initCekKesehatan();
     if (viewId === 'view-kas') loadKasLedger();
@@ -1927,6 +1928,332 @@ async function loadLaporanView() {
         }
     } catch (e) {
         console.error('Error loading shift logs:', e);
+    }
+}
+
+// --------------------------------------------------------------------------
+// MENU TAGIHAN (PIUTANG PELANGGAN & HUTANG SUPPLIER)
+// --------------------------------------------------------------------------
+let currentTagihanTab = 'piutang'; // 'piutang' or 'hutang'
+
+function switchTagihanTab(tab) {
+    currentTagihanTab = tab;
+    const btnPiutang = document.getElementById('tagihan-tab-piutang');
+    const btnHutang = document.getElementById('tagihan-tab-hutang');
+    
+    if (tab === 'piutang') {
+        btnPiutang.className = 'btn btn-primary';
+        btnHutang.className = 'btn btn-secondary';
+        document.getElementById('tagihan-summary-label1').textContent = 'Total Piutang Outstanding';
+        document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Nota Piutang Belum Lunas';
+        document.getElementById('tagihan-summary-label3').textContent = 'Total Piutang Terbayar';
+    } else {
+        btnPiutang.className = 'btn btn-secondary';
+        btnHutang.className = 'btn btn-primary';
+        document.getElementById('tagihan-summary-label1').textContent = 'Total Hutang Outstanding';
+        document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Faktur Hutang Belum Lunas';
+        document.getElementById('tagihan-summary-label3').textContent = 'Total Hutang Terbayar';
+    }
+    loadTagihanData();
+}
+
+async function loadTagihanData() {
+    if (!supabaseClient) return;
+    const q = document.getElementById('tagihan-search-input')?.value.trim() || '';
+    const thead = document.getElementById('tagihan-table-head');
+    const tbody = document.getElementById('tagihan-table-body');
+    const mobileList = document.getElementById('tagihan-mobile-list');
+
+    tbody.innerHTML = '';
+    if (mobileList) mobileList.innerHTML = '';
+
+    if (currentTagihanTab === 'piutang') {
+        // Table Head for Piutang
+        thead.innerHTML = `
+            <tr>
+                <th>ID Jual</th>
+                <th>Tanggal</th>
+                <th>Pelanggan</th>
+                <th>Total Tagihan</th>
+                <th>Sisa Piutang</th>
+                <th>Status</th>
+                <th>Aksi</th>
+            </tr>
+        `;
+
+        try {
+            // Query TEMPO sales transactions
+            let query = supabaseClient.from('transaksi_jual').select('*').eq('metode_bayar', 'TEMPO').order('tanggal', { ascending: false });
+            if (q) {
+                query = query.or(`id_jual.ilike.%${q}%,nama_pelanggan.ilike.%${q}%`);
+            }
+            const { data: txList, error } = await query;
+
+            // Fetch pelunasan log for piutang
+            const { data: logs } = await supabaseClient.from('log_pelunasan_jual').select('*');
+            const paidMap = {};
+            if (logs) {
+                logs.forEach(l => {
+                    paidMap[l.id_jual] = (paidMap[l.id_jual] || 0) + parseFloat(l.jumlah_bayar || 0);
+                });
+            }
+
+            let totalOutstanding = 0;
+            let totalTerbayar = 0;
+            let unpaidCount = 0;
+
+            if (txList) {
+                document.getElementById('tagihan-count-badge').textContent = `${txList.length} Nota`;
+
+                txList.forEach(tx => {
+                    const total = parseFloat(tx.total_bayar || 0);
+                    const paid = paidMap[tx.id_jual] || 0;
+                    const sisa = Math.max(0, total - paid);
+                    const isLunas = sisa <= 0;
+
+                    totalTerbayar += paid;
+                    if (!isLunas) {
+                        totalOutstanding += sisa;
+                        unpaidCount++;
+                    }
+
+                    const statusBadge = isLunas 
+                        ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
+                        : '<span class="badge" style="background:#fef2f2;color:#ef4444;">BELUM LUNAS</span>';
+
+                    const encId = encodeURIComponent(tx.id_jual || '');
+                    const encNama = encodeURIComponent(tx.nama_pelanggan || 'UMUM');
+
+                    // Desktop row
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${tx.id_jual}</strong></td>
+                        <td>${tx.tanggal}</td>
+                        <td>${tx.nama_pelanggan || 'UMUM'}</td>
+                        <td>Rp ${formatMoney(total)}</td>
+                        <td><strong style="color: ${isLunas ? '#10b981' : '#ef4444'};">Rp ${formatMoney(sisa)}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${!isLunas ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'piutang')">💵 Bayar</button>` : '<span style="font-size:12px; color:var(--text-muted);">✓ Selesai</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Mobile card
+                    if (mobileList) {
+                        const card = document.createElement('div');
+                        card.className = 'price-card-mobile';
+                        card.innerHTML = `
+                            <div class="price-card-header">
+                                <div style="flex:1; min-width:0;">
+                                    <div class="price-card-title" style="font-size:13px;">${tx.id_jual}</div>
+                                    <div class="price-card-sub">👤 ${tx.nama_pelanggan || 'UMUM'} • ${tx.tanggal}</div>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            <div style="font-size:12px; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:var(--text-muted);">Total: Rp ${formatMoney(total)}</span>
+                                <strong style="font-size:13.5px; color:${isLunas ? '#10b981' : '#ef4444'};">Sisa: Rp ${formatMoney(sisa)}</strong>
+                            </div>
+                            ${!isLunas ? `
+                                <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                    <button class="btn btn-primary" style="padding:6px 12px; font-size:12px; width:100%;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'piutang')">💵 Bayar Pelunasan</button>
+                                </div>
+                            ` : ''}
+                        `;
+                        mobileList.appendChild(card);
+                    }
+                });
+            }
+
+            document.getElementById('tagihan-summary-val1').textContent = `Rp ${formatMoney(totalOutstanding)}`;
+            document.getElementById('tagihan-summary-val2').textContent = `${unpaidCount} Nota`;
+            document.getElementById('tagihan-summary-val3').textContent = `Rp ${formatMoney(totalTerbayar)}`;
+
+        } catch (e) {
+            console.error('Error loading piutang tagihan:', e);
+        }
+
+    } else {
+        // Table Head for Hutang Supplier
+        thead.innerHTML = `
+            <tr>
+                <th>No. Faktur</th>
+                <th>Tanggal Masuk</th>
+                <th>Supplier</th>
+                <th>Total Faktur</th>
+                <th>Sisa Hutang</th>
+                <th>Status</th>
+                <th>Aksi</th>
+            </tr>
+        `;
+
+        try {
+            let query = supabaseClient.from('faktur_beli').select('*').eq('metode_bayar', 'TEMPO').order('tanggal_masuk', { ascending: false });
+            if (q) {
+                query = query.or(`nomor_faktur.ilike.%${q}%,supplier.ilike.%${q}%`);
+            }
+            const { data: fkList, error } = await query;
+
+            let totalOutstanding = 0;
+            let unpaidCount = 0;
+            let totalTerbayar = 0;
+
+            if (fkList) {
+                document.getElementById('tagihan-count-badge').textContent = `${fkList.length} Faktur`;
+
+                fkList.forEach(fk => {
+                    const total = parseFloat(fk.total_harga || 0);
+                    // For now, treat non-paid TEMPO faktur as outstanding sisa = total
+                    const sisa = total; 
+                    const isLunas = sisa <= 0;
+
+                    if (!isLunas) {
+                        totalOutstanding += sisa;
+                        unpaidCount++;
+                    }
+
+                    const statusBadge = isLunas 
+                        ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
+                        : '<span class="badge" style="background:#fef2f2;color:#ef4444;">BELUM LUNAS</span>';
+
+                    const encId = encodeURIComponent(fk.id_faktur || fk.nomor_faktur || '');
+                    const encNama = encodeURIComponent(fk.supplier || 'Supplier');
+
+                    // Desktop row
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${fk.nomor_faktur || fk.id_faktur}</strong></td>
+                        <td>${fk.tanggal_masuk}</td>
+                        <td>${fk.supplier}</td>
+                        <td>Rp ${formatMoney(total)}</td>
+                        <td><strong style="color: ${isLunas ? '#10b981' : '#ef4444'};">Rp ${formatMoney(sisa)}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>
+                            ${!isLunas ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar</button>` : '<span style="font-size:12px; color:var(--text-muted);">✓ Selesai</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Mobile card
+                    if (mobileList) {
+                        const card = document.createElement('div');
+                        card.className = 'price-card-mobile';
+                        card.innerHTML = `
+                            <div class="price-card-header">
+                                <div style="flex:1; min-width:0;">
+                                    <div class="price-card-title" style="font-size:13px;">Faktur: ${fk.nomor_faktur || fk.id_faktur}</div>
+                                    <div class="price-card-sub">📦 ${fk.supplier} • ${fk.tanggal_masuk}</div>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            <div style="font-size:12px; margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:var(--text-muted);">Total: Rp ${formatMoney(total)}</span>
+                                <strong style="font-size:13.5px; color:${isLunas ? '#10b981' : '#ef4444'};">Sisa: Rp ${formatMoney(sisa)}</strong>
+                            </div>
+                            ${!isLunas ? `
+                                <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                    <button class="btn btn-primary" style="padding:6px 12px; font-size:12px; width:100%;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar Hutang</button>
+                                </div>
+                            ` : ''}
+                        `;
+                        mobileList.appendChild(card);
+                    }
+                });
+            }
+
+            document.getElementById('tagihan-summary-val1').textContent = `Rp ${formatMoney(totalOutstanding)}`;
+            document.getElementById('tagihan-summary-val2').textContent = `${unpaidCount} Faktur`;
+            document.getElementById('tagihan-summary-val3').textContent = `Rp ${formatMoney(totalTerbayar)}`;
+
+        } catch (e) {
+            console.error('Error loading hutang tagihan:', e);
+        }
+    }
+}
+
+function openBayarTagihanModal(encId, encNama, total, sisa, type) {
+    const id = decodeURIComponent(encId);
+    const nama = decodeURIComponent(encNama);
+
+    document.getElementById('bayar-tagihan-id').value = id;
+    document.getElementById('bayar-tagihan-type').value = type;
+    document.getElementById('bayar-info-id').textContent = id;
+    document.getElementById('bayar-info-nama').textContent = nama;
+    document.getElementById('bayar-info-total').textContent = `Rp ${formatMoney(total)}`;
+    document.getElementById('bayar-info-sisa').textContent = `Rp ${formatMoney(sisa)}`;
+    document.getElementById('bayar-tagihan-nominal').value = sisa;
+    document.getElementById('bayar-tagihan-title').textContent = type === 'piutang' ? 'Terima Pelunasan Piutang' : 'Bayar Hutang Supplier';
+
+    document.getElementById('modal-bayar-tagihan').classList.remove('hidden');
+}
+
+async function submitBayarTagihan(e) {
+    e.preventDefault();
+    const id = document.getElementById('bayar-tagihan-id').value;
+    const type = document.getElementById('bayar-tagihan-type').value;
+    const nominal = parseFloat(document.getElementById('bayar-tagihan-nominal').value) || 0;
+    const metode = document.getElementById('bayar-tagihan-metode').value;
+    const catatan = document.getElementById('bayar-tagihan-catatan').value.trim();
+
+    if (nominal <= 0) {
+        alert('Masukkan nominal pembayaran yang valid!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        if (type === 'piutang') {
+            const id_pelunasan = 'PL' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const { error: logErr } = await supabaseClient.from('log_pelunasan_jual').insert([{
+                id_pelunasan,
+                id_jual: id,
+                tanggal_bayar: dateStr,
+                jumlah_bayar: String(nominal),
+                metode_bayar: metode,
+                catatan: catatan || 'Pelunasan Piutang Pelanggan',
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+
+            if (logErr) throw logErr;
+
+            // Log into kas as MASUK
+            await supabaseClient.from('kas').insert([{
+                id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                tanggal: dateStr,
+                jenis_kas: 'MASUK',
+                kategori: 'Pelunasan Piutang',
+                jumlah: String(nominal),
+                keterangan: `Pelunasan Nota ${id} (${catatan || 'CASH'})`,
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+
+            alert('Pelunasan piutang berhasil dicatat!');
+
+        } else {
+            // Log into kas as KELUAR for Hutang
+            await supabaseClient.from('kas').insert([{
+                id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                tanggal: dateStr,
+                jenis_kas: 'KELUAR',
+                kategori: 'Pembayaran Hutang Supplier',
+                jumlah: String(nominal),
+                keterangan: `Pembayaran Faktur ${id} (${catatan || 'CASH'})`,
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+
+            alert('Pembayaran hutang supplier berhasil dicatat!');
+        }
+
+        closeModal('modal-bayar-tagihan');
+        document.getElementById('form-bayar-tagihan').reset();
+        loadTagihanData();
+
+    } catch (e) {
+        console.error('Error submitting pelunasan:', e);
+        alert('Gagal mencatat pembayaran pelunasan.');
     }
 }
 

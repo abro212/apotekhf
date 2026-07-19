@@ -139,6 +139,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="12" y1="4" x2="12" y2="20"></line><line x1="2" y1="12" x2="22" y2="12"></line></svg>
                     <span>Kas Operasional</span>
                 </a>
+                <a href="#" class="nav-link" data-target="view-menu-tagihan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span>Menu Tagihan (Piutang & Hutang)</span>
+                </a>
                 <a href="#" class="nav-link" data-target="view-supplier-pelanggan">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <span>Supplier & Pelanggan</span>
@@ -643,6 +647,60 @@
                     </div>
                 </section>
 
+                <!-- VIEW: MENU TAGIHAN (PIUTANG & HUTANG) -->
+                <section id="view-menu-tagihan" class="hidden">
+                    <!-- Tab Switcher for Tagihan -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="btn btn-primary" id="tagihan-tab-piutang" onclick="switchTagihanTab('piutang')">💳 Piutang Pelanggan (Penjualan Tempo)</button>
+                        <button type="button" class="btn btn-secondary" id="tagihan-tab-hutang" onclick="switchTagihanTab('hutang')">📦 Hutang Supplier (Pembelian Tempo)</button>
+                    </div>
+
+                    <!-- Summary Cards -->
+                    <div class="report-cards-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;" id="tagihan-summary-label1">Total Piutang Outstanding</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #dc2626; margin: 0;" id="tagihan-summary-val1">Rp 0</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;" id="tagihan-summary-label2">Jumlah Nota Belum Lunas</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="tagihan-summary-val2">0 Nota</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;" id="tagihan-summary-label3">Total Terbayar / Pelunasan</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #16a34a; margin: 0;" id="tagihan-summary-val3">Rp 0</h2>
+                        </div>
+                    </div>
+
+                    <!-- Main Card -->
+                    <div class="view-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="tagihan-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari berdasarkan ID Nota atau Nama..." oninput="loadTagihanData()">
+                            <span class="badge badge-info" id="tagihan-count-badge">0 Data</span>
+                        </div>
+
+                        <!-- Desktop Table -->
+                        <div class="table-container desktop-only-table">
+                            <table class="data-table">
+                                <thead id="tagihan-table-head">
+                                    <tr>
+                                        <th>ID Nota</th>
+                                        <th>Tanggal</th>
+                                        <th>Pelanggan</th>
+                                        <th>Total Tagihan</th>
+                                        <th>Sisa Piutang</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tagihan-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Mobile Card List -->
+                        <div id="tagihan-mobile-list" class="report-shift-mobile-container"></div>
+                    </div>
+                </section>
+
                 <!-- 11. VIEW: SUPPLIER & PELANGGAN -->
                 <section id="view-supplier-pelanggan" class="hidden">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
@@ -1014,6 +1072,51 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-add-kas')">Batal</button>
                     <button type="submit" class="btn btn-primary">Simpan Mutasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pelunasan Tagihan Modal -->
+    <div id="modal-bayar-tagihan" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 id="modal-bayar-tagihan-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--primary-color);">Bayar Tagihan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-bayar-tagihan')">✕ Tutup</button>
+            </div>
+            <form id="form-bayar-tagihan" onsubmit="submitBayarTagihan(event)">
+                <input type="hidden" id="bayar-tagihan-id">
+                <input type="hidden" id="bayar-tagihan-type">
+                
+                <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;">
+                    <p style="margin-bottom: 6px;"><strong>ID Nota:</strong> <span id="bayar-info-id">-</span></p>
+                    <p style="margin-bottom: 6px;"><strong>Mitra / Nama:</strong> <span id="bayar-info-nama">-</span></p>
+                    <p style="margin-bottom: 6px;"><strong>Total Tagihan:</strong> <span id="bayar-info-total" style="font-weight: 700;">Rp 0</span></p>
+                    <p style="margin-bottom: 0;"><strong>Sisa Piutang / Hutang:</strong> <span id="bayar-info-sisa" style="font-weight: 800; color: #dc2626;">Rp 0</span></p>
+                </div>
+
+                <div class="form-group">
+                    <label>Jumlah Pembayaran (Rp)</label>
+                    <input type="number" id="bayar-tagihan-nominal" class="form-control" min="1" required placeholder="Masukkan nominal bayar...">
+                </div>
+
+                <div class="form-group">
+                    <label>Metode Pembayaran</label>
+                    <select id="bayar-tagihan-metode" class="form-control">
+                        <option value="CASH">CASH (Tunai)</option>
+                        <option value="TRANSFER">TRANSFER BANK</option>
+                        <option value="QRIS">QRIS</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Catatan Pelunasan</label>
+                    <input type="text" id="bayar-tagihan-catatan" class="form-control" placeholder="Contoh: Titipan cicilan 1, Pelunasan via Transfer BCA...">
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bayar-tagihan')">Batal</button>
+                    <button type="submit" class="btn btn-primary">💵 Simpan Pelunasan</button>
                 </div>
             </form>
         </div>
