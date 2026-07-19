@@ -2562,7 +2562,7 @@ function renderLaporanTable(data) {
             } else {
                 data.forEach(x => {
                     const tr = document.createElement('tr');
-                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
                     tr.innerHTML = `
                         <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.id_jual || '-'}</code></td>
                         <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
@@ -2640,7 +2640,7 @@ function renderLaporanTable(data) {
             } else {
                 data.forEach(x => {
                     const tr = document.createElement('tr');
-                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
                     tr.innerHTML = `
                         <td style="padding: 12px 16px;"><code style="font-weight:700;">${x.id_faktur || '-'}</code></td>
                         <td style="padding: 12px 16px;">${x.tanggal_masuk || x.tanggal || '-'}</td>
@@ -2720,7 +2720,7 @@ function renderLaporanTable(data) {
                 data.forEach(x => {
                     const isMasuk = String(x.tipe || '').toUpperCase() === 'MASUK';
                     const tr = document.createElement('tr');
-                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
                     tr.innerHTML = `
                         <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
                         <td style="padding: 12px 16px;"><span class="badge" style="${isMasuk ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-weight:700;">${x.tipe || '-'}</span></td>
@@ -2805,7 +2805,7 @@ function renderLaporanTable(data) {
                         : `<span style="font-weight:800; color:${stokVal < 10 ? '#d97706' : 'var(--text-main)'};">${stokVal} ${x.unit_kecil || 'PCS'}</span>`;
 
                     const tr = document.createElement('tr');
-                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
                     tr.innerHTML = `
                         <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.id_obat || '-'}</code></td>
                         <td style="padding: 12px 16px;"><strong>${x.nama_obat || '-'}</strong></td>
@@ -2880,7 +2880,7 @@ function renderLaporanTable(data) {
             } else {
                 data.forEach(x => {
                     const tr = document.createElement('tr');
-                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
                     tr.innerHTML = `
                         <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
                         <td style="padding: 12px 16px;"><span class="badge badge-info" style="font-weight:700;">${x.shift || '-'}</span></td>
@@ -2945,32 +2945,43 @@ function generateReportPrintHTML() {
     const tableFootHTML = document.getElementById('laporan-table-foot')?.innerHTML || '';
 
     return `
-        <div style="padding: 24px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
+        <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 25px; page-break-inside: auto; }
+            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+            td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
+            thead { display: table-header-group; }
+            tfoot { display: table-footer-group; }
+            .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+        </style>
+        <div style="padding: 20px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
             <!-- Official Header Banner -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 14px; margin-bottom: 16px; page-break-inside: avoid;">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <img src="${appLogo}" alt="Logo" style="height: 52px; object-fit: contain;">
+                    <img src="${appLogo}" alt="Logo" style="height: 48px; object-fit: contain;">
                     <div>
-                        <h1 style="font-size: 22px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
-                        <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">${appAddress} • Sulawesi Selatan, Indonesia</div>
-                        <div style="font-size: 11.5px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
+                        <h1 style="font-size: 20px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appAddress} • Sulawesi Selatan, Indonesia</div>
+                        <div style="font-size: 11px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 16px; font-weight: 800; color: #0f172a;">${typeLabel.toUpperCase()}</div>
-                    <div style="font-size: 11.5px; color: #475569; margin-top: 4px;">Periode: <strong>${startDateVal}</strong> s/d <strong>${endDateVal}</strong></div>
-                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a;">${typeLabel.toUpperCase()}</div>
+                    <div style="font-size: 11px; color: #475569; margin-top: 3px;">Periode: <strong>${startDateVal}</strong> s/d <strong>${endDateVal}</strong></div>
+                    <div style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
                 </div>
             </div>
 
             <!-- Meta Details Bar -->
-            <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; font-size: 12px;">
+            <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-bottom: 16px; font-size: 11.5px; page-break-inside: avoid;">
                 <div>Staf Pengunduh: <strong>${printedBy}</strong></div>
                 <div>Status Dokumen: <span style="color: #10b981; font-weight: 700;">🟢 Terverifikasi Sistem</span></div>
             </div>
 
             <!-- Main Data Table -->
-            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 25px;">
                 <thead>
                     ${tableHeadHTML}
                 </thead>
@@ -2983,14 +2994,14 @@ function generateReportPrintHTML() {
             </table>
 
             <!-- Footer Signature Block -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; page-break-inside: avoid;">
-                <div style="font-size: 11px; color: #94a3b8;">
+            <div class="signature-block" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; page-break-inside: avoid;">
+                <div style="font-size: 10.5px; color: #94a3b8;">
                     <div>* Laporan ini dihasilkan secara otomatis oleh sistem ${appName}.</div>
                     <div>* Keabsahan dokumen sah tanpa tanda tangan basah jika dicetak dari akun terdaftar.</div>
                 </div>
                 <div style="text-align: center; min-width: 180px;">
-                    <div style="font-size: 12px; color: #475569; margin-bottom: 50px;">Makassar, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Penanggung Jawab Apotek</div>
-                    <div style="font-weight: 800; font-size: 13px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Manager'} )</div>
+                    <div style="font-size: 11.5px; color: #475569; margin-bottom: 45px;">Makassar, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Penanggung Jawab Apotek</div>
+                    <div style="font-weight: 800; font-size: 12.5px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Manager'} )</div>
                 </div>
             </div>
         </div>
@@ -3001,6 +3012,7 @@ function exportLaporanPDF() {
     try {
         const printContent = generateReportPrintHTML();
         const element = document.createElement('div');
+        element.style.width = '100%';
         element.innerHTML = printContent;
         document.body.appendChild(element);
 
@@ -3014,8 +3026,9 @@ function exportLaporanPDF() {
                 margin: [8, 8, 8, 8],
                 filename: `Laporan_${typeVal}_${appName.replace(/\s+/g, '_')}_${dateStr}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
