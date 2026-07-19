@@ -1515,11 +1515,16 @@ function addPurchaseItemToGrid() {
 
 function renderPurchaseGrid() {
     const tbody = document.getElementById('purchase-items-body');
+    const mobileContainer = document.getElementById('purchase-items-mobile');
     tbody.innerHTML = '';
+    if (mobileContainer) mobileContainer.innerHTML = '';
     let grandTotal = 0;
 
     if (purchaseItems.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 20px;">Belum ada item barang dalam faktur ini.</td></tr>';
+        if (mobileContainer) {
+            mobileContainer.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px; font-size:13px;">Belum ada item barang dalam faktur ini.</div>';
+        }
     } else {
         purchaseItems.forEach((item, idx) => {
             grandTotal += item.total;
@@ -1533,6 +1538,24 @@ function renderPurchaseGrid() {
                 <td><button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button></td>
             `;
             tbody.appendChild(tr);
+
+            if (mobileContainer) {
+                const card = document.createElement('div');
+                card.className = 'price-card-mobile';
+                card.innerHTML = `
+                    <div class="price-card-header">
+                        <div style="flex:1; min-width:0;">
+                            <div class="price-card-title" style="font-size:13px;">${item.nama_obat}</div>
+                            <div class="price-card-sub">${item.jumlah} x Rp ${formatMoney(item.harga_beli)} (${item.satuan})</div>
+                        </div>
+                        <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(item.total)}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:6px;">
+                        <button type="button" class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="removePurchaseItem(${idx})">🗑️ Hapus</button>
+                    </div>
+                `;
+                mobileContainer.appendChild(card);
+            }
         });
     }
 

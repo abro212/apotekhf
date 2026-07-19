@@ -384,7 +384,7 @@
 
                 <!-- 6. VIEW: PEMBELIAN (RESTOCKING) -->
                 <section id="view-menu-pembelian" class="hidden">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="pembelian-layout">
                         
                         <!-- Left Card: Form Informasi Faktur & Input Item -->
                         <div class="view-card" style="margin-bottom: 0;">
@@ -397,7 +397,7 @@
                                 <input type="text" id="purchase-faktur-no" class="form-control" placeholder="Contoh: FKT-2026/07/001">
                             </div>
                             
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div class="pembelian-form-row">
                                 <div class="form-group">
                                     <label>Mitra Supplier</label>
                                     <select id="purchase-supplier-select" class="form-control"></select>
@@ -422,7 +422,7 @@
                                     <select id="purchase-item-obat" class="form-control" style="width: 100%;" onchange="updatePurchaseSubtotalPreview()"></select>
                                 </div>
                                 
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="pembelian-form-row">
                                     <div class="form-group">
                                         <label>Satuan Masuk</label>
                                         <select id="purchase-item-satuan" class="form-control">
@@ -437,7 +437,7 @@
                                     </div>
                                 </div>
 
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div class="pembelian-form-row">
                                     <div class="form-group">
                                         <label>Jumlah (Qty) Masuk</label>
                                         <input type="number" id="purchase-item-qty" class="form-control" value="1" min="1" oninput="updatePurchaseSubtotalPreview()">
@@ -448,7 +448,7 @@
                                     </div>
                                 </div>
 
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
                                     <div id="purchase-item-preview-badge" style="font-size: 13px; font-weight: 700; color: var(--primary-color);">
                                         Subtotal: Rp 0
                                     </div>
@@ -467,7 +467,8 @@
                                     <span class="badge badge-info" id="purchase-item-count-badge">0 Item</span>
                                 </h3>
 
-                                <div class="table-container" style="max-height: 320px; overflow-y: auto;">
+                                <!-- Desktop table -->
+                                <div class="table-container desktop-only-table" style="max-height: 320px; overflow-y: auto;">
                                     <table class="data-table">
                                         <thead>
                                             <tr>
@@ -482,11 +483,13 @@
                                         <tbody id="purchase-items-body"></tbody>
                                     </table>
                                 </div>
+                                <!-- Mobile list -->
+                                <div id="purchase-items-mobile" class="pembelian-items-mobile"></div>
                             </div>
 
                             <!-- Invoice Summary Box -->
                             <div style="background-color: var(--bg-main); padding: 16px; border-radius: 12px; border: 1px solid var(--border-color); margin-top: 20px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
                                     <span style="font-size: 14px; font-weight: 600; color: var(--text-muted);">Total Nilai Pembelian:</span>
                                     <span style="font-size: 22px; font-weight: 800; color: var(--primary-color);" id="purchase-grand-total">Rp 0</span>
                                 </div>

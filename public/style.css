@@ -778,6 +778,23 @@ body {
 .data-table tbody tr:hover td {
     background-color: #fafbfc;
 }
+/* PEMBELIAN STOK LAYOUT */
+.pembelian-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.pembelian-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.pembelian-items-mobile {
+    display: none;
+}
 
 /* POS LAYOUT adjustments */
 .pos-layout {
@@ -1422,6 +1439,23 @@ body {
 
     .price-pill.primary strong {
         color: var(--primary-color);
+    }
+
+    /* Pembelian Restocking Mobile Overrides */
+    .pembelian-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .pembelian-form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .pembelian-items-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-height: 300px;
+        overflow-y: auto;
     }
 
     /* Force all 2-column grid forms into 1-column on mobile */
