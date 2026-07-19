@@ -1537,6 +1537,10 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
 }
 
 function renderThermalReceiptHTML(data) {
+    const appName = localStorage.getItem('app_name') || 'Apotek HF';
+    const appAddress = localStorage.getItem('app_address') || 'Makassar';
+    const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
+
     const {
         id_jual,
         tanggal,
@@ -1563,13 +1567,13 @@ function renderThermalReceiptHTML(data) {
     <div class="thermal-receipt-container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #000; background: #fff; padding: 15px 10px; border-radius: 4px; max-width: 320px; margin: 0 auto; box-sizing: border-box;">
         <!-- Logo Image (Black & White Filter) -->
         <div style="text-align: center; margin-bottom: 8px;">
-            <img src="logo_hf.png" alt="Apotek HF Logo" style="max-height: 60px; max-width: 120px; width: auto; display: block; margin: 0 auto; filter: grayscale(100%) contrast(180%);">
+            <img src="${appLogo}" alt="Logo" style="max-height: 60px; max-width: 120px; width: auto; display: block; margin: 0 auto; filter: grayscale(100%) contrast(180%);">
         </div>
 
         <!-- Store Header -->
         <div style="text-align: center; margin-bottom: 12px;">
-            <div style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px; margin-bottom: 2px;">Apotek HF</div>
-            <div style="font-size: 12px; color: #333; margin-bottom: 4px;">Makassar</div>
+            <div style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px; margin-bottom: 2px;">${appName}</div>
+            <div style="font-size: 12px; color: #333; margin-bottom: 4px;">${appAddress}</div>
             <div style="font-size: 11px; letter-spacing: 1px; color: #000; font-weight: 600;">***Utama***</div>
         </div>
 
@@ -4351,6 +4355,7 @@ function previewSettingImage(fileInputId, previewImgId) {
 
 function updateAppIdentityPreview() {
     const nameVal = document.getElementById('setting-app-name')?.value.trim() || 'Apotek HF';
+    const addrVal = document.getElementById('setting-app-address')?.value.trim() || 'Makassar';
     const logoSrc = document.getElementById('setting-logo-preview')?.src || 'logo_hf.png';
     const favSrc = document.getElementById('setting-favicon-preview')?.src || 'logo_hf.png';
 
@@ -4358,17 +4363,20 @@ function updateAppIdentityPreview() {
     const mFavIcon = document.getElementById('mock-favicon-img');
     const mSidebarLogo = document.getElementById('mock-sidebar-logo');
     const mSidebarName = document.getElementById('mock-sidebar-name');
+    const mReceiptAddr = document.getElementById('mock-receipt-address');
 
     if (mTabTitle) mTabTitle.textContent = nameVal;
     if (mFavIcon) mFavIcon.src = favSrc;
     if (mSidebarLogo) mSidebarLogo.src = logoSrc;
     if (mSidebarName) mSidebarName.textContent = nameVal.toUpperCase();
+    if (mReceiptAddr) mReceiptAddr.textContent = addrVal;
 }
 
-// 3. App Settings Persistence (App Title, Logo, Favicon)
+// 3. App Settings Persistence (App Title, Address, Logo, Favicon)
 function loadAppSettings() {
     try {
         const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const appAddress = localStorage.getItem('app_address') || 'Makassar';
         const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
         const appFavicon = localStorage.getItem('app_favicon') || 'logo_hf.png';
 
@@ -4396,10 +4404,12 @@ function loadAppSettings() {
 
         // Populate Form Inputs if on settings view
         const nameInput = document.getElementById('setting-app-name');
+        const addrInput = document.getElementById('setting-app-address');
         const logoPrev = document.getElementById('setting-logo-preview');
         const favPrev = document.getElementById('setting-favicon-preview');
         
         if (nameInput) nameInput.value = appName;
+        if (addrInput) addrInput.value = appAddress;
         if (logoPrev) logoPrev.src = appLogo;
         if (favPrev) favPrev.src = appFavicon;
 
@@ -4413,6 +4423,7 @@ function saveAppSettings(e) {
     if (e) e.preventDefault();
     try {
         const appName = document.getElementById('setting-app-name')?.value.trim() || 'Apotek HF';
+        const appAddress = document.getElementById('setting-app-address')?.value.trim() || 'Makassar';
         const logoPreview = document.getElementById('setting-logo-preview');
         const faviconPreview = document.getElementById('setting-favicon-preview');
 
@@ -4420,6 +4431,7 @@ function saveAppSettings(e) {
         const appFavicon = faviconPreview ? faviconPreview.src : 'logo_hf.png';
 
         localStorage.setItem('app_name', appName);
+        localStorage.setItem('app_address', appAddress);
         localStorage.setItem('app_logo', appLogo);
         localStorage.setItem('app_favicon', appFavicon);
 
@@ -4434,6 +4446,7 @@ function saveAppSettings(e) {
 function resetAppSettingsDefault() {
     if (confirm('Kembalikan semua pengaturan identitas aplikasi ke default?')) {
         localStorage.removeItem('app_name');
+        localStorage.removeItem('app_address');
         localStorage.removeItem('app_logo');
         localStorage.removeItem('app_favicon');
         loadAppSettings();
