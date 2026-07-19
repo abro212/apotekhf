@@ -2394,9 +2394,9 @@ function renderCheckupHistoryCards(records) {
                     </div>
                 </div>
                 <div style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;">
-                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600; border-radius:6px;">🍬 Gula: <strong>${r.gula_darah || '-'}</strong> mg/dL</span>
-                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:600; border-radius:6px;">🦴 Asam Urat: <strong>${r.asam_urat || '-'}</strong> mg/dL</span>
-                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:600; border-radius:6px;">🥑 Kolesterol: <strong>${r.kolesterol || '-'}</strong> mg/dL</span>
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600; border-radius:6px;">Gula Darah: <strong>${r.gula_darah || '-'}</strong> mg/dL</span>
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:600; border-radius:6px;">Asam Urat: <strong>${r.asam_urat || '-'}</strong> mg/dL</span>
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:600; border-radius:6px;">Kolesterol: <strong>${r.kolesterol || '-'}</strong> mg/dL</span>
                 </div>
                 ${r.rekomendasi_obat ? `<div style="margin-top:8px; font-size:12px; background:var(--bg-card); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;"><strong>💊 Obat/Terapi:</strong> ${r.rekomendasi_obat}</div>` : ''}
                 ${r.keterangan ? `<div style="margin-top:6px; font-size:11.5px; color:var(--text-muted); font-style:italic; padding-left:4px;">📝 ${r.keterangan}</div>` : ''}
