@@ -28,13 +28,23 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <!-- Chart.js Library for Dashboard Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- DotLottie Player for Lottie Animations -->
+    <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
 </head>
 <body>
     
     <!-- FULL SCREEN LOGIN SECTION -->
     <section id="view-login" class="login-view">
         <div class="login-card">
-            <img src="logo_hf.png" alt="Logo APOTEK HF" style="height: 64px; object-fit: contain; margin-bottom: 12px;">
+            <dotlottie-player 
+                src="https://lottie.host/b7bd1205-090a-4005-913b-17717e9be40b/IrpucEyzAh.lottie" 
+                background="transparent" 
+                speed="1" 
+                style="width: 140px; height: 140px; margin: 0 auto 10px auto;" 
+                loop 
+                autoplay>
+            </dotlottie-player>
+            <img src="logo_hf.png" alt="Logo APOTEK HF" style="height: 48px; object-fit: contain; margin-bottom: 8px;">
             <h2>APOTEK HF</h2>
             <p>Portal Manajemen Kasir & Inventaris</p>
             
