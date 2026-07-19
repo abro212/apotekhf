@@ -2926,6 +2926,7 @@ function renderLaporanTable(data) {
 
 function generateReportPrintHTML() {
     const appName = localStorage.getItem('app_name') || 'Apotek HF';
+    const appAddress = localStorage.getItem('app_address') || 'Makassar';
     const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
     
     const typeSelect = document.getElementById('laporan-type-select');
@@ -2951,7 +2952,7 @@ function generateReportPrintHTML() {
                     <img src="${appLogo}" alt="Logo" style="height: 52px; object-fit: contain;">
                     <div>
                         <h1 style="font-size: 22px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
-                        <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Jl. Utama Apotek Enterprise • Sulawesi Selatan, Indonesia</div>
+                        <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">${appAddress} • Sulawesi Selatan, Indonesia</div>
                         <div style="font-size: 11.5px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
                     </div>
                 </div>
@@ -3068,6 +3069,7 @@ function exportLaporanXLSX() {
         }
 
         const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const appAddress = localStorage.getItem('app_address') || 'Makassar';
         const typeSelect = document.getElementById('laporan-type-select');
         const typeVal = typeSelect ? typeSelect.value : 'laporan';
         const typeLabel = typeSelect ? typeSelect.options[typeSelect.selectedIndex].text : 'Laporan';
@@ -3081,6 +3083,7 @@ function exportLaporanXLSX() {
         
         // Metadata Title Rows
         excelRows.push({ A: `${appName.toUpperCase()} - DOKUMEN LAPORAN RESMI` });
+        excelRows.push({ A: `Alamat: ${appAddress}` });
         excelRows.push({ A: `Jenis Laporan: ${typeLabel}` });
         excelRows.push({ A: `Periode: ${startDateVal} s/d ${endDateVal}` });
         excelRows.push({ A: `Dicetak Pada: ${new Date().toLocaleString('id-ID')}` });
