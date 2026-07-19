@@ -1093,6 +1093,18 @@ body {
    RESPONSIVENESS AND MEDIA QUERIES
    ========================================================================== */
 
+/* LAPORAN VIEW STYLES */
+.report-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.report-shift-mobile-container {
+    display: none;
+}
+
 .cek-harga-mobile-container,
 .master-obat-mobile-container,
 .penjualan-mobile-container {
@@ -1100,6 +1112,17 @@ body {
 }
 
 @media(max-width: 768px) {
+    /* Laporan View Mobile Overrides */
+    .report-cards-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    .report-shift-mobile-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .master-obat-mobile-container,
     .penjualan-mobile-container {
         display: flex;

@@ -1884,20 +1884,45 @@ async function loadLaporanView() {
     try {
         const { data, error } = await supabaseClient.from('laporan_harian').select('*').order('tanggal', { ascending: false }).limit(100);
         const tbody = document.getElementById('report-shift-body');
+        const mobileList = document.getElementById('report-shift-mobile-list');
         tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
+
         if (data) {
             data.forEach(s => {
+                // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${s.tanggal || '-'}</td>
-                    <td>${s.shift || '-'}</td>
+                    <td><span class="badge badge-info">${s.shift || '-'}</span></td>
                     <td>${s.nama || s.user || '-'}</td>
                     <td>Rp ${formatMoney(s.modal || 0)}</td>
                     <td>Rp ${formatMoney(s.total_uang || 0)}</td>
-                    <td>Rp ${formatMoney(s.masuk || 0)}</td>
+                    <td><strong>Rp ${formatMoney(s.masuk || 0)}</strong></td>
                     <td>${s.catatan || '-'}</td>
                 `;
                 tbody.appendChild(tr);
+
+                // Mobile card
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div>
+                                <div class="price-card-title" style="font-size:13px;">${s.nama || s.user || 'Staf'} • <span class="badge badge-info" style="font-size:10px;">${s.shift || 'Shift'}</span></div>
+                                <div class="price-card-sub">${s.tanggal || '-'}</div>
+                            </div>
+                            <strong style="color:var(--primary-color); font-size:14px;">Rp ${formatMoney(s.masuk || 0)}</strong>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:6px;">
+                            <span>Modal: Rp ${formatMoney(s.modal || 0)}</span>
+                            <span>Total Uang: Rp ${formatMoney(s.total_uang || 0)}</span>
+                        </div>
+                        ${s.catatan ? `<div style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px;">Catatan: ${s.catatan}</div>` : ''}
+                    `;
+                    mobileList.appendChild(card);
+                }
             });
         }
     } catch (e) {
