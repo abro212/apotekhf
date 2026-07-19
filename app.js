@@ -2447,28 +2447,101 @@ async function showDetailFaktur(encNo) {
 // --------------------------------------------------------------------------
 // 10. KAS OPERASIONAL
 // --------------------------------------------------------------------------
-async function loadKasLedger() {
+let currentKasPage = 1;
+let currentKasPageSize = 10;
+
+async function loadKasLedger(page = currentKasPage, pageSize = currentKasPageSize) {
+    currentKasPage = page;
+    currentKasPageSize = pageSize;
+
+    if (!supabaseClient) return;
+    const q = document.getElementById('kas-search-input')?.value.trim() || '';
+    const tbody = document.getElementById('kas-table-body');
+    const mobileList = document.getElementById('kas-mobile-list');
+
+    tbody.innerHTML = '';
+    if (mobileList) mobileList.innerHTML = '';
+
     try {
-        if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('kas').select('*').order('tanggal', { ascending: false });
-        const tbody = document.getElementById('kas-table-body');
-        tbody.innerHTML = '';
-        
-        if (data) {
-            data.forEach(k => {
-                const tr = document.createElement('tr');
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        let query = supabaseClient.from('kas').select('*', { count: 'exact' });
+
+        if (q) {
+            query = query.or(`kategori.ilike.%${q}%,keterangan.ilike.%${q}%,id_kas.ilike.%${q}%`);
+        }
+
+        const { data: list, count, error } = await query.order('tanggal', { ascending: false }).range(from, to);
+
+        // Fetch overall totals for summary cards
+        const { data: allKas } = await supabaseClient.from('kas').select('jenis_kas, jumlah');
+        let totalMasuk = 0;
+        let totalKeluar = 0;
+
+        if (allKas) {
+            allKas.forEach(k => {
+                const amt = parseFloat(k.jumlah || 0);
+                if (k.jenis_kas === 'MASUK') totalMasuk += amt;
+                else if (k.jenis_kas === 'KELUAR') totalKeluar += amt;
+            });
+        }
+
+        document.getElementById('kas-summary-masuk').textContent = `Rp ${formatMoney(totalMasuk)}`;
+        document.getElementById('kas-summary-keluar').textContent = `Rp ${formatMoney(totalKeluar)}`;
+        const saldoNet = totalMasuk - totalKeluar;
+        const saldoEl = document.getElementById('kas-summary-saldo');
+        if (saldoEl) {
+            saldoEl.textContent = `Rp ${formatMoney(saldoNet)}`;
+            saldoEl.style.color = saldoNet >= 0 ? 'var(--primary-color)' : '#dc2626';
+        }
+
+        if (list) {
+            const countBadge = document.getElementById('kas-count-badge');
+            if (countBadge) countBadge.textContent = `${count !== null ? count : list.length} Mutasi`;
+
+            list.forEach(k => {
                 const isOut = k.jenis_kas === 'KELUAR';
+                const amtColor = isOut ? '#dc2626' : '#16a34a';
+                const badgeBg = isOut ? '#fef2f2' : '#ecfdf5';
+
+                // Desktop Row
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${k.id_kas}</strong></td>
-                    <td>${k.tanggal}</td>
-                    <td><span class="badge ${isOut ? 'badge-danger' : 'badge-info'}" style="background-color:${isOut ? '#fee2e2':'#ecfdf5'}; color:${isOut ? '#ef4444':'#10b981'};">${k.jenis_kas}</span></td>
+                    <td>${k.tanggal || '-'}</td>
+                    <td><span class="badge" style="background:${badgeBg}; color:${amtColor};">${k.jenis_kas}</span></td>
                     <td>${k.kategori || '-'}</td>
-                    <td style="font-weight:700; color:${isOut ? '#ef4444':'#10b981'};">${isOut ? '-' : '+'} Rp ${formatMoney(k.jumlah)}</td>
+                    <td style="font-weight:700; color:${amtColor};">${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}</td>
                     <td>${k.keterangan || '-'}</td>
                     <td>${k.user || '-'}</td>
                 `;
                 tbody.appendChild(tr);
+
+                // Mobile Card
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div>
+                                <div class="price-card-title" style="font-size:13px;">${k.kategori || 'Mutasi Kas'}</div>
+                                <div class="price-card-sub">🆔 ${k.id_kas} • ${k.tanggal}</div>
+                            </div>
+                            <strong style="color:${amtColor}; font-size:14px;">${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}</strong>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:6px; align-items:center;">
+                            <span>Petugas: ${k.user || '-'}</span>
+                            <span class="badge" style="background:${badgeBg}; color:${amtColor}; font-size:10px;">${k.jenis_kas}</span>
+                        </div>
+                        ${k.keterangan ? `<div style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px;">📝 ${k.keterangan}</div>` : ''}
+                    `;
+                    mobileList.appendChild(card);
+                }
             });
+
+            const totalPages = Math.ceil((count !== null ? count : list.length) / pageSize);
+            renderPaginationControls('kas-pagination', page, totalPages, pageSize, 'loadKasLedger');
         }
     } catch (e) {
         console.error('Error loading kas ledger:', e);

@@ -680,11 +680,33 @@
 
                 <!-- 10. VIEW: KAS OPERASIONAL -->
                 <section id="view-kas" class="hidden">
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-                        <button class="btn btn-primary" onclick="showAddKasModal()">✚ Tambah Mutasi Kas</button>
+                    <!-- Summary Cards -->
+                    <div class="report-cards-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Total Kas Masuk (Pemasukan)</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #16a34a; margin: 0;" id="kas-summary-masuk">Rp 0</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Total Kas Keluar (Pengeluaran)</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: #dc2626; margin: 0;" id="kas-summary-keluar">Rp 0</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Saldo Kas Netto</h4>
+                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="kas-summary-saldo">Rp 0</h2>
+                        </div>
                     </div>
+
                     <div class="view-card">
-                        <div class="table-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="kas-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari kategori, keterangan, atau ID Kas..." oninput="loadKasLedger(1)">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <span class="badge badge-info" id="kas-count-badge">0 Mutasi</span>
+                                <button class="btn btn-primary" onclick="showAddKasModal()">✚ Mutasi Kas</button>
+                            </div>
+                        </div>
+
+                        <!-- Desktop Table -->
+                        <div class="table-container desktop-only-table">
                             <table class="data-table">
                                 <thead>
                                     <tr>
@@ -692,7 +714,7 @@
                                         <th>Tanggal</th>
                                         <th>Jenis</th>
                                         <th>Kategori</th>
-                                        <th>Jumlah</th>
+                                        <th>Jumlah (Rp)</th>
                                         <th>Keterangan</th>
                                         <th>User</th>
                                     </tr>
@@ -700,6 +722,10 @@
                                 <tbody id="kas-table-body"></tbody>
                             </table>
                         </div>
+
+                        <!-- Mobile Card List -->
+                        <div id="kas-mobile-list" class="report-shift-mobile-container"></div>
+                        <div id="kas-pagination"></div>
                     </div>
                 </section>
 
