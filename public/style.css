@@ -223,6 +223,16 @@ body {
     margin-bottom: 25px;
 }
 
+@keyframes pinShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-10px); }
+    40%, 80% { transform: translateX(10px); }
+}
+
+.pin-display.shake {
+    animation: pinShake 0.45s cubic-bezier(.36,.07,.19,.97) both;
+}
+
 .pin-dot {
     width: 14px;
     height: 14px;
@@ -235,6 +245,13 @@ body {
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     transform: scale(1.15);
+}
+
+.pin-dot.error {
+    background-color: #ef4444 !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+    transform: scale(1.2) !important;
 }
 
 .keypad {

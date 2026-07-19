@@ -244,11 +244,33 @@ async function loadLoginUsers() {
     }
 }
 
+let isVerifyingPin = false;
+
 // Keyboard PIN Entry Logic
 function pressKey(num) {
-    if (pinBuffer.length < 6) {
+    if (isVerifyingPin) return;
+
+    const select = document.getElementById('login-user-select');
+    if (!select || !select.value) {
+        alert('Pilih staf terlebih dahulu!');
+        clearPin();
+        return;
+    }
+
+    const user = JSON.parse(select.value);
+    const cleanUserPin = String(user.pin || '').replace(/\.0$/, '').trim();
+    const targetLen = cleanUserPin.length > 0 ? cleanUserPin.length : 6;
+
+    if (pinBuffer.length < targetLen) {
         pinBuffer += num;
         updatePinDots();
+
+        // Auto submit when input length reaches target PIN length
+        if (pinBuffer.length >= targetLen) {
+            setTimeout(() => {
+                submitPin();
+            }, 80);
+        }
     }
 }
 
@@ -271,18 +293,24 @@ function updatePinDots() {
 }
 
 function submitPin() {
+    if (isVerifyingPin) return;
     const select = document.getElementById('login-user-select');
-    if (!select.value) {
+    const pinDisplay = document.querySelector('.pin-display');
+
+    if (!select || !select.value) {
         alert('Pilih staf terlebih dahulu!');
         clearPin();
         return;
     }
-    
+
     const user = JSON.parse(select.value);
     const cleanUserPin = String(user.pin || '').replace(/\.0$/, '').trim();
     const cleanInputPin = String(pinBuffer || '').trim();
 
+    if (!cleanInputPin) return;
+
     if (cleanInputPin === cleanUserPin) {
+        // SUCCESSFUL LOGIN
         currentUser = user;
         sessionStorage.setItem('activeUser', JSON.stringify(user));
         updateUserHeader();
@@ -291,8 +319,31 @@ function submitPin() {
         loadAllDropdowns();
         clearPin();
     } else {
-        alert('PIN Salah! Silakan coba lagi.');
-        clearPin();
+        // WRONG PIN -> ANIMATION SHAKE & ERROR DOTS
+        isVerifyingPin = true;
+
+        if (navigator.vibrate) {
+            try { navigator.vibrate([100, 50, 100]); } catch (e) {}
+        }
+
+        if (pinDisplay) {
+            pinDisplay.classList.add('shake');
+        }
+
+        for (let i = 1; i <= 6; i++) {
+            const dot = document.getElementById(`pin-${i}`);
+            if (dot) dot.classList.add('error');
+        }
+
+        setTimeout(() => {
+            if (pinDisplay) pinDisplay.classList.remove('shake');
+            for (let i = 1; i <= 6; i++) {
+                const dot = document.getElementById(`pin-${i}`);
+                if (dot) dot.classList.remove('error');
+            }
+            clearPin();
+            isVerifyingPin = false;
+        }, 500);
     }
 }
 
