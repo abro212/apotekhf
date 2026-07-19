@@ -968,99 +968,78 @@ function updateCartUI() {
     if (badge) {
         badge.textContent = totalQty;
     }
+    updatePosCartTotals();
 }
 
-function posCheckout() {
-    if (cart.length === 0) {
-        alert('Keranjang belanja kosong!');
-        return;
-    }
-
-    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
-    const payMethodSelect = document.getElementById('pos-pay-method');
-    const selectedMethod = payMethodSelect ? payMethodSelect.value : 'CASH';
-
-    const totalDisplay = document.getElementById('pay-modal-total-display');
-    const methodSelect = document.getElementById('pay-modal-method');
-    const amountInput = document.getElementById('pay-modal-amount-input');
-
-    if (totalDisplay) totalDisplay.textContent = `Rp ${formatMoney(total_bayar)}`;
-    if (methodSelect) methodSelect.value = selectedMethod;
-    if (amountInput) amountInput.value = total_bayar;
-
-    onPayMethodChange();
-    calculatePosChange();
-    document.getElementById('modal-pos-payment')?.classList.remove('hidden');
-    amountInput?.focus();
-}
-
-function onPayMethodChange() {
-    const method = document.getElementById('pay-modal-method')?.value || 'CASH';
-    const amountGroup = document.getElementById('pay-modal-amount-group');
-    const changeGroup = document.getElementById('pay-modal-change-group');
-    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
-    const amountInput = document.getElementById('pay-modal-amount-input');
+function updatePosCartTotals() {
+    const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const method = document.getElementById('pos-pay-method')?.value || 'CASH';
+    const bayarRow = document.getElementById('pos-cart-bayar-row');
+    const kembalianRow = document.getElementById('pos-cart-kembalian-row');
+    const bayarInput = document.getElementById('pos-cart-bayar-input');
+    const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
 
     if (method === 'CASH') {
-        if (amountGroup) amountGroup.style.display = '';
-        if (changeGroup) changeGroup.style.display = '';
-        calculatePosChange();
-    } else {
-        if (amountGroup) amountGroup.style.display = 'none';
-        if (changeGroup) changeGroup.style.display = 'none';
-        if (amountInput) amountInput.value = total_bayar;
-    }
-}
+        if (bayarRow) bayarRow.style.display = 'flex';
+        if (kembalianRow) kembalianRow.style.display = 'flex';
 
-function calculatePosChange() {
-    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
-    const payAmountVal = parseFloat(document.getElementById('pay-modal-amount-input')?.value || 0);
-    const changeDisplay = document.getElementById('pay-modal-change-display');
+        const uangBayar = parseFloat(bayarInput?.value || 0);
+        const kembalian = uangBayar - totalHarga;
 
-    const change = payAmountVal - total_bayar;
-
-    if (changeDisplay) {
-        if (change >= 0) {
-            changeDisplay.textContent = `Rp ${formatMoney(change)}`;
-            changeDisplay.style.color = '#047857';
-        } else {
-            changeDisplay.textContent = `Kurang Rp ${formatMoney(Math.abs(change))}`;
-            changeDisplay.style.color = '#ef4444';
+        if (kembalianDisplay) {
+            if (kembalian >= 0) {
+                kembalianDisplay.textContent = `Rp ${formatMoney(kembalian)}`;
+                kembalianDisplay.style.color = '#047857';
+                if (kembalianRow) {
+                    kembalianRow.style.background = '#ecfdf5';
+                    kembalianRow.style.borderColor = '#a7f3d0';
+                }
+            } else {
+                kembalianDisplay.textContent = `Kurang Rp ${formatMoney(Math.abs(kembalian))}`;
+                kembalianDisplay.style.color = '#ef4444';
+                if (kembalianRow) {
+                    kembalianRow.style.background = '#fef2f2';
+                    kembalianRow.style.borderColor = '#fca5a5';
+                }
+            }
         }
+    } else {
+        if (bayarRow) bayarRow.style.display = 'none';
+        if (kembalianRow) kembalianRow.style.display = 'none';
     }
 }
 
-function setPayPreset(val) {
-    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
-    const amountInput = document.getElementById('pay-modal-amount-input');
-    if (!amountInput) return;
+function setPosCartPreset(val) {
+    const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const bayarInput = document.getElementById('pos-cart-bayar-input');
+    if (!bayarInput) return;
 
     if (val === 'PAS') {
-        amountInput.value = total_bayar;
+        bayarInput.value = totalHarga;
     } else {
-        amountInput.value = val;
+        bayarInput.value = val;
     }
-    calculatePosChange();
+    updatePosCartTotals();
 }
 
-async function submitPosPayment(e) {
-    if (e) e.preventDefault();
+async function posCheckout() {
     if (cart.length === 0) {
         alert('Keranjang belanja kosong!');
-        closeModal('modal-pos-payment');
         return;
     }
 
-    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
-    const payMethod = document.getElementById('pay-modal-method')?.value || 'CASH';
-    const payAmount = parseFloat(document.getElementById('pay-modal-amount-input')?.value || 0);
+    const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const payMethod = document.getElementById('pos-pay-method')?.value || 'CASH';
+    const bayarInput = document.getElementById('pos-cart-bayar-input');
+    const uangBayar = payMethod === 'CASH' ? parseFloat(bayarInput?.value || 0) : totalHarga;
 
-    if (payMethod === 'CASH' && payAmount < total_bayar) {
-        alert(`Uang pembayaran kurang! Total Tagihan Rp ${formatMoney(total_bayar)}, Uang Bayar Rp ${formatMoney(payAmount)} (Kurang Rp ${formatMoney(total_bayar - payAmount)})`);
+    if (payMethod === 'CASH' && uangBayar < totalHarga) {
+        alert(`Uang pembayaran kurang! Total Harga: Rp ${formatMoney(totalHarga)}, Total Bayar (Cash): Rp ${formatMoney(uangBayar)} (Kurang Rp ${formatMoney(totalHarga - uangBayar)})`);
+        if (bayarInput) bayarInput.focus();
         return;
     }
 
-    const kembalian = payMethod === 'CASH' ? (payAmount - total_bayar) : 0;
+    const kembalian = payMethod === 'CASH' ? (uangBayar - totalHarga) : 0;
 
     try {
         if (!supabaseClient) return;
@@ -1137,7 +1116,7 @@ async function submitPosPayment(e) {
             id_jual: id_jual,
             tanggal: tanggalStr,
             metode_bayar: payMethod,
-            total_bayar: String(total_bayar),
+            total_bayar: String(totalHarga),
             nama_pelanggan: activeCustomer?.id_pelanggan || 'UMUM',
             jenis_transaksi: 'PENJUALAN',
             user: currentUser?.nama_staf || 'cashier'
@@ -1154,10 +1133,10 @@ async function submitPosPayment(e) {
             await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
         }
 
-        closeModal('modal-pos-payment');
         alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '\nKembalian: Rp ' + formatMoney(kembalian) : ''}`);
-        showReceipt(id_jual, total_bayar, tanggalStr, payMethod === 'CASH' ? payAmount : total_bayar, kembalian);
+        showReceipt(id_jual, totalHarga, tanggalStr, uangBayar, kembalian);
         initPOS();
+        if (bayarInput) bayarInput.value = '';
     } catch (e) {
         console.error('Checkout failed:', e);
         alert(`Checkout gagal: ${e.message}`);
