@@ -1958,7 +1958,13 @@ function switchTagihanTab(tab) {
     loadTagihanData();
 }
 
-async function loadTagihanData() {
+let currentTagihanPage = 1;
+let currentTagihanPageSize = 10;
+
+async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagihanPageSize) {
+    currentTagihanPage = page;
+    currentTagihanPageSize = pageSize;
+
     if (!supabaseClient) return;
     const q = document.getElementById('tagihan-search-input')?.value.trim() || '';
     const thead = document.getElementById('tagihan-table-head');
@@ -1967,6 +1973,9 @@ async function loadTagihanData() {
 
     tbody.innerHTML = '';
     if (mobileList) mobileList.innerHTML = '';
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     if (currentTagihanTab === 'piutang') {
         // Table Head for Piutang
@@ -1983,15 +1992,17 @@ async function loadTagihanData() {
         `;
 
         try {
-            // Query TEMPO sales transactions
-            let query = supabaseClient.from('transaksi_jual').select('*').eq('metode_bayar', 'TEMPO').order('tanggal', { ascending: false });
+            // Query TEMPO sales transactions with pagination
+            let query = supabaseClient.from('transaksi_jual').select('*', { count: 'exact' }).eq('metode_bayar', 'TEMPO').order('tanggal', { ascending: false });
             if (q) {
                 query = query.or(`id_jual.ilike.%${q}%,nama_pelanggan.ilike.%${q}%`);
             }
-            const { data: txList, error } = await query;
+            const { data: txList, count, error } = await query.range(from, to);
 
-            // Fetch pelunasan log for piutang
+            // Also fetch overall totals for summary cards (non-paginated)
+            const { data: allTempoTx } = await supabaseClient.from('transaksi_jual').select('id_jual, total_bayar').eq('metode_bayar', 'TEMPO');
             const { data: logs } = await supabaseClient.from('log_pelunasan_jual').select('*');
+            
             const paidMap = {};
             if (logs) {
                 logs.forEach(l => {
@@ -2003,20 +2014,27 @@ async function loadTagihanData() {
             let totalTerbayar = 0;
             let unpaidCount = 0;
 
+            if (allTempoTx) {
+                allTempoTx.forEach(tx => {
+                    const tot = parseFloat(tx.total_bayar || 0);
+                    const pd = paidMap[tx.id_jual] || 0;
+                    const rem = Math.max(0, tot - pd);
+                    totalTerbayar += pd;
+                    if (rem > 0) {
+                        totalOutstanding += rem;
+                        unpaidCount++;
+                    }
+                });
+            }
+
             if (txList) {
-                document.getElementById('tagihan-count-badge').textContent = `${txList.length} Nota`;
+                document.getElementById('tagihan-count-badge').textContent = `${count !== null ? count : txList.length} Nota`;
 
                 txList.forEach(tx => {
                     const total = parseFloat(tx.total_bayar || 0);
                     const paid = paidMap[tx.id_jual] || 0;
                     const sisa = Math.max(0, total - paid);
                     const isLunas = sisa <= 0;
-
-                    totalTerbayar += paid;
-                    if (!isLunas) {
-                        totalOutstanding += sisa;
-                        unpaidCount++;
-                    }
 
                     const statusBadge = isLunas 
                         ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
@@ -2065,6 +2083,9 @@ async function loadTagihanData() {
                         mobileList.appendChild(card);
                     }
                 });
+
+                const totalPages = Math.ceil((count !== null ? count : txList.length) / pageSize);
+                renderPaginationControls('tagihan-pagination', page, totalPages, pageSize, 'loadTagihanData');
             }
 
             document.getElementById('tagihan-summary-val1').textContent = `Rp ${formatMoney(totalOutstanding)}`;
@@ -2090,29 +2111,33 @@ async function loadTagihanData() {
         `;
 
         try {
-            let query = supabaseClient.from('faktur_beli').select('*').eq('metode_bayar', 'TEMPO').order('tanggal_masuk', { ascending: false });
+            let query = supabaseClient.from('faktur_beli').select('*', { count: 'exact' }).eq('metode_bayar', 'TEMPO').order('tanggal_masuk', { ascending: false });
             if (q) {
                 query = query.or(`nomor_faktur.ilike.%${q}%,supplier.ilike.%${q}%`);
             }
-            const { data: fkList, error } = await query;
+            const { data: fkList, count, error } = await query.range(from, to);
+
+            const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('total_harga').eq('metode_bayar', 'TEMPO');
 
             let totalOutstanding = 0;
             let unpaidCount = 0;
             let totalTerbayar = 0;
 
+            if (allTempoFk) {
+                allTempoFk.forEach(fk => {
+                    const tot = parseFloat(fk.total_harga || 0);
+                    totalOutstanding += tot;
+                    unpaidCount++;
+                });
+            }
+
             if (fkList) {
-                document.getElementById('tagihan-count-badge').textContent = `${fkList.length} Faktur`;
+                document.getElementById('tagihan-count-badge').textContent = `${count !== null ? count : fkList.length} Faktur`;
 
                 fkList.forEach(fk => {
                     const total = parseFloat(fk.total_harga || 0);
-                    // For now, treat non-paid TEMPO faktur as outstanding sisa = total
                     const sisa = total; 
                     const isLunas = sisa <= 0;
-
-                    if (!isLunas) {
-                        totalOutstanding += sisa;
-                        unpaidCount++;
-                    }
 
                     const statusBadge = isLunas 
                         ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
@@ -2161,6 +2186,9 @@ async function loadTagihanData() {
                         mobileList.appendChild(card);
                     }
                 });
+
+                const totalPages = Math.ceil((count !== null ? count : fkList.length) / pageSize);
+                renderPaginationControls('tagihan-pagination', page, totalPages, pageSize, 'loadTagihanData');
             }
 
             document.getElementById('tagihan-summary-val1').textContent = `Rp ${formatMoney(totalOutstanding)}`;
