@@ -557,17 +557,17 @@ async function loadDashboard() {
         console.error('Error fetching recent sales:', e);
     }
 
-    // 4. Render Menu grid
+    // 4. Render Dashboard Charts & Analytics
+    renderDashboardCharts();
+
+    // 5. Render Pintasan Menu Grid for standalone Pintasan view
     try {
         const { data: menusData } = await supabaseClient.from('menu').select('*');
-        const grid = document.getElementById('dashboard-menu-grid');
         const pintasanGrid = document.getElementById('pintasan-menu-grid');
 
-        if (grid) grid.innerHTML = '';
         if (pintasanGrid) pintasanGrid.innerHTML = '';
         
-        if (menusData) {
-            const validItems = [];
+        if (menusData && pintasanGrid) {
             menusData.forEach(item => {
                 if (item.menu === 'SETTINGS' || item.judul === 'LOG OUT' || item.judul === 'LOG IN') return;
                 
@@ -586,8 +586,6 @@ async function loadDashboard() {
                 else if (item.menu === 'Supplier dan Pelanggan') viewTarget = 'view-supplier-pelanggan';
                 else return;
 
-                validItems.push({ item, viewTarget });
-                
                 const card = document.createElement('div');
                 card.className = 'menu-card';
                 card.onclick = () => switchView(viewTarget);
@@ -601,29 +599,215 @@ async function loadDashboard() {
                     <div class="menu-card-title">${item.judul}</div>
                 `;
                 
-                if (grid) grid.appendChild(card);
+                pintasanGrid.appendChild(card);
             });
-
-            if (pintasanGrid) {
-                validItems.forEach(({ item, viewTarget }) => {
-                    const card = document.createElement('div');
-                    card.className = 'menu-card';
-                    card.onclick = () => switchView(viewTarget);
-                    
-                    const svgIcon = menuIcons[item.menu] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="12" cy="12" r="10"></circle></svg>`;
-                    
-                    card.innerHTML = `
-                        <div class="menu-card-icon-wrapper">
-                            ${svgIcon}
-                        </div>
-                        <div class="menu-card-title">${item.judul}</div>
-                    `;
-                    pintasanGrid.appendChild(card);
-                });
-            }
         }
     } catch (e) {
-        console.error('Error rendering dashboard menus:', e);
+        console.error('Error rendering pintasan menus:', e);
+    }
+}
+
+let chartSalesTrendInstance = null;
+let chartPaymentMethodsInstance = null;
+
+async function renderDashboardCharts() {
+    try {
+        if (!supabaseClient) return;
+
+        // Fetch sales transactions
+        const { data: salesData } = await supabaseClient
+            .from('transaksi_jual')
+            .select('*')
+            .order('tanggal', { ascending: false })
+            .limit(100);
+
+        if (!salesData) return;
+
+        // 1. Prepare 7-Day Sales Trend Data
+        const dayLabels = [];
+        const dayTotals = [];
+        const today = new Date();
+
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(today.getDate() - i);
+            const dateLabel = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+            
+            const yy = String(d.getFullYear()).substring(2);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const patternSlash = `${dd}/${mm}/20${yy}`;
+            const patternDash = `${d.getFullYear()}-${mm}-${dd}`;
+
+            let daySum = 0;
+            salesData.forEach(tx => {
+                const tDate = tx.tanggal || '';
+                if (tDate.includes(patternSlash) || tDate.includes(patternDash)) {
+                    daySum += parseFloat(tx.total_bayar || 0);
+                }
+            });
+
+            dayLabels.push(dateLabel);
+            dayTotals.push(daySum);
+        }
+
+        // Render Sales Trend Chart
+        const trendCtx = document.getElementById('chart-sales-trend');
+        if (trendCtx && typeof Chart !== 'undefined') {
+            if (chartSalesTrendInstance) chartSalesTrendInstance.destroy();
+
+            const ctx2d = trendCtx.getContext('2d');
+            const gradient = ctx2d.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, 'rgba(16, 185, 129, 0.35)');
+            gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+            chartSalesTrendInstance = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{
+                        label: 'Penjualan (Rp)',
+                        data: dayTotals,
+                        borderColor: '#10b981',
+                        borderWidth: 3,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#10b981',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' Penjualan: Rp ' + formatMoney(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 11 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                            ticks: {
+                                font: { size: 11 },
+                                callback: function(val) {
+                                    if (val >= 1000000) return (val / 1000000).toFixed(1) + ' Jt';
+                                    if (val >= 1000) return (val / 1000).toFixed(0) + ' Rb';
+                                    return val;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Prepare Payment Methods Breakdown
+        const methodCounts = { 'TUNAI': 0, 'QRIS': 0, 'TEMPO': 0, 'LAINNYA': 0 };
+        let totalVal = 0;
+        salesData.forEach(tx => {
+            const m = String(tx.metode_bayar || 'TUNAI').toUpperCase();
+            const val = parseFloat(tx.total_bayar || 0);
+            totalVal += val;
+            if (m.includes('TUNAI') || m === 'CASH') methodCounts['TUNAI'] += val;
+            else if (m.includes('QRIS') || m.includes('TRANSFER')) methodCounts['QRIS'] += val;
+            else if (m.includes('TEMPO')) methodCounts['TEMPO'] += val;
+            else methodCounts['LAINNYA'] += val;
+        });
+
+        const methodCtx = document.getElementById('chart-payment-methods');
+        if (methodCtx && typeof Chart !== 'undefined') {
+            if (chartPaymentMethodsInstance) chartPaymentMethodsInstance.destroy();
+
+            chartPaymentMethodsInstance = new Chart(methodCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Tunai (Cash)', 'QRIS / Bank', 'Tempo (Piutang)', 'Lainnya'],
+                    datasets: [{
+                        data: [
+                            methodCounts['TUNAI'],
+                            methodCounts['QRIS'],
+                            methodCounts['TEMPO'],
+                            methodCounts['LAINNYA']
+                        ],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#6b7280'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { boxWidth: 10, padding: 8, font: { size: 10.5 } }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.parsed;
+                                    const pct = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) : 0;
+                                    return ` ${context.label}: Rp ${formatMoney(val)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Render Top 5 Best-Selling Medicines
+        const topListElem = document.getElementById('dash-top-products-list');
+        if (topListElem) {
+            topListElem.innerHTML = '';
+            
+            const { data: topObatData } = await supabaseClient
+                .from('master_obat')
+                .select('id_obat, nama_obat, stok_unit_kecil, label_satuan_kecil')
+                .order('stok_unit_kecil', { ascending: false })
+                .limit(5);
+
+            if (topObatData && topObatData.length > 0) {
+                const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                topObatData.forEach((item, idx) => {
+                    const row = document.createElement('div');
+                    row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border-color);';
+                    row.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; padding-right:6px;">
+                            <span style="font-size:15px; flex-shrink:0;">${medals[idx] || '🎖️'}</span>
+                            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                <strong style="color:var(--text-main); font-size:12px;">${item.nama_obat}</strong>
+                                <div style="font-size:10.5px; color:var(--text-muted);">ID: ${item.id_obat}</div>
+                            </div>
+                        </div>
+                        <span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; font-size:10.5px; flex-shrink:0;">
+                            ${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}
+                        </span>
+                    `;
+                    topListElem.appendChild(row);
+                });
+            } else {
+                topListElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Belum ada data obat terlaris.</div>';
+            }
+        }
+
+    } catch (e) {
+        console.error('Error rendering dashboard charts:', e);
     }
 }
 

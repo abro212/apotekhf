@@ -26,6 +26,8 @@
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Chart.js Library for Dashboard Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     
@@ -238,11 +240,42 @@
 
                     <!-- Main Dashboard Layout -->
                     <div class="dashboard-main-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
-                        <!-- Left: Quick Links -->
-                        <div>
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-dark);">Pintasan Cepat</h3>
-                            <div class="menu-grid" id="dashboard-menu-grid">
-                                <!-- Menu Cards will be injected dynamically -->
+                        <!-- Left: Dashboard Analytics Charts -->
+                        <div style="display: flex; flex-direction: column; gap: 20px;">
+                            <!-- 1. Tren Penjualan 7 Hari Terakhir -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        📈 Tren Penjualan 7 Hari Terakhir
+                                    </h3>
+                                    <span class="badge badge-info" id="dash-sales-trend-badge" style="font-size: 11px;">7 Hari Terakhir</span>
+                                </div>
+                                <div style="position: relative; height: 210px; width: 100%;">
+                                    <canvas id="chart-sales-trend"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- 2. Dual Sub-Charts: Metode Pembayaran & Top 5 Obat Terlaris -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                                <!-- Metode Pembayaran Donut Chart -->
+                                <div class="view-card" style="padding: 20px; border-top: 3px solid #3b82f6;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #1e40af; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                                        💳 Metode Pembayaran
+                                    </h3>
+                                    <div style="position: relative; height: 195px; width: 100%; display: flex; justify-content: center;">
+                                        <canvas id="chart-payment-methods"></canvas>
+                                    </div>
+                                </div>
+
+                                <!-- Top 5 Obat Terlaris -->
+                                <div class="view-card" style="padding: 20px; border-top: 3px solid #10b981;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #047857; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                                        🏆 Top 5 Stok Obat Utama
+                                    </h3>
+                                    <div id="dash-top-products-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px;">
+                                        <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
