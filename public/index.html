@@ -567,49 +567,69 @@
 
                 <!-- 8. VIEW: REKAM KESEHATAN -->
                 <section id="view-cek-kesehatan" class="hidden">
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main);">🩺 Layanan & Rekam Kontrol Kesehatan</h3>
                         <button class="btn btn-primary" onclick="showAddPasienModal()">✚ Daftar Pasien Baru</button>
                     </div>
-                    <div class="pos-layout">
-                        <!-- Left Side: Add Checkup Record -->
-                        <div class="view-card">
-                            <h3>Catat Kontrol Kesehatan</h3>
-                            <div class="form-group" style="margin-top: 15px;">
+
+                    <div class="pembelian-layout">
+                        <!-- Left Side: Form Checkup -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color);">
+                                📝 Form Catatan Pemeriksaan Pasien
+                            </h3>
+
+                            <div class="form-group">
                                 <label>Pilih Pasien</label>
                                 <select id="checkup-pasien-select" class="form-control" onchange="checkupChangePasien()"></select>
                             </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+
+                            <div class="pembelian-form-row">
                                 <div class="form-group">
-                                    <label>Tensi Darah</label>
+                                    <label>Tensi Darah (mmHg)</label>
                                     <input type="text" id="checkup-tensi" class="form-control" placeholder="Contoh: 120/80">
                                 </div>
                                 <div class="form-group">
                                     <label>Gula Darah (mg/dL)</label>
-                                    <input type="number" id="checkup-gula" class="form-control" placeholder="mg/dL">
+                                    <input type="number" id="checkup-gula" class="form-control" placeholder="Contoh: 110">
                                 </div>
+                            </div>
+
+                            <div class="pembelian-form-row">
                                 <div class="form-group">
                                     <label>Asam Urat (mg/dL)</label>
-                                    <input type="number" step="0.1" id="checkup-asam-urat" class="form-control" placeholder="mg/dL">
+                                    <input type="number" step="0.1" id="checkup-asam-urat" class="form-control" placeholder="Contoh: 6.2">
                                 </div>
                                 <div class="form-group">
                                     <label>Kolesterol (mg/dL)</label>
-                                    <input type="number" id="checkup-kolesterol" class="form-control" placeholder="mg/dL">
+                                    <input type="number" id="checkup-kolesterol" class="form-control" placeholder="Contoh: 190">
                                 </div>
                             </div>
+
                             <div class="form-group">
-                                <label>Rekomendasi Obat</label>
-                                <input type="text" id="checkup-obat" class="form-control" placeholder="Nama obat...">
+                                <label>Rekomendasi Obat / Solusi</label>
+                                <input type="text" id="checkup-obat" class="form-control" placeholder="Nama obat atau terapi yang disarankan...">
                             </div>
+
                             <div class="form-group">
-                                <label>Keterangan Tambahan</label>
-                                <input type="text" id="checkup-keterangan" class="form-control" placeholder="Gejala atau catatan...">
+                                <label>Catatan & Keluhan Pasien</label>
+                                <input type="text" id="checkup-keterangan" class="form-control" placeholder="Gejala, keluhan utama, atau catatan tambahan...">
                             </div>
-                            <button class="btn btn-primary" style="width: 100%;" onclick="submitCheckup()">Simpan Rekam Medis</button>
+
+                            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700; margin-top: 10px;" onclick="submitCheckup()">
+                                💾 Simpan Rekam Kontrol Pasien
+                            </button>
                         </div>
-                        <!-- Right Side: Log checks -->
-                        <div class="view-card" style="max-height: 500px; overflow-y: auto;">
-                            <h3>Riwayat Pemeriksaan</h3>
-                            <div id="checkup-history-list" style="margin-top: 15px;"></div>
+
+                        <!-- Right Side: History Log -->
+                        <div class="view-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
+                                    <span>📋 Riwayat Rekam Medis</span>
+                                    <span id="checkup-patient-name-badge" class="badge badge-info">-</span>
+                                </h3>
+                                <div id="checkup-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; padding-right: 4px;"></div>
+                            </div>
                         </div>
                     </div>
                 </section>

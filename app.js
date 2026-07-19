@@ -1741,7 +1741,14 @@ async function initCekKesehatan() {
 }
 
 async function checkupChangePasien() {
-    const id_pasien = document.getElementById('checkup-pasien-select').value;
+    const select = document.getElementById('checkup-pasien-select');
+    const id_pasien = select.value;
+    const badge = document.getElementById('checkup-patient-name-badge');
+    
+    if (select.selectedIndex >= 0) {
+        badge.textContent = select.options[select.selectedIndex].text.split('(')[0].trim();
+    }
+
     if (!id_pasien) return;
     
     try {
@@ -1757,22 +1764,26 @@ async function checkupChangePasien() {
         if (data && data.length > 0) {
             data.forEach(r => {
                 const div = document.createElement('div');
-                div.style.padding = '12px';
-                div.style.borderBottom = '1px solid var(--border-color)';
+                div.className = 'price-card-mobile';
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; font-weight:700; font-size:12px;">
-                        <span>Tgl: ${r.tanggal}</span>
-                        <span style="color:var(--primary-color);">Tensi: ${r.tensi || '-'}</span>
+                    <div class="price-card-header">
+                        <div>
+                            <div class="price-card-title" style="font-size:13px; color:var(--primary-color);">🩸 Tensi: ${r.tensi || '-'}</div>
+                            <div class="price-card-sub">📅 ${r.tanggal || '-'} • Petugas: ${r.user || 'Staf'}</div>
+                        </div>
                     </div>
-                    <div style="margin-top:6px; font-size:11.5px; color:var(--text-muted);">
-                        Gula: ${r.gula_darah || '-'} | Asam Urat: ${r.asam_urat || '-'} | Kolest: ${r.kolesterol || '-'}
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                        <span class="price-pill">🍬 Gula: <strong>${r.gula_darah || '-'}</strong></span>
+                        <span class="price-pill">🦴 Asam Urat: <strong>${r.asam_urat || '-'}</strong></span>
+                        <span class="price-pill">🥑 Kolesterol: <strong>${r.kolesterol || '-'}</strong></span>
                     </div>
-                    ${r.rekomendasi_obat ? `<div style="margin-top:4px; font-size:12px;"><strong>Obat:</strong> ${r.rekomendasi_obat}</div>` : ''}
+                    ${r.rekomendasi_obat ? `<div style="margin-top:8px; font-size:12px; background:var(--bg-main); padding:6px 10px; border-radius:6px;"><strong>💊 Obat:</strong> ${r.rekomendasi_obat}</div>` : ''}
+                    ${r.keterangan ? `<div style="margin-top:4px; font-size:11.5px; color:var(--text-muted); font-style:italic;">📝 ${r.keterangan}</div>` : ''}
                 `;
                 container.appendChild(div);
             });
         } else {
-            container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:15px;">Belum ada riwayat kontrol untuk pasien ini.</div>';
+            container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:25px; font-size:13px;">Belum ada riwayat rekam kontrol untuk pasien ini.</div>';
         }
     } catch (e) {
         console.error(e);
