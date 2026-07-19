@@ -1510,6 +1510,14 @@ body {
         gap: 15px !important;
         padding-bottom: 80px !important;
     }
+
+    #pos-mobile-tabs {
+        display: flex !important;
+    }
+
+    #pos-cart-container.mobile-hidden {
+        display: none !important;
+    }
 }
 
 /* Extra Mobile Adjustments (< 576px) */

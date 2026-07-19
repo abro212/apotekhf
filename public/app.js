@@ -653,6 +653,7 @@ async function initPOS() {
         });
         
         posChangeCustomer();
+        posSearchObat();
     } catch (e) {
         console.error('Error initializing customers in POS:', e);
     }
