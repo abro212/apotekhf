@@ -2602,21 +2602,27 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
     if (!supabaseClient) return;
     currentSupplierPage = page;
     currentSupplierPageSize = pageSize;
+    const q = document.getElementById('supplier-search-input')?.value.trim() || '';
     
     try {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        const { data: sups, count, error } = await supabaseClient
-            .from('supplier')
-            .select('*', { count: 'exact' })
-            .order('supplier')
-            .range(from, to);
+        let query = supabaseClient.from('supplier').select('*', { count: 'exact' });
+        if (q) {
+            query = query.or(`supplier.ilike.%${q}%,kontak_supplier.ilike.%${q}%,alamat_supplier.ilike.%${q}%`);
+        }
+
+        const { data: sups, count, error } = await query.order('supplier').range(from, to);
             
         const sBody = document.getElementById('supplier-table-body');
+        const sMobile = document.getElementById('supplier-mobile-list');
         sBody.innerHTML = '';
+        if (sMobile) sMobile.innerHTML = '';
+
         if (!error && sups) {
             sups.forEach(s => {
+                // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${s.id_supplier}</strong></td>
@@ -2625,6 +2631,26 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
                     <td>${s.kontak_supplier || '-'}</td>
                 `;
                 sBody.appendChild(tr);
+
+                // Mobile card
+                if (sMobile) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div>
+                                <div class="price-card-title" style="font-size:13px;">📦 ${s.supplier}</div>
+                                <div class="price-card-sub">🆔 ${s.id_supplier}</div>
+                            </div>
+                            <span class="badge badge-info" style="font-size:10px;">SUPPLIER</span>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
+                            <div>📍 ${s.alamat_supplier || 'Alamat tidak diisi'}</div>
+                            <div>📞 ${s.kontak_supplier || 'Telepon tidak diisi'}</div>
+                        </div>
+                    `;
+                    sMobile.appendChild(card);
+                }
             });
             const totalPages = Math.ceil((count !== null ? count : sups.length) / pageSize);
             renderPaginationControls('supplier-pagination', page, totalPages, pageSize, 'loadSuppliers');
@@ -2638,21 +2664,27 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
     if (!supabaseClient) return;
     currentPelangganPage = page;
     currentPelangganPageSize = pageSize;
+    const q = document.getElementById('pelanggan-search-input')?.value.trim() || '';
     
     try {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        const { data: csts, count, error } = await supabaseClient
-            .from('pelanggan')
-            .select('*', { count: 'exact' })
-            .order('nama')
-            .range(from, to);
+        let query = supabaseClient.from('pelanggan').select('*', { count: 'exact' });
+        if (q) {
+            query = query.or(`nama.ilike.%${q}%,kontak.ilike.%${q}%,alamat.ilike.%${q}%`);
+        }
+
+        const { data: csts, count, error } = await query.order('nama').range(from, to);
             
         const cBody = document.getElementById('pelanggan-table-body');
+        const cMobile = document.getElementById('pelanggan-mobile-list');
         cBody.innerHTML = '';
+        if (cMobile) cMobile.innerHTML = '';
+
         if (!error && csts) {
             csts.forEach(c => {
+                // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${c.id_pelanggan}</strong></td>
@@ -2661,6 +2693,25 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
                     <td><span class="badge badge-info">${c.level_harga || 'Level 1'}</span></td>
                 `;
                 cBody.appendChild(tr);
+
+                // Mobile card
+                if (cMobile) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div>
+                                <div class="price-card-title" style="font-size:13px;">👤 ${c.nama}</div>
+                                <div class="price-card-sub">🆔 ${c.id_pelanggan} • 📞 ${c.kontak || '-'}</div>
+                            </div>
+                            <span class="badge badge-info" style="font-size:10px;">${c.level_harga || 'Level 1'}</span>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
+                            <div>📍 ${c.alamat || 'Alamat tidak diisi'}</div>
+                        </div>
+                    `;
+                    cMobile.appendChild(card);
+                }
             });
             const totalPages = Math.ceil((count !== null ? count : csts.length) / pageSize);
             renderPaginationControls('pelanggan-pagination', page, totalPages, pageSize, 'loadPelanggan');

@@ -786,14 +786,19 @@
 
                 <!-- 11. VIEW: SUPPLIER & PELANGGAN -->
                 <section id="view-supplier-pelanggan" class="hidden">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                        <!-- Suppliers -->
-                        <div class="view-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                <h3>Daftar Supplier</h3>
+                    <div class="pembelian-layout">
+                        <!-- Suppliers Card -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
+                                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Daftar Supplier</h3>
                                 <button class="btn btn-primary" onclick="showAddSupplierModal()">✚ Supplier</button>
                             </div>
-                            <div class="table-container">
+                            <div style="margin-bottom: 15px;">
+                                <input type="text" id="supplier-search-input" class="form-control" placeholder="Cari supplier atau kontak..." oninput="loadSuppliers(1)">
+                            </div>
+                            
+                            <!-- Desktop Table -->
+                            <div class="table-container desktop-only-table">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -806,15 +811,23 @@
                                     <tbody id="supplier-table-body"></tbody>
                                 </table>
                             </div>
+                            <!-- Mobile Card List -->
+                            <div id="supplier-mobile-list" class="report-shift-mobile-container"></div>
                             <div id="supplier-pagination" style="margin-top: 10px;"></div>
                         </div>
-                        <!-- Customers -->
-                        <div class="view-card">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                <h3>Daftar Pelanggan</h3>
+
+                        <!-- Customers Card -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
+                                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Daftar Pelanggan</h3>
                                 <button class="btn btn-primary" onclick="showAddPelangganModal()">✚ Pelanggan</button>
                             </div>
-                            <div class="table-container">
+                            <div style="margin-bottom: 15px;">
+                                <input type="text" id="pelanggan-search-input" class="form-control" placeholder="Cari nama atau telepon..." oninput="loadPelanggan(1)">
+                            </div>
+
+                            <!-- Desktop Table -->
+                            <div class="table-container desktop-only-table">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
@@ -827,6 +840,8 @@
                                     <tbody id="pelanggan-table-body"></tbody>
                                 </table>
                             </div>
+                            <!-- Mobile Card List -->
+                            <div id="pelanggan-mobile-list" class="report-shift-mobile-container"></div>
                             <div id="pelanggan-pagination" style="margin-top: 10px;"></div>
                         </div>
                     </div>
