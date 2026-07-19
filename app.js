@@ -3616,7 +3616,18 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
             }
             const { data: fkList, count, error } = await query.range(from, to);
 
-            const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('total_harga').eq('metode_bayar', 'TEMPO');
+            const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('id_faktur, nomor_faktur, total_harga').eq('metode_bayar', 'TEMPO');
+            const { data: hLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('*');
+            
+            const paidHutangMap = {};
+            if (hLogs) {
+                hLogs.forEach(l => {
+                    const key = l.no_faktur || l.id_faktur;
+                    if (key) {
+                        paidHutangMap[key] = (paidHutangMap[key] || 0) + parseFloat(l.nominal_dibayar || 0);
+                    }
+                });
+            }
 
             let totalOutstanding = 0;
             let unpaidCount = 0;
@@ -3625,8 +3636,14 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
             if (allTempoFk) {
                 allTempoFk.forEach(fk => {
                     const tot = parseFloat(fk.total_harga || 0);
-                    totalOutstanding += tot;
-                    unpaidCount++;
+                    const key = fk.nomor_faktur || fk.id_faktur;
+                    const pd = paidHutangMap[key] || 0;
+                    const rem = Math.max(0, tot - pd);
+                    totalTerbayar += pd;
+                    if (rem > 0) {
+                        totalOutstanding += rem;
+                        unpaidCount++;
+                    }
                 });
             }
 
@@ -3635,27 +3652,29 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
 
                 fkList.forEach(fk => {
                     const total = parseFloat(fk.total_harga || 0);
-                    const sisa = total; 
+                    const key = fk.nomor_faktur || fk.id_faktur;
+                    const paid = paidHutangMap[key] || paidHutangMap[fk.id_faktur] || 0;
+                    const sisa = Math.max(0, total - paid);
                     const isLunas = sisa <= 0;
 
                     const statusBadge = isLunas 
                         ? '<span class="badge" style="background:#ecfdf5;color:#10b981;">LUNAS</span>' 
                         : '<span class="badge" style="background:#fef2f2;color:#ef4444;">BELUM LUNAS</span>';
 
-                    const encId = encodeURIComponent(fk.id_faktur || fk.nomor_faktur || '');
+                    const encId = encodeURIComponent(key || '');
                     const encNama = encodeURIComponent(fk.supplier || 'Supplier');
 
                     // Desktop row
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><strong>${fk.nomor_faktur || fk.id_faktur}</strong></td>
+                        <td><strong style="color:var(--primary-color); font-family:monospace;">${fk.nomor_faktur || fk.id_faktur}</strong></td>
                         <td>${fk.tanggal_masuk}</td>
-                        <td>${fk.supplier}</td>
+                        <td><strong>${fk.supplier}</strong></td>
                         <td>Rp ${formatMoney(total)}</td>
                         <td><strong style="color: ${isLunas ? '#10b981' : '#ef4444'};">Rp ${formatMoney(sisa)}</strong></td>
                         <td>${statusBadge}</td>
                         <td>
-                            ${!isLunas ? `<button class="btn btn-primary" style="padding:4px 8px; font-size:11px;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar</button>` : '<span style="font-size:12px; color:var(--text-muted);">✓ Selesai</span>'}
+                            ${!isLunas ? `<button class="btn btn-primary" style="padding:6px 12px; font-size:11.5px; font-weight:700;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar Hutang</button>` : '<span style="font-size:12px; color:var(--text-muted); font-weight:600;">✓ Selesai Lunas</span>'}
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -3678,7 +3697,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
                             </div>
                             ${!isLunas ? `
                                 <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                                    <button class="btn btn-primary" style="padding:6px 12px; font-size:12px; width:100%;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar Hutang</button>
+                                    <button class="btn btn-primary" style="padding:6px 12px; font-size:12px; width:100%; font-weight:700;" onclick="openBayarTagihanModal('${encId}', '${encNama}', ${total}, ${sisa}, 'hutang')">💵 Bayar Hutang Supplier</button>
                                 </div>
                             ` : ''}
                         `;
@@ -3700,9 +3719,12 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
     }
 }
 
+let currentBayarTagihanSisa = 0;
+
 function openBayarTagihanModal(encId, encNama, total, sisa, type) {
     const id = decodeURIComponent(encId);
     const nama = decodeURIComponent(encNama);
+    currentBayarTagihanSisa = parseFloat(sisa) || 0;
 
     document.getElementById('bayar-tagihan-id').value = id;
     document.getElementById('bayar-tagihan-type').value = type;
@@ -3711,9 +3733,33 @@ function openBayarTagihanModal(encId, encNama, total, sisa, type) {
     document.getElementById('bayar-info-total').textContent = `Rp ${formatMoney(total)}`;
     document.getElementById('bayar-info-sisa').textContent = `Rp ${formatMoney(sisa)}`;
     document.getElementById('bayar-tagihan-nominal').value = sisa;
-    document.getElementById('bayar-tagihan-title').textContent = type === 'piutang' ? 'Terima Pelunasan Piutang' : 'Bayar Hutang Supplier';
+    document.getElementById('bayar-tagihan-title').textContent = type === 'piutang' ? '💳 Terima Pelunasan Piutang Pelanggan' : '📦 Bayar Hutang Supplier';
 
+    calculateTagihanRemainingDisplay();
     document.getElementById('modal-bayar-tagihan').classList.remove('hidden');
+}
+
+function calculateTagihanRemainingDisplay() {
+    const nominal = parseFloat(document.getElementById('bayar-tagihan-nominal')?.value) || 0;
+    const remaining = Math.max(0, currentBayarTagihanSisa - nominal);
+    const elem = document.getElementById('bayar-calc-remaining');
+    if (elem) {
+        elem.textContent = `Rp ${formatMoney(remaining)}`;
+        if (remaining <= 0) {
+            elem.style.color = '#10b981';
+        } else {
+            elem.style.color = '#1e40af';
+        }
+    }
+}
+
+function setTagihanPayPreset(ratio) {
+    const targetVal = Math.round(currentBayarTagihanSisa * ratio);
+    const input = document.getElementById('bayar-tagihan-nominal');
+    if (input) {
+        input.value = targetVal;
+        calculateTagihanRemainingDisplay();
+    }
 }
 
 async function submitBayarTagihan(e) {
@@ -3758,9 +3804,26 @@ async function submitBayarTagihan(e) {
                 user: currentUser?.nama_staf || 'cashier'
             }]);
 
-            alert('Pelunasan piutang berhasil dicatat!');
+            alert('✅ Pelunasan piutang pelanggan berhasil dicatat!');
 
         } else {
+            // Log into detail_pelunasan_hutang for Supplier
+            const id_detail = 'DH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const id_pelunasan = 'PH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+            // Insert into detail_pelunasan_hutang
+            try {
+                await supabaseClient.from('detail_pelunasan_hutang').insert([{
+                    id_detail: id_detail,
+                    id_pelunasan: id_pelunasan,
+                    no_faktur: id,
+                    nominal_dibayar: String(nominal),
+                    potongan_pembulatan: 0
+                }]);
+            } catch(e2) {
+                console.log('detail_pelunasan_hutang insert note:', e2);
+            }
+
             // Log into kas as KELUAR for Hutang
             await supabaseClient.from('kas').insert([{
                 id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
@@ -3772,7 +3835,7 @@ async function submitBayarTagihan(e) {
                 user: currentUser?.nama_staf || 'cashier'
             }]);
 
-            alert('Pembayaran hutang supplier berhasil dicatat!');
+            alert('✅ Pembayaran hutang supplier berhasil dicatat!');
         }
 
         closeModal('modal-bayar-tagihan');
@@ -3781,7 +3844,7 @@ async function submitBayarTagihan(e) {
 
     } catch (e) {
         console.error('Error submitting pelunasan:', e);
-        alert('Gagal mencatat pembayaran pelunasan.');
+        alert('Gagal mencatat pembayaran pelunasan: ' + (e.message || e));
     }
 }
 

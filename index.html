@@ -1731,7 +1731,7 @@
 
     <!-- Pelunasan Tagihan Modal -->
     <div id="modal-bayar-tagihan" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-content" style="max-width: 480px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 id="modal-bayar-tagihan-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--primary-color);">Bayar Tagihan</h3>
                 <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-bayar-tagihan')">✕ Tutup</button>
@@ -1740,24 +1740,49 @@
                 <input type="hidden" id="bayar-tagihan-id">
                 <input type="hidden" id="bayar-tagihan-type">
                 
-                <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;">
-                    <p style="margin-bottom: 6px;"><strong>ID Nota:</strong> <span id="bayar-info-id">-</span></p>
-                    <p style="margin-bottom: 6px;"><strong>Mitra / Nama:</strong> <span id="bayar-info-nama">-</span></p>
-                    <p style="margin-bottom: 6px;"><strong>Total Tagihan:</strong> <span id="bayar-info-total" style="font-weight: 700;">Rp 0</span></p>
-                    <p style="margin-bottom: 0;"><strong>Sisa Piutang / Hutang:</strong> <span id="bayar-info-sisa" style="font-weight: 800; color: #dc2626;">Rp 0</span></p>
+                <div style="background: var(--bg-main); padding: 14px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 16px; font-size: 13px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">No. Nota / Faktur:</span>
+                        <strong id="bayar-info-id" style="color: var(--primary-color); font-family: monospace;">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Nama Pelanggan / Supplier:</span>
+                        <strong id="bayar-info-nama">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span style="color: var(--text-muted);">Total Tagihan:</span>
+                        <span id="bayar-info-total" style="font-weight: 700;">Rp 0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); margin-top: 6px; padding-top: 6px;">
+                        <span style="color: var(--text-muted); font-weight: 700;">Sisa Tagihan Sekarang:</span>
+                        <strong id="bayar-info-sisa" style="font-weight: 800; color: #dc2626; font-size: 14px;">Rp 0</strong>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Jumlah Pembayaran (Rp)</label>
-                    <input type="number" id="bayar-tagihan-nominal" class="form-control" min="1" required placeholder="Masukkan nominal bayar...">
+                    <label style="font-weight: 700;">Jumlah Pembayaran (Rp)</label>
+                    <input type="number" id="bayar-tagihan-nominal" class="form-control" min="1" required placeholder="Masukkan nominal bayar..." oninput="calculateTagihanRemainingDisplay()" style="font-size: 16px; font-weight: 800; height: 42px;">
+                    
+                    <!-- Quick Preset Buttons -->
+                    <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setTagihanPayPreset(1.0)">Pelunasan Pas (100%)</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setTagihanPayPreset(0.5)">Bayar 50%</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setTagihanPayPreset(0.25)">Bayar 25%</button>
+                    </div>
+                </div>
+
+                <!-- Live Remaining Calculation -->
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 12px; font-weight: 600; color: #1d4ed8;">Sisa Setelah Pembayaran Ini:</span>
+                    <strong id="bayar-calc-remaining" style="font-size: 15px; color: #1e40af; font-weight: 800;">Rp 0</strong>
                 </div>
 
                 <div class="form-group">
-                    <label>Metode Pembayaran</label>
+                    <label style="font-weight: 700;">Metode Pembayaran</label>
                     <select id="bayar-tagihan-metode" class="form-control">
-                        <option value="CASH">CASH (Tunai)</option>
-                        <option value="TRANSFER">TRANSFER BANK</option>
-                        <option value="QRIS">QRIS</option>
+                        <option value="CASH">💵 CASH (Tunai)</option>
+                        <option value="TRANSFER">🏦 TRANSFER BANK</option>
+                        <option value="QRIS">📱 QRIS / DIGITAL</option>
                     </select>
                 </div>
 
@@ -1768,7 +1793,9 @@
 
                 <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bayar-tagihan')">Batal</button>
-                    <button type="submit" class="btn btn-primary">💵 Simpan Pelunasan</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">
+                        💳 Proses & Simpan Pelunasan
+                    </button>
                 </div>
             </form>
         </div>
