@@ -242,15 +242,32 @@
                     <div class="dashboard-main-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
                         <!-- Left: Dashboard Analytics Charts -->
                         <div style="display: flex; flex-direction: column; gap: 20px;">
-                            <!-- 1. Tren Penjualan 7 Hari Terakhir -->
+                            <!-- 1. Tren Penjualan (Flexible Period & Custom Date) -->
                             <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
-                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0; display: flex; align-items: center; gap: 8px;">
-                                        📈 Tren Penjualan 7 Hari Terakhir
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0; display: flex; align-items: center; gap: 8px;" id="dash-sales-trend-title">
+                                        📈 Tren Penjualan
                                     </h3>
-                                    <span class="badge badge-info" id="dash-sales-trend-badge" style="font-size: 11px;">7 Hari Terakhir</span>
+
+                                    <!-- Filter Controls -->
+                                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                        <select id="dash-trend-period-select" class="form-control" style="width: auto; padding: 4px 10px; font-size: 12px; font-weight: 600;" onchange="onDashTrendPeriodChange()">
+                                            <option value="7D" selected>📅 7 Hari Terakhir</option>
+                                            <option value="30D">🗓️ 30 Hari Terakhir</option>
+                                            <option value="MONTHLY">📊 Per Bulan (Tahun Ini)</option>
+                                            <option value="YEARLY">📈 Per Tahun</option>
+                                            <option value="CUSTOM">📆 Custom Tanggal</option>
+                                        </select>
+
+                                        <!-- Custom Date Range Inputs -->
+                                        <div id="dash-trend-custom-dates" style="display: none; gap: 6px; align-items: center;">
+                                            <input type="date" id="dash-trend-start" class="form-control" style="padding: 3px 8px; font-size: 11.5px; width: 125px;" onchange="renderDashboardCharts()">
+                                            <span style="font-size: 11px; color: var(--text-muted);">s/d</span>
+                                            <input type="date" id="dash-trend-end" class="form-control" style="padding: 3px 8px; font-size: 11.5px; width: 125px;" onchange="renderDashboardCharts()">
+                                        </div>
+                                    </div>
                                 </div>
-                                <div style="position: relative; height: 210px; width: 100%;">
+                                <div style="position: relative; height: 220px; width: 100%;">
                                     <canvas id="chart-sales-trend"></canvas>
                                 </div>
                             </div>

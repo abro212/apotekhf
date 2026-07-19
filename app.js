@@ -632,45 +632,131 @@ function parseTxDateToIso(rawDateStr) {
     return '';
 }
 
+function onDashTrendPeriodChange() {
+    const period = document.getElementById('dash-trend-period-select')?.value || '7D';
+    const customDiv = document.getElementById('dash-trend-custom-dates');
+    if (customDiv) {
+        customDiv.style.display = period === 'CUSTOM' ? 'flex' : 'none';
+    }
+    renderDashboardCharts();
+}
+
 async function renderDashboardCharts() {
     try {
         if (!supabaseClient) return;
+
+        const period = document.getElementById('dash-trend-period-select')?.value || '7D';
 
         // Fetch sales transactions
         const { data: salesData } = await supabaseClient
             .from('transaksi_jual')
             .select('*')
             .order('tanggal', { ascending: false })
-            .limit(200);
+            .limit(1000);
 
         if (!salesData) return;
 
-        // 1. Prepare 7-Day Sales Trend Data
         const dayLabels = [];
         const dayTotals = [];
         const today = new Date();
 
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(today.getDate() - i);
-            
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const targetIso = `${year}-${month}-${day}`;
-            
-            const dateLabel = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+        if (period === '7D' || period === '30D') {
+            const countDays = period === '7D' ? 7 : 30;
+            for (let i = countDays - 1; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const targetIso = `${year}-${month}-${day}`;
+                
+                const dateLabel = period === '7D' 
+                    ? d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric' })
+                    : `${day}/${month}`;
 
-            let daySum = 0;
+                let daySum = 0;
+                salesData.forEach(tx => {
+                    if (parseTxDateToIso(tx.tanggal) === targetIso) {
+                        daySum += parseFloat(tx.total_bayar || 0);
+                    }
+                });
+
+                dayLabels.push(dateLabel);
+                dayTotals.push(daySum);
+            }
+        } else if (period === 'MONTHLY') {
+            const currentYear = today.getFullYear();
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+            for (let m = 0; m < 12; m++) {
+                const mStr = String(m + 1).padStart(2, '0');
+                const targetMonthPrefix = `${currentYear}-${mStr}`;
+                
+                let monthSum = 0;
+                salesData.forEach(tx => {
+                    const txIso = parseTxDateToIso(tx.tanggal);
+                    if (txIso.startsWith(targetMonthPrefix)) {
+                        monthSum += parseFloat(tx.total_bayar || 0);
+                    }
+                });
+
+                dayLabels.push(monthNames[m]);
+                dayTotals.push(monthSum);
+            }
+        } else if (period === 'YEARLY') {
+            const yearSums = {};
             salesData.forEach(tx => {
                 const txIso = parseTxDateToIso(tx.tanggal);
-                if (txIso === targetIso) {
-                    daySum += parseFloat(tx.total_bayar || 0);
+                if (txIso) {
+                    const yr = txIso.split('-')[0];
+                    if (yr && yr.length === 4) {
+                        yearSums[yr] = (yearSums[yr] || 0) + parseFloat(tx.total_bayar || 0);
+                    }
                 }
             });
 
-            dayLabels.push(dateLabel);
-            dayTotals.push(daySum);
+            const sortedYears = Object.keys(yearSums).sort();
+            if (sortedYears.length === 0) {
+                sortedYears.push(String(today.getFullYear()));
+            }
+
+            sortedYears.forEach(yr => {
+                dayLabels.push(yr);
+                dayTotals.push(yearSums[yr] || 0);
+            });
+        } else if (period === 'CUSTOM') {
+            const startVal = document.getElementById('dash-trend-start')?.value;
+            const endVal = document.getElementById('dash-trend-end')?.value;
+
+            if (startVal && endVal && startVal <= endVal) {
+                let cur = new Date(startVal);
+                const endD = new Date(endVal);
+
+                while (cur <= endD) {
+                    const year = cur.getFullYear();
+                    const month = String(cur.getMonth() + 1).padStart(2, '0');
+                    const day = String(cur.getDate()).padStart(2, '0');
+                    const targetIso = `${year}-${month}-${day}`;
+                    
+                    const dateLabel = `${day}/${month}`;
+
+                    let daySum = 0;
+                    salesData.forEach(tx => {
+                        if (parseTxDateToIso(tx.tanggal) === targetIso) {
+                            daySum += parseFloat(tx.total_bayar || 0);
+                        }
+                    });
+
+                    dayLabels.push(dateLabel);
+                    dayTotals.push(daySum);
+
+                    cur.setDate(cur.getDate() + 1);
+                }
+            } else {
+                dayLabels.push('Pilih Tanggal...');
+                dayTotals.push(0);
+            }
         }
 
         // Render Sales Trend Chart
