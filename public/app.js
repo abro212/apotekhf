@@ -170,6 +170,7 @@ function saveSupabaseConfig() {
 
 // Session Management
 function checkSession() {
+    loadAppSettings();
     const savedUser = sessionStorage.getItem('activeUser');
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
@@ -192,6 +193,15 @@ function updateUserHeader() {
     const sUsername = document.getElementById('sidebar-username');
     const sRole = document.getElementById('sidebar-role');
     
+    const isAdmin = currentUser && String(currentUser.role || '').toUpperCase() === 'ADMIN';
+    document.querySelectorAll('.admin-only').forEach(el => {
+        if (isAdmin) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+
     if (currentUser) {
         header.classList.remove('hidden');
         avatar.textContent = currentUser.nama_staf.substring(0, 1).toUpperCase();
@@ -250,10 +260,12 @@ function clearPin() {
 function updatePinDots() {
     for (let i = 1; i <= 6; i++) {
         const dot = document.getElementById(`pin-${i}`);
-        if (i <= pinBuffer.length) {
-            dot.classList.add('active');
-        } else {
-            dot.classList.remove('active');
+        if (dot) {
+            if (i <= pinBuffer.length) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
         }
     }
 }
@@ -286,6 +298,13 @@ function submitPin() {
 
 // Global View Switcher
 function switchView(viewId) {
+    if (viewId === 'view-settings') {
+        if (!currentUser || String(currentUser.role || '').toUpperCase() !== 'ADMIN') {
+            alert('Akses Ditolak! Menu Pengaturan Sistem hanya dapat diakses oleh Admin.');
+            return;
+        }
+    }
+
     if (viewId === 'view-login') {
         document.getElementById('main-app-shell').classList.add('hidden');
         document.getElementById('view-login').classList.remove('hidden');
@@ -3593,4 +3612,346 @@ async function closeCameraScanner() {
     await stopScannerInstance();
     const modal = document.getElementById('modal-barcode-scanner');
     if (modal) modal.classList.add('hidden');
+}
+
+// --------------------------------------------------------------------------
+// PENGATURAN SISTEM & USER MANAGEMENT (ADMIN ONLY)
+// --------------------------------------------------------------------------
+
+// 1. Settings Tab Switcher
+function switchSettingsTab(tabName) {
+    const appPanel = document.getElementById('settings-panel-app');
+    const usersPanel = document.getElementById('settings-panel-users');
+    const appBtn = document.getElementById('tab-btn-settings-app');
+    const usersBtn = document.getElementById('tab-btn-settings-users');
+
+    if (!appPanel || !usersPanel) return;
+
+    if (tabName === 'app') {
+        appPanel.classList.remove('hidden');
+        usersPanel.classList.add('hidden');
+        if (appBtn) { appBtn.className = 'btn btn-primary'; }
+        if (usersBtn) { usersBtn.className = 'btn btn-secondary'; }
+    } else {
+        appPanel.classList.add('hidden');
+        usersPanel.classList.remove('hidden');
+        if (appBtn) { appBtn.className = 'btn btn-secondary'; }
+        if (usersBtn) { usersBtn.className = 'btn btn-primary'; }
+        loadUserManagement();
+    }
+}
+
+// 2. Image Preview Handler
+function previewSettingImage(fileInputId, previewImgId) {
+    const input = document.getElementById(fileInputId);
+    const preview = document.getElementById(previewImgId);
+    if (input && input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// 3. App Settings Persistence (App Title, Logo, Favicon)
+function loadAppSettings() {
+    try {
+        const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
+        const appFavicon = localStorage.getItem('app_favicon') || 'logo_hf.png';
+
+        // Update Document Title
+        document.title = `${appName} - Portal Enterprise`;
+
+        // Update Brand Names
+        document.querySelectorAll('.brand-name').forEach(el => {
+            el.textContent = appName;
+        });
+
+        // Update Sidebar & Login Logos
+        document.querySelectorAll('.sidebar-brand img, .login-card img').forEach(img => {
+            img.src = appLogo;
+        });
+
+        // Update Favicon Link
+        let faviconLink = document.querySelector("link[rel*='icon']");
+        if (!faviconLink) {
+            faviconLink = document.createElement('link');
+            faviconLink.rel = 'icon';
+            document.head.appendChild(faviconLink);
+        }
+        faviconLink.href = appFavicon;
+
+        // Populate Form Inputs if on settings view
+        const nameInput = document.getElementById('setting-app-name');
+        const logoPrev = document.getElementById('setting-logo-preview');
+        const favPrev = document.getElementById('setting-favicon-preview');
+        
+        if (nameInput) nameInput.value = appName;
+        if (logoPrev) logoPrev.src = appLogo;
+        if (favPrev) favPrev.src = appFavicon;
+    } catch (e) {
+        console.error('Error loading app settings:', e);
+    }
+}
+
+function saveAppSettings(e) {
+    if (e) e.preventDefault();
+    try {
+        const appName = document.getElementById('setting-app-name')?.value.trim() || 'Apotek HF';
+        const logoPreview = document.getElementById('setting-logo-preview');
+        const faviconPreview = document.getElementById('setting-favicon-preview');
+
+        const appLogo = logoPreview ? logoPreview.src : 'logo_hf.png';
+        const appFavicon = faviconPreview ? faviconPreview.src : 'logo_hf.png';
+
+        localStorage.setItem('app_name', appName);
+        localStorage.setItem('app_logo', appLogo);
+        localStorage.setItem('app_favicon', appFavicon);
+
+        loadAppSettings();
+        alert('Pengaturan identitas aplikasi berhasil disimpan!');
+    } catch (err) {
+        console.error('Error saving app settings:', err);
+        alert('Gagal menyimpan pengaturan aplikasi: ' + err.message);
+    }
+}
+
+function resetAppSettingsDefault() {
+    if (confirm('Kembalikan semua pengaturan identitas aplikasi ke default?')) {
+        localStorage.removeItem('app_name');
+        localStorage.removeItem('app_logo');
+        localStorage.removeItem('app_favicon');
+        loadAppSettings();
+        alert('Pengaturan aplikasi dikembalikan ke default!');
+    }
+}
+
+// 4. User Management Logic (user_login Table)
+let userManagementData = [];
+
+async function loadUserManagement() {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+            .from('user_login')
+            .select('*')
+            .order('nama_staf');
+
+        const tbody = document.getElementById('user-table-body');
+        const mobileList = document.getElementById('user-mobile-list');
+        if (tbody) tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
+
+        if (!error && data) {
+            userManagementData = data;
+            renderUserManagementTable(userManagementData);
+        }
+    } catch (e) {
+        console.error('Error loading user management:', e);
+    }
+}
+
+function renderUserManagementTable(users) {
+    const tbody = document.getElementById('user-table-body');
+    const mobileList = document.getElementById('user-mobile-list');
+    if (tbody) tbody.innerHTML = '';
+    if (mobileList) mobileList.innerHTML = '';
+
+    if (!users || users.length === 0) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data staf ditemukan.</td></tr>';
+        if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data staf.</div>';
+        return;
+    }
+
+    users.forEach(u => {
+        const cleanPin = String(u.pin || '').replace(/\.0$/, '');
+        const roleUpper = String(u.role || '').toUpperCase();
+        const roleBadgeStyle = roleUpper === 'ADMIN'
+            ? 'background:#f3e8ff; color:#7e22ce;'
+            : roleUpper === 'APOTEKER'
+                ? 'background:#fef3c7; color:#d97706;'
+                : 'background:#ecfdf5; color:#10b981;';
+
+        const encId = encodeURIComponent(u.id || u.user);
+
+        // Desktop Table Row
+        if (tbody) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${u.id || '-'}</strong></td>
+                <td><strong>${u.nama_staf || '-'}</strong></td>
+                <td><code>${u.user || '-'}</code></td>
+                <td><span class="badge" style="${roleBadgeStyle} font-size:11px;">${roleUpper}</span></td>
+                <td><code>${cleanPin ? '•••• (' + cleanPin + ')' : '-'}</code></td>
+                <td>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditUserModal('${encId}')">✏️ Edit</button>
+                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // Mobile Card
+        if (mobileList) {
+            const card = document.createElement('div');
+            card.className = 'price-card-mobile';
+            card.innerHTML = `
+                <div class="price-card-header">
+                    <div>
+                        <div class="price-card-title" style="font-size:14px; font-weight:700;">${u.nama_staf || '-'}</div>
+                        <div class="price-card-sub">Username: <code>${u.user || '-'}</code> • PIN: ${cleanPin || '-'}</div>
+                    </div>
+                    <span class="badge" style="${roleBadgeStyle} font-size:10px;">${roleUpper}</span>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
+                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="openEditUserModal('${encId}')">✏️ Edit</button>
+                    <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
+                </div>
+            `;
+            mobileList.appendChild(card);
+        }
+    });
+}
+
+function filterUserManagementTable() {
+    const q = document.getElementById('user-search-input')?.value.toLowerCase().trim() || '';
+    if (!q) {
+        renderUserManagementTable(userManagementData);
+        return;
+    }
+    const filtered = userManagementData.filter(u => 
+        String(u.nama_staf || '').toLowerCase().includes(q) ||
+        String(u.user || '').toLowerCase().includes(q) ||
+        String(u.role || '').toLowerCase().includes(q)
+    );
+    renderUserManagementTable(filtered);
+}
+
+function openAddUserModal() {
+    const form = document.getElementById('form-add-user');
+    if (form) form.reset();
+    document.getElementById('modal-add-user')?.classList.remove('hidden');
+}
+
+async function submitAddUser(e) {
+    if (e) e.preventDefault();
+    const nama = document.getElementById('add-user-nama')?.value.trim();
+    const userCode = document.getElementById('add-user-user')?.value.trim().toUpperCase();
+    const pin = document.getElementById('add-user-pin')?.value.trim();
+    const role = document.getElementById('add-user-role')?.value;
+
+    if (!nama || !userCode || !pin || !role) {
+        alert('Lengkapi semua data staf!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const newId = String(Date.now());
+        const { error } = await supabaseClient.from('user_login').insert([{
+            id: newId,
+            user: userCode,
+            nama_staf: nama,
+            pin: pin,
+            role: role,
+            kode: '1.0'
+        }]);
+
+        if (error) throw error;
+
+        alert(`Staf "${nama}" (${role}) berhasil ditambahkan!`);
+        closeModal('modal-add-user');
+        loadUserManagement();
+        loadLoginUsers();
+    } catch (err) {
+        console.error('Add user error:', err);
+        alert('Gagal menambah staf: ' + err.message);
+    }
+}
+
+function openEditUserModal(encId) {
+    const rawId = decodeURIComponent(encId);
+    const u = userManagementData.find(x => String(x.id) === rawId || String(x.user) === rawId);
+    if (!u) return;
+
+    document.getElementById('edit-user-id').value = u.id || u.user;
+    document.getElementById('edit-user-nama').value = u.nama_staf || '';
+    document.getElementById('edit-user-user').value = u.user || '';
+    document.getElementById('edit-user-pin').value = '';
+    document.getElementById('edit-user-role').value = (u.role || 'KASIR').toUpperCase();
+
+    document.getElementById('modal-edit-user')?.classList.remove('hidden');
+}
+
+async function submitEditUser(e) {
+    if (e) e.preventDefault();
+    const id = document.getElementById('edit-user-id')?.value;
+    const nama = document.getElementById('edit-user-nama')?.value.trim();
+    const pin = document.getElementById('edit-user-pin')?.value.trim();
+    const role = document.getElementById('edit-user-role')?.value;
+
+    if (!id || !nama || !role) {
+        alert('Lengkapi data staf!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const updatePayload = {
+            nama_staf: nama,
+            role: role
+        };
+        if (pin) {
+            updatePayload.pin = pin;
+        }
+
+        const { error } = await supabaseClient
+            .from('user_login')
+            .update(updatePayload)
+            .or(`id.eq.${id},user.eq.${id}`);
+
+        if (error) throw error;
+
+        alert('Data staf berhasil diperbarui!');
+        closeModal('modal-edit-user');
+        loadUserManagement();
+        loadLoginUsers();
+    } catch (err) {
+        console.error('Edit user error:', err);
+        alert('Gagal memperbarui staf: ' + err.message);
+    }
+}
+
+async function deleteUser(encId) {
+    const rawId = decodeURIComponent(encId);
+    const u = userManagementData.find(x => String(x.id) === rawId || String(x.user) === rawId);
+    if (!u) return;
+
+    if (currentUser && (currentUser.user === u.user || currentUser.id === u.id)) {
+        alert('Anda tidak dapat menghapus akun Anda sendiri yang sedang digunakan!');
+        return;
+    }
+
+    if (confirm(`Hapus staf "${u.nama_staf}" (${u.user}) dari sistem?`)) {
+        try {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient
+                .from('user_login')
+                .delete()
+                .or(`id.eq.${rawId},user.eq.${rawId}`);
+
+            if (error) throw error;
+
+            alert(`Staf "${u.nama_staf}" berhasil dihapus.`);
+            loadUserManagement();
+            loadLoginUsers();
+        } catch (err) {
+            console.error('Delete user error:', err);
+            alert('Gagal menghapus staf: ' + err.message);
+        }
+    }
 }

@@ -1655,4 +1655,12 @@ body {
     }
 }
 
+/* SETTINGS & ADMIN STYLES */
+#form-app-settings label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
 

@@ -162,6 +162,13 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     <span>Laporan Grafik</span>
                 </a>
+
+                <!-- Group 5: Admin Settings -->
+                <div class="nav-group-title admin-only" id="nav-group-admin">Pengaturan</div>
+                <a href="#" class="nav-link admin-only" id="nav-link-settings" data-target="view-settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Pengaturan Sistem</span>
+                </a>
             </div>
 
             <!-- Sidebar User Profile Footer -->
@@ -982,6 +989,98 @@
                     </div>
                 </section>
 
+                <!-- 13. SETTINGS & USER MANAGEMENT VIEW (ADMIN ONLY) -->
+                <section id="view-settings" class="hidden">
+                    <div class="view-title" style="margin-bottom: 20px;">
+                        <h2>⚙️ Pengaturan Sistem & Manajemen Staf</h2>
+                    </div>
+
+                    <!-- Top Tabs Switcher -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <button type="button" id="tab-btn-settings-app" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('app')">⚙️ Identitas Aplikasi</button>
+                        <button type="button" id="tab-btn-settings-users" class="btn btn-secondary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('users')">👥 User Management (Staf)</button>
+                    </div>
+
+                    <!-- Panel 1: App Settings -->
+                    <div id="settings-panel-app" class="view-card" style="max-width: 650px;">
+                        <h3 style="font-size: 16px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px;">⚙️ Identitas & Branding Program</h3>
+                        <form id="form-app-settings" onsubmit="saveAppSettings(event)">
+                            <div class="form-group">
+                                <label style="font-weight: 700;">Nama Program / Apotek</label>
+                                <input type="text" id="setting-app-name" class="form-control" placeholder="Apotek HF" required>
+                                <small style="color: var(--text-muted); font-size: 11.5px;">Nama ini akan digunakan pada judul aplikasi, sidebar, header, dan struk penjualan.</small>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label style="font-weight: 700;">Logo Utama Aplikasi</label>
+                                <div style="display: flex; align-items: center; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
+                                    <div style="width: 70px; height: 70px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; padding: 4px;">
+                                        <img id="setting-logo-preview" src="logo_hf.png" alt="Preview Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                    </div>
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="file" id="setting-logo-file" accept="image/*" class="form-control" style="font-size: 12px;" onchange="previewSettingImage('setting-logo-file', 'setting-logo-preview')">
+                                        <small style="color: var(--text-muted); font-size: 11px;">Format: PNG/JPG/SVG (Rekomendasi latar transparan)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label style="font-weight: 700;">Favicon Tab Browser</label>
+                                <div style="display: flex; align-items: center; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
+                                    <div style="width: 48px; height: 48px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; padding: 4px;">
+                                        <img id="setting-favicon-preview" src="logo_hf.png" alt="Preview Favicon" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                    </div>
+                                    <div style="flex: 1; min-width: 200px;">
+                                        <input type="file" id="setting-favicon-file" accept="image/*" class="form-control" style="font-size: 12px;" onchange="previewSettingImage('setting-favicon-file', 'setting-favicon-preview')">
+                                        <small style="color: var(--text-muted); font-size: 11px;">Ikon tab browser (ICO / PNG 32x32)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap;">
+                                <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">💾 Simpan Pengaturan</button>
+                                <button type="button" class="btn btn-secondary" onclick="resetAppSettingsDefault()">🔄 Reset Default</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Panel 2: User Management -->
+                    <div id="settings-panel-users" class="hidden">
+                        <div class="view-card" style="margin-bottom: 20px; padding: 15px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 250px;">
+                                    <input type="text" id="user-search-input" class="form-control" placeholder="Cari nama staf atau username..." oninput="filterUserManagementTable()">
+                                </div>
+                                <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; white-space: nowrap;" onclick="openAddUserModal()">➕ Tambah Staf Baru</button>
+                            </div>
+                        </div>
+
+                        <!-- User Desktop Table -->
+                        <div class="view-card desktop-only-table" style="padding: 0; overflow: hidden;">
+                            <div class="table-container">
+                                <table class="table" style="margin: 0;">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nama Staf</th>
+                                            <th>Username (User)</th>
+                                            <th>Role Hak Akses</th>
+                                            <th>Kode / PIN</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-table-body">
+                                        <!-- Populated dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- User Mobile List -->
+                        <div id="user-mobile-list" class="mobile-only-list"></div>
+                    </div>
+                </section>
+
             </div>
         </main>
     </div>
@@ -1548,7 +1647,70 @@
             <div id="qr-reader" style="width: 100%; min-height: 240px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid var(--border-color);"></div>
             <div style="margin-top: 14px;">
                 <button type="button" class="btn btn-secondary" style="width: 100%;" onclick="closeCameraScanner()">Batal</button>
-            </div>
+    <!-- MODAL ADD USER -->
+    <div id="modal-add-user" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <h3>➕ Tambah Staf / Pengguna Baru</h3>
+            <form id="form-add-user" onsubmit="submitAddUser(event)">
+                <div class="form-group">
+                    <label>Nama Staf / Pegawai</label>
+                    <input type="text" id="add-user-nama" class="form-control" placeholder="Contoh: Budi Santoso" required>
+                </div>
+                <div class="form-group">
+                    <label>Username (Kode User)</label>
+                    <input type="text" id="add-user-user" class="form-control" placeholder="Contoh: BUDI" required>
+                </div>
+                <div class="form-group">
+                    <label>PIN Akses (4-6 Angka)</label>
+                    <input type="password" id="add-user-pin" class="form-control" placeholder="123456" maxlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Role Hak Akses</label>
+                    <select id="add-user-role" class="form-control" required>
+                        <option value="KASIR">KASIR</option>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="APOTEKER">APOTEKER</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Simpan Staf</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeModal('modal-add-user')">Batal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT USER -->
+    <div id="modal-edit-user" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <h3>✏️ Edit Data Staf</h3>
+            <form id="form-edit-user" onsubmit="submitEditUser(event)">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label>Nama Staf / Pegawai</label>
+                    <input type="text" id="edit-user-nama" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Username (Kode User)</label>
+                    <input type="text" id="edit-user-user" class="form-control" required readonly style="background: #f1f5f9;">
+                </div>
+                <div class="form-group">
+                    <label>PIN Akses (Kosongkan jika tidak ingin diubah)</label>
+                    <input type="password" id="edit-user-pin" class="form-control" placeholder="PIN Baru..." maxlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Role Hak Akses</label>
+                    <select id="edit-user-role" class="form-control" required>
+                        <option value="KASIR">KASIR</option>
+                        <option value="ADMIN">ADMIN</option>
+                        <option value="APOTEKER">APOTEKER</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Update Data</button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="closeModal('modal-edit-user')">Batal</button>
+                </div>
+            </form>
         </div>
     </div>
 
