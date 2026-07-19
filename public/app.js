@@ -713,22 +713,37 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
             data.forEach(o => {
                 const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
                 const stok = parseFloat(o.stok_unit_kecil || 0);
-                const stokBadge = stok <= 5 ? 'background:#fef2f2; color:#ef4444;' : 'background:#ecfdf5; color:#10b981;';
+                const isOutOfStock = stok <= 0;
+
+                const stokBadge = isOutOfStock 
+                    ? 'background:#fee2e2; color:#dc2626; font-weight:700;' 
+                    : (stok <= 5 ? 'background:#fef2f2; color:#ef4444;' : 'background:#ecfdf5; color:#10b981;');
                 
                 const row = document.createElement('div');
                 row.className = 'pos-item-row';
-                row.onclick = () => addToCart(o);
+                if (isOutOfStock) {
+                    row.style.cssText = 'opacity: 0.55; background-color: #f1f5f9; cursor: not-allowed; border-color: #e2e8f0;';
+                }
+
+                row.onclick = () => {
+                    if (isOutOfStock) {
+                        alert(`Stok obat "${o.nama_obat}" sedang kosong! Tidak dapat ditambahkan.`);
+                        return;
+                    }
+                    addToCart(o);
+                };
+
                 row.innerHTML = `
                     <div class="pos-item-details">
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="pos-item-name">${o.nama_obat}</span>
-                            <span class="badge" style="font-size:9.5px; ${stokBadge}">Stok: ${stok} ${o.label_satuan_kecil || 'Pcs'}</span>
+                            <span class="pos-item-name" style="${isOutOfStock ? 'color:#64748b;' : ''}">${o.nama_obat}</span>
+                            <span class="badge" style="font-size:9.5px; ${stokBadge}">${isOutOfStock ? 'HABIS' : 'Stok: ' + stok + ' ' + (o.label_satuan_kecil || 'Pcs')}</span>
                         </div>
                         <span style="font-size:11px; color:var(--text-muted);">🆔 ${o.id_obat} • 📦 ${o.kategori || 'Umum'}</span>
                     </div>
                     <div style="text-align:right;">
-                        <strong style="color:var(--primary-color); font-size:13.5px;">Rp ${formatMoney(price)}</strong>
-                        <div style="font-size:10px; color:var(--text-muted);">+ Tambah</div>
+                        <strong style="${isOutOfStock ? 'color:#94a3b8;' : 'color:var(--primary-color);'} font-size:13.5px;">Rp ${formatMoney(price)}</strong>
+                        <div style="font-size:10px; font-weight:${isOutOfStock ? '700' : '400'}; color:${isOutOfStock ? '#dc2626' : 'var(--text-muted)'};">${isOutOfStock ? '🚫 Stok Kosong' : '+ Tambah'}</div>
                     </div>
                 `;
                 results.appendChild(row);
@@ -756,10 +771,20 @@ function clearCart() {
 }
 
 function addToCart(o) {
+    const stok = parseFloat(o.stok_unit_kecil || 0);
+    if (stok <= 0) {
+        alert(`Stok obat "${o.nama_obat}" sedang kosong! Tidak dapat ditambahkan.`);
+        return;
+    }
+
     const existing = cart.find(item => item.id_obat === o.id_obat);
     const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
     
     if (existing) {
+        if (existing.jumlah + 1 > stok) {
+            alert(`Stok obat "${o.nama_obat}" tidak mencukupi (Stok tersedia: ${stok} unit).`);
+            return;
+        }
         existing.jumlah += 1;
     } else {
         cart.push({
@@ -784,6 +809,14 @@ function changeCartQty(id, qty) {
         if (val <= 0) {
             removeCartItem(id);
         } else {
+            const stok = parseFloat(item.obat.stok_unit_kecil || 0);
+            const totalSmallestNeeded = val * item.konversi;
+            if (totalSmallestNeeded > stok) {
+                const maxInUnit = Math.floor(stok / item.konversi);
+                alert(`Stok "${item.nama_obat}" tidak mencukupi! Maksimal yang dapat dibeli: ${maxInUnit} ${item.satuan_nama}.`);
+                updateCartUI();
+                return;
+            }
             item.jumlah = val;
             updateCartUI();
         }
@@ -797,6 +830,13 @@ function stepCartQty(id, delta) {
         if (newQty <= 0) {
             removeCartItem(id);
         } else {
+            const stok = parseFloat(item.obat.stok_unit_kecil || 0);
+            const totalSmallestNeeded = newQty * item.konversi;
+            if (totalSmallestNeeded > stok) {
+                const maxInUnit = Math.floor(stok / item.konversi);
+                alert(`Stok "${item.nama_obat}" tidak mencukupi! Maksimal yang dapat dibeli: ${maxInUnit} ${item.satuan_nama}.`);
+                return;
+            }
             item.jumlah = newQty;
             updateCartUI();
         }
@@ -807,20 +847,31 @@ function changeCartUnit(id, selectEl) {
     const item = cart.find(i => i.id_obat === id);
     if (item) {
         const satVal = selectEl.value; // 'Satuan 1', 'Satuan 2', 'Satuan 3'
-        item.satuan = satVal;
-        
         const o = item.obat;
+        let newSatuanNama = o.satuan_1 || 'Pcs';
+        let newKonversi = 1;
+
         if (satVal === 'Satuan 1') {
-            item.satuan_nama = o.satuan_1 || 'Pcs';
-            item.konversi = 1;
+            newSatuanNama = o.satuan_1 || 'Pcs';
+            newKonversi = 1;
         } else if (satVal === 'Satuan 2') {
-            item.satuan_nama = o.satuan_2;
-            item.konversi = parseFloat(o.isi_2_ke_1 || 1);
+            newSatuanNama = o.satuan_2;
+            newKonversi = parseFloat(o.isi_2_ke_1 || 1);
         } else if (satVal === 'Satuan 3') {
-            item.satuan_nama = o.satuan_3;
-            item.konversi = parseFloat(o.isi_3_ke_2 || 1) * parseFloat(o.isi_2_ke_1 || 1);
+            newSatuanNama = o.satuan_3;
+            newKonversi = parseFloat(o.isi_3_ke_2 || 1) * parseFloat(o.isi_2_ke_1 || 1);
         }
-        
+
+        const stok = parseFloat(o.stok_unit_kecil || 0);
+        if (item.jumlah * newKonversi > stok) {
+            alert(`Stok tidak mencukupi untuk memilih ${newSatuanNama}!`);
+            updateCartUI();
+            return;
+        }
+
+        item.satuan = satVal;
+        item.satuan_nama = newSatuanNama;
+        item.konversi = newKonversi;
         item.harga = getPriceForLevel(o, satVal, activeCustomer ? activeCustomer.level_harga : 'Level 1');
         updateCartUI();
     }
