@@ -1009,19 +1009,21 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
         
         if (!error && data) {
             data.forEach(o => {
+                const encId = encodeURIComponent(o.id_obat || '');
+
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${o.id_obat}</strong></td>
-                    <td><a href="#" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${o.id_obat}')">${o.nama_obat}</a></td>
+                    <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${o.nama_obat}</a></td>
                     <td>${o.kategori || '-'}</td>
                     <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
                     <td>${o.satuan_1 || 'Pcs'}</td>
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                     <td>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${o.id_obat}')">Detail</button>
-                        <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${o.id_obat}')">Edit</button>
-                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${encId}', event)">Detail</button>
+                        <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${encId}', event)">Edit</button>
+                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1039,7 +1041,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         
                     card.innerHTML = `
                         <div class="price-card-header">
-                            <div style="flex:1;" onclick="previewObat('${o.id_obat}')">
+                            <div style="flex:1;" onclick="previewObat('${encId}', event)">
                                 <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
                                 <div class="price-card-sub">ID: ${o.id_obat} • Kategori: ${o.kategori || '-'} • Rak: ${o.rak || '-'}</div>
                             </div>
@@ -1050,9 +1052,9 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                                 Satuan: <strong>${o.satuan_1 || 'Pcs'}</strong> • Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong>
                             </div>
                             <div style="display:flex; gap:6px;">
-                                <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${o.id_obat}')">Detail</button>
-                                <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${o.id_obat}')">Edit</button>
-                                <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${o.id_obat}')">Hapus</button>
+                                <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${encId}', event)">Detail</button>
+                                <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${encId}', event)">Edit</button>
+                                <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
                             </div>
                         </div>
                     `;
@@ -1113,43 +1115,55 @@ async function submitAddObat(e) {
     }
 }
 
-async function deleteObat(id) {
-    if (!confirm('Apakah Anda yakin ingin menghapus obat ini?')) return;
+async function deleteObat(encodedId, e) {
+    if (e) e.preventDefault();
+    const id = decodeURIComponent(encodedId);
+    if (!id) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus obat ID "${id}"?`)) return;
     try {
         if (!supabaseClient) return;
         const { error } = await supabaseClient.from('master_obat').delete().eq('id_obat', id);
         if (error) throw error;
         alert('Obat berhasil dihapus.');
         loadMasterObat();
-    } catch (e) {
-        console.error(e);
+    } catch (err) {
+        console.error(err);
         alert('Gagal menghapus obat.');
     }
 }
 
-async function editObat(id) {
+async function editObat(encodedId, e) {
+    if (e) e.preventDefault();
+    const id = decodeURIComponent(encodedId);
+    if (!id) return;
     try {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).single();
+        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).limit(1);
         if (error) throw error;
+        if (!data || data.length === 0) {
+            alert('Data obat tidak ditemukan.');
+            return;
+        }
 
-        document.getElementById('edit-obat-id').value = data.id_obat;
-        document.getElementById('edit-obat-nama').value = data.nama_obat || '';
-        document.getElementById('edit-obat-kategori').value = data.kategori || '';
-        document.getElementById('edit-obat-rak').value = data.rak || '';
-        document.getElementById('edit-obat-stokmin').value = data.stok_minimal || '5';
-        document.getElementById('edit-obat-stok').value = data.stok_unit_kecil || '0';
-        document.getElementById('edit-obat-sat1').value = data.satuan_1 || 'Pcs';
-        document.getElementById('edit-obat-sat2').value = data.satuan_2 || '';
-        document.getElementById('edit-obat-sat3').value = data.satuan_3 || '';
-        document.getElementById('edit-obat-beli1').value = data.harga_beli_sat_1 || '0';
-        document.getElementById('edit-obat-l1s1').value = data.harga_l1_s1 || '0';
-        document.getElementById('edit-obat-l1s2').value = data.harga_l1_s2 || '0';
-        document.getElementById('edit-obat-l1s3').value = data.harga_l1_s3 || '0';
+        const item = data[0];
+
+        document.getElementById('edit-obat-id').value = item.id_obat;
+        document.getElementById('edit-obat-nama').value = item.nama_obat || '';
+        document.getElementById('edit-obat-kategori').value = item.kategori || '';
+        document.getElementById('edit-obat-rak').value = item.rak || '';
+        document.getElementById('edit-obat-stokmin').value = item.stok_minimal || '5';
+        document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
+        document.getElementById('edit-obat-sat1').value = item.satuan_1 || 'Pcs';
+        document.getElementById('edit-obat-sat2').value = item.satuan_2 || '';
+        document.getElementById('edit-obat-sat3').value = item.satuan_3 || '';
+        document.getElementById('edit-obat-beli1').value = item.harga_beli_sat_1 || '0';
+        document.getElementById('edit-obat-l1s1').value = item.harga_l1_s1 || '0';
+        document.getElementById('edit-obat-l1s2').value = item.harga_l1_s2 || '0';
+        document.getElementById('edit-obat-l1s3').value = item.harga_l1_s3 || '0';
 
         document.getElementById('modal-edit-obat').classList.remove('hidden');
-    } catch (e) {
-        console.error(e);
+    } catch (err) {
+        console.error(err);
         alert('Gagal mengambil data detail obat.');
     }
 }
@@ -1182,27 +1196,55 @@ async function submitEditObat(e) {
         alert('Data obat berhasil diperbarui!');
         closeModal('modal-edit-obat');
         loadMasterObat();
-    } catch (e) {
-        console.error(e);
-        alert(`Gagal memperbarui data obat: ${e.message}`);
+    } catch (err) {
+        console.error(err);
+        alert(`Gagal memperbarui data obat: ${err.message}`);
     }
 }
 
-async function previewObat(id) {
+async function previewObat(encodedId, e) {
+    if (e) e.preventDefault();
+    const id = decodeURIComponent(encodedId);
+    if (!id) return;
+
+    const modal = document.getElementById('modal-preview-obat');
+    if (!modal) return;
+
+    // Show modal immediately with instant feedback state
+    document.getElementById('preview-obat-title').textContent = 'Memuat Detail Obat...';
+    document.getElementById('preview-obat-id').textContent = id;
+    document.getElementById('preview-obat-kategori').textContent = '...';
+    document.getElementById('preview-obat-rak').textContent = '...';
+    document.getElementById('preview-obat-supplier').textContent = '...';
+    document.getElementById('preview-obat-stok').textContent = '...';
+    document.getElementById('preview-obat-stok-gudang').textContent = '...';
+    document.getElementById('preview-obat-stok-min').textContent = '...';
+    document.getElementById('preview-obat-jenis').textContent = '...';
+    document.getElementById('preview-obat-prices-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:var(--text-muted);">Memuat rincian harga...</td></tr>';
+    
+    modal.classList.remove('hidden');
+
     try {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).single();
+        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).limit(1);
         if (error) throw error;
+        if (!data || data.length === 0) {
+            alert('Data obat tidak ditemukan.');
+            closeModal('modal-preview-obat');
+            return;
+        }
 
-        document.getElementById('preview-obat-title').textContent = data.nama_obat || 'Detail Obat';
-        document.getElementById('preview-obat-id').textContent = data.id_obat;
-        document.getElementById('preview-obat-kategori').textContent = data.kategori || '-';
-        document.getElementById('preview-obat-rak').textContent = data.rak || '-';
-        document.getElementById('preview-obat-supplier').textContent = data.supplier || '-';
-        document.getElementById('preview-obat-stok').textContent = `${data.stok_unit_kecil || 0} ${data.label_satuan_kecil || 'Pcs'}`;
-        document.getElementById('preview-obat-stok-gudang').textContent = `${data.stok_gudang || 0} ${data.label_satuan_kecil || 'Pcs'}`;
-        document.getElementById('preview-obat-stok-min').textContent = `${data.stok_minimal || 0} ${data.label_satuan_kecil || 'Pcs'}`;
-        document.getElementById('preview-obat-jenis').textContent = data.jenis_item || '-';
+        const item = data[0];
+
+        document.getElementById('preview-obat-title').textContent = item.nama_obat || 'Detail Obat';
+        document.getElementById('preview-obat-id').textContent = item.id_obat || '-';
+        document.getElementById('preview-obat-kategori').textContent = item.kategori || '-';
+        document.getElementById('preview-obat-rak').textContent = item.rak || '-';
+        document.getElementById('preview-obat-supplier').textContent = item.supplier || '-';
+        document.getElementById('preview-obat-stok').textContent = `${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-stok-gudang').textContent = `${item.stok_gudang || 0} ${item.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-stok-min').textContent = `${item.stok_minimal || 0} ${item.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-jenis').textContent = item.jenis_item || '-';
 
         const tbody = document.getElementById('preview-obat-prices-body');
         tbody.innerHTML = '';
@@ -1210,44 +1252,43 @@ async function previewObat(id) {
         // Row for Satuan 1
         const tr1 = document.createElement('tr');
         tr1.innerHTML = `
-            <td><strong>${data.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
-            <td>Rp ${formatMoney(data.harga_l1_s1)}</td>
-            <td>Rp ${formatMoney(data.harga_l2_s1)}</td>
-            <td>Rp ${formatMoney(data.harga_l3_s1)}</td>
-            <td>Rp ${formatMoney(data.harga_beli_sat_1)}</td>
+            <td><strong>${item.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
+            <td>Rp ${formatMoney(item.harga_l1_s1)}</td>
+            <td>Rp ${formatMoney(item.harga_l2_s1)}</td>
+            <td>Rp ${formatMoney(item.harga_l3_s1)}</td>
+            <td>Rp ${formatMoney(item.harga_beli_sat_1)}</td>
         `;
         tbody.appendChild(tr1);
 
         // Row for Satuan 2
-        if (data.satuan_2) {
+        if (item.satuan_2) {
             const tr2 = document.createElement('tr');
             tr2.innerHTML = `
-                <td><strong>${data.satuan_2}</strong> (Isi: ${data.isi_2_ke_1 || 0})</td>
-                <td>Rp ${formatMoney(data.harga_l1_s2)}</td>
-                <td>Rp ${formatMoney(data.harga_l2_s2)}</td>
-                <td>Rp ${formatMoney(data.harga_l3_s2)}</td>
-                <td>Rp ${formatMoney(data.harga_beli_sat_2)}</td>
+                <td><strong>${item.satuan_2}</strong> (Isi: ${item.isi_2_ke_1 || 0})</td>
+                <td>Rp ${formatMoney(item.harga_l1_s2)}</td>
+                <td>Rp ${formatMoney(item.harga_l2_s2)}</td>
+                <td>Rp ${formatMoney(item.harga_l3_s2)}</td>
+                <td>Rp ${formatMoney(item.harga_beli_sat_2)}</td>
             `;
             tbody.appendChild(tr2);
         }
 
         // Row for Satuan 3
-        if (data.satuan_3) {
+        if (item.satuan_3) {
             const tr3 = document.createElement('tr');
             tr3.innerHTML = `
-                <td><strong>${data.satuan_3}</strong> (Isi: ${data.isi_3_ke_2 || 0})</td>
-                <td>Rp ${formatMoney(data.harga_l1_s3)}</td>
-                <td>Rp ${formatMoney(data.harga_l2_s3)}</td>
-                <td>Rp ${formatMoney(data.harga_l3_s3)}</td>
-                <td>Rp ${formatMoney(data.harga_beli_sat_3)}</td>
+                <td><strong>${item.satuan_3}</strong> (Isi: ${item.isi_3_ke_2 || 0})</td>
+                <td>Rp ${formatMoney(item.harga_l1_s3)}</td>
+                <td>Rp ${formatMoney(item.harga_l2_s3)}</td>
+                <td>Rp ${formatMoney(item.harga_l3_s3)}</td>
+                <td>Rp ${formatMoney(item.harga_beli_sat_3)}</td>
             `;
             tbody.appendChild(tr3);
         }
-
-        document.getElementById('modal-preview-obat').classList.remove('hidden');
-    } catch (e) {
-        console.error(e);
+    } catch (err) {
+        console.error(err);
         alert('Gagal menampilkan detail preview obat.');
+        closeModal('modal-preview-obat');
     }
 }
 
