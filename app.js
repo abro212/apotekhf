@@ -1462,6 +1462,123 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
     }
 }
 
+function renderThermalReceiptHTML(data) {
+    const {
+        id_jual,
+        tanggal,
+        kasir,
+        pelanggan,
+        metode_bayar,
+        items,
+        total_bayar
+    } = data;
+
+    const itemsHTML = items.map(item => `
+        <div style="margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 13px; color: #000;">
+                <span style="flex: 1; min-width: 0; padding-right: 8px; word-break: break-word;">${item.nama_obat}</span>
+                <span style="white-space: nowrap;">Rp${formatMoney(item.subtotal)}</span>
+            </div>
+            <div style="font-size: 11.5px; color: #333; margin-top: 2px;">
+                ${item.jumlah_beli} x Rp${formatMoney(item.harga_satuan)} ${item.satuan_dipilih ? '(' + item.satuan_dipilih + ')' : ''}
+            </div>
+        </div>
+    `).join('');
+
+    return `
+    <div class="thermal-receipt-container" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; color: #000; background: #fff; padding: 15px 10px; border-radius: 4px; max-width: 320px; margin: 0 auto; box-sizing: border-box;">
+        <!-- Logo SVG Black & White -->
+        <div style="text-align: center; margin-bottom: 6px;">
+            <svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin: 0 auto; display: block;">
+                <path d="M14 28C14 39.0457 22.0589 48 32 48C41.9411 48 50 39.0457 50 28H14Z" fill="#000" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+                <rect x="20" y="24" width="24" height="4" rx="2" fill="#000"/>
+                <path d="M22 52H42" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+                <path d="M40 12L28 26" stroke="#000" stroke-width="4" stroke-linecap="round"/>
+                <path d="M32 33V43M27 38H37" stroke="#FFF" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+        </div>
+
+        <!-- Store Header -->
+        <div style="text-align: center; margin-bottom: 12px;">
+            <div style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px; margin-bottom: 2px;">Apotek HF</div>
+            <div style="font-size: 12px; color: #333; margin-bottom: 4px;">Makassar</div>
+            <div style="font-size: 11px; letter-spacing: 1px; color: #000; font-weight: 600;">***Utama***</div>
+        </div>
+
+        <!-- Meta Section -->
+        <div style="font-size: 12px; line-height: 1.6; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Pesanan:</span>
+                <strong style="word-break: break-all;">${id_jual}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Kasir:</span>
+                <span>${kasir}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Pelanggan:</span>
+                <span>${pelanggan}</span>
+            </div>
+        </div>
+
+        <!-- Dotted Separator -->
+        <div style="border-bottom: 1.5px dotted #000; margin: 10px 0;"></div>
+
+        <div style="font-weight: 700; font-size: 11px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            Metode: ${metode_bayar}
+        </div>
+
+        <!-- Dotted Separator -->
+        <div style="border-bottom: 1.5px dotted #000; margin: 10px 0;"></div>
+
+        <!-- Items -->
+        <div>
+            ${itemsHTML}
+        </div>
+
+        <!-- Dotted Separator -->
+        <div style="border-bottom: 1.5px dotted #000; margin: 10px 0;"></div>
+
+        <!-- Summary Totals -->
+        <div style="font-size: 12px; line-height: 1.7;">
+            <div style="display: flex; justify-content: space-between; font-weight: 600;">
+                <span>Subtotal</span>
+                <span>Rp${formatMoney(total_bayar)}</span>
+            </div>
+            
+            <div style="border-bottom: 1.5px dotted #000; margin: 8px 0;"></div>
+
+            <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 16px; margin-top: 4px;">
+                <span>Total</span>
+                <span>Rp${formatMoney(total_bayar)}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #333;">
+                <span>Tunai / Bayar (${metode_bayar})</span>
+                <span>Rp${formatMoney(total_bayar)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #333;">
+                <span>Kembalian</span>
+                <span>Rp0</span>
+            </div>
+        </div>
+
+        <!-- Dotted Separator -->
+        <div style="border-bottom: 1.5px dotted #000; margin: 12px 0 10px 0;"></div>
+
+        <!-- Footer -->
+        <div style="text-align: center; font-size: 12px; margin-bottom: 12px;">
+            Terima kasih atas pembelian Anda!
+        </div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #444;">
+            <span>${tanggal}</span>
+            <span>#${id_jual.split('-').pop() || id_jual}</span>
+        </div>
+    </div>
+    `;
+}
+
 async function showReceiptDetail(id_jual) {
     try {
         if (!supabaseClient) return;
@@ -1469,24 +1586,24 @@ async function showReceiptDetail(id_jual) {
         const { data: details } = await supabaseClient.from('detail_jual').select('*').eq('id_jual', id_jual);
         
         if (tx && details) {
-            let html = `
-APOTEK HF PORTAL RECEIPT
-ID Jual : ${tx.id_jual}
-Tanggal : ${tx.tanggal}
-Kasir   : ${tx.user}
-Metode  : ${tx.metode_bayar}
-Pelanggan: ${tx.nama_pelanggan || 'UMUM'}
-------------------------------------
-`;
-            details.forEach(d => {
-                html += `${d.nama_obat}\n   ${d.jumlah_beli} ${d.satuan_dipilih} x Rp ${formatMoney(d.harga_satuan)} = Rp ${formatMoney(d.subtotal)}\n`;
+            const html = renderThermalReceiptHTML({
+                id_jual: tx.id_jual,
+                tanggal: tx.tanggal,
+                kasir: tx.user || 'cashier',
+                pelanggan: tx.nama_pelanggan || 'UMUM',
+                metode_bayar: tx.metode_bayar || 'CASH',
+                items: details.map(d => ({
+                    nama_obat: d.nama_obat,
+                    jumlah_beli: d.jumlah_beli,
+                    satuan_dipilih: d.satuan_dipilih,
+                    harga_satuan: d.harga_satuan,
+                    subtotal: d.subtotal
+                })),
+                total_bayar: tx.total_bayar
             });
-            html += `------------------------------------
-Total   : Rp ${formatMoney(tx.total_bayar)}
-TERIMA KASIH ATAS KUNJUNGAN ANDA`;
 
             const printArea = document.getElementById('receipt-print-area');
-            printArea.innerHTML = `<pre>${html}</pre>`;
+            printArea.innerHTML = html;
             document.getElementById('modal-receipt').classList.remove('hidden');
         }
     } catch (e) {
@@ -1496,24 +1613,29 @@ TERIMA KASIH ATAS KUNJUNGAN ANDA`;
 }
 
 function showReceipt(id_jual, total, tanggal) {
-    let html = `
-APOTEK HF PORTAL RECEIPT
-ID Jual : ${id_jual}
-Tanggal : ${tanggal}
-Kasir   : ${currentUser ? currentUser.nama_staf : 'cashier'}
-Metode  : ${document.getElementById('pos-pay-method').value}
-------------------------------------
-`;
-    cart.forEach(item => {
-        const subtotal = item.jumlah * item.harga;
-        html += `${item.nama_obat}\n   ${item.jumlah} ${item.satuan_nama} x Rp ${formatMoney(item.harga)} = Rp ${formatMoney(subtotal)}\n`;
+    const customerName = activeCustomer ? activeCustomer.nama : 'UMUM';
+    const payMethod = document.getElementById('pos-pay-method')?.value || 'CASH';
+
+    const items = cart.map(item => ({
+        nama_obat: item.nama_obat,
+        jumlah_beli: item.jumlah,
+        satuan_dipilih: item.satuan_nama,
+        harga_satuan: item.harga,
+        subtotal: item.jumlah * item.harga
+    }));
+
+    const html = renderThermalReceiptHTML({
+        id_jual: id_jual,
+        tanggal: tanggal,
+        kasir: currentUser ? (currentUser.nama_staf || currentUser.user) : 'cashier',
+        pelanggan: customerName,
+        metode_bayar: payMethod,
+        items: items,
+        total_bayar: total
     });
-    html += `------------------------------------
-Total   : Rp ${formatMoney(total)}
-TERIMA KASIH ATAS KUNJUNGAN ANDA`;
 
     const printArea = document.getElementById('receipt-print-area');
-    printArea.innerHTML = `<pre>${html}</pre>`;
+    printArea.innerHTML = html;
     document.getElementById('modal-receipt').classList.remove('hidden');
 }
 

@@ -1011,12 +1011,17 @@
 
     <!-- PRINT RECEIPT MODAL -->
     <div id="modal-receipt" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h3>Struk Transaksi Selesai</h3>
-            <div class="receipt-print-area" id="receipt-print-area"></div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="btn btn-secondary" style="flex: 1;" onclick="printReceipt()">Print Struk</button>
-                <button class="btn btn-primary" style="flex: 1;" onclick="closeReceiptModal()">Tutup</button>
+        <div class="modal-content" style="max-width: 380px; padding: 20px; background: #fff;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;" class="no-print">
+                <h3 style="margin: 0; font-size: 15px; font-weight: 700;">📄 Struk Penjualan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeReceiptModal()">✕ Tutup</button>
+            </div>
+            
+            <div class="receipt-print-area" id="receipt-print-area" style="background: #fff; padding: 0; border: none;"></div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 15px;" class="no-print">
+                <button class="btn btn-secondary" style="flex: 1; padding: 10px; font-weight: 600;" onclick="printReceipt()">🖨️ Print Struk</button>
+                <button class="btn btn-primary" style="flex: 1; padding: 10px; font-weight: 600;" onclick="closeReceiptModal()">Selesai</button>
             </div>
         </div>
     </div>
