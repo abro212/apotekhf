@@ -3665,7 +3665,7 @@ function updateAppIdentityPreview() {
     const mSidebarLogo = document.getElementById('mock-sidebar-logo');
     const mSidebarName = document.getElementById('mock-sidebar-name');
 
-    if (mTabTitle) mTabTitle.textContent = `${nameVal} - Portal Enterprise`;
+    if (mTabTitle) mTabTitle.textContent = nameVal;
     if (mFavIcon) mFavIcon.src = favSrc;
     if (mSidebarLogo) mSidebarLogo.src = logoSrc;
     if (mSidebarName) mSidebarName.textContent = nameVal.toUpperCase();
@@ -3679,7 +3679,7 @@ function loadAppSettings() {
         const appFavicon = localStorage.getItem('app_favicon') || 'logo_hf.png';
 
         // Update Document Title
-        document.title = `${appName} - Portal Enterprise`;
+        document.title = appName;
 
         // Update Brand Names
         document.querySelectorAll('.brand-name').forEach(el => {
