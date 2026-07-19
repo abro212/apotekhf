@@ -673,24 +673,32 @@ function posChangeCustomer() {
     updateCartUI();
 }
 
-async function posSearchObat(catFilter = '') {
-    const q = document.getElementById('pos-search-input').value.trim();
+let currentPOSPage = 1;
+let currentPOSPageSize = 10;
+let currentPOSCatFilter = '';
+
+async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSize, catFilter = currentPOSCatFilter) {
+    currentPOSPage = page;
+    currentPOSPageSize = pageSize;
+    currentPOSCatFilter = catFilter;
+
+    const q = document.getElementById('pos-search-input')?.value.trim() || '';
     
     try {
         if (!supabaseClient) return;
-        let query = supabaseClient.from('master_obat').select('*');
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
         if (q) {
             query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
-        } else if (!catFilter) {
-            // Default top 15 items when search input is empty
-            query = query.order('nama_obat').limit(15);
         }
 
         if (catFilter) {
             query = query.eq('kategori', catFilter);
         }
 
-        const { data, error } = await query.limit(20);
+        const { data, count, error } = await query.order('nama_obat').range(from, to);
             
         const results = document.getElementById('pos-search-results');
         results.innerHTML = '';
@@ -698,6 +706,7 @@ async function posSearchObat(catFilter = '') {
         if (!error && data) {
             if (data.length === 0) {
                 results.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px; font-size:13px;">Tidak ada obat ditemukan.</div>';
+                renderPaginationControls('pos-pagination', 1, 0, pageSize, 'posSearchObat');
                 return;
             }
 
@@ -724,6 +733,9 @@ async function posSearchObat(catFilter = '') {
                 `;
                 results.appendChild(row);
             });
+
+            const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
+            renderPaginationControls('pos-pagination', page, totalPages, pageSize, 'posSearchObat');
         }
     } catch (e) {
         console.error('Error searching obat in POS:', e);
@@ -732,7 +744,7 @@ async function posSearchObat(catFilter = '') {
 
 function posFilterCategory(cat) {
     document.getElementById('pos-search-input').value = '';
-    posSearchObat(cat);
+    posSearchObat(1, currentPOSPageSize, cat);
 }
 
 function clearCart() {
