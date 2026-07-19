@@ -672,41 +672,73 @@ function posChangeCustomer() {
     updateCartUI();
 }
 
-async function posSearchObat() {
+async function posSearchObat(catFilter = '') {
     const q = document.getElementById('pos-search-input').value.trim();
-    if (!q) {
-        document.getElementById('pos-search-results').innerHTML = '';
-        return;
-    }
     
     try {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('master_obat')
-            .select('*')
-            .or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`)
-            .limit(10);
+        let query = supabaseClient.from('master_obat').select('*');
+        if (q) {
+            query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
+        } else if (!catFilter) {
+            // Default top 15 items when search input is empty
+            query = query.order('nama_obat').limit(15);
+        }
+
+        if (catFilter) {
+            query = query.eq('kategori', catFilter);
+        }
+
+        const { data, error } = await query.limit(20);
             
         const results = document.getElementById('pos-search-results');
         results.innerHTML = '';
         
         if (!error && data) {
+            if (data.length === 0) {
+                results.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px; font-size:13px;">Tidak ada obat ditemukan.</div>';
+                return;
+            }
+
             data.forEach(o => {
                 const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
+                const stok = parseFloat(o.stok_unit_kecil || 0);
+                const stokBadge = stok <= 5 ? 'background:#fef2f2; color:#ef4444;' : 'background:#ecfdf5; color:#10b981;';
+                
                 const row = document.createElement('div');
                 row.className = 'pos-item-row';
                 row.onclick = () => addToCart(o);
                 row.innerHTML = `
                     <div class="pos-item-details">
-                        <span class="pos-item-name">${o.nama_obat}</span>
-                        <span class="pos-item-stock">Stok: ${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</span>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="pos-item-name">${o.nama_obat}</span>
+                            <span class="badge" style="font-size:9.5px; ${stokBadge}">Stok: ${stok} ${o.label_satuan_kecil || 'Pcs'}</span>
+                        </div>
+                        <span style="font-size:11px; color:var(--text-muted);">🆔 ${o.id_obat} • 📦 ${o.kategori || 'Umum'}</span>
                     </div>
-                    <span class="pos-item-price-pill">Rp ${formatMoney(price)}</span>
+                    <div style="text-align:right;">
+                        <strong style="color:var(--primary-color); font-size:13.5px;">Rp ${formatMoney(price)}</strong>
+                        <div style="font-size:10px; color:var(--text-muted);">+ Tambah</div>
+                    </div>
                 `;
                 results.appendChild(row);
             });
         }
     } catch (e) {
         console.error('Error searching obat in POS:', e);
+    }
+}
+
+function posFilterCategory(cat) {
+    document.getElementById('pos-search-input').value = '';
+    posSearchObat(cat);
+}
+
+function clearCart() {
+    if (cart.length === 0) return;
+    if (confirm('Kosongkan semua barang di keranjang?')) {
+        cart = [];
+        updateCartUI();
     }
 }
 
@@ -730,14 +762,31 @@ function addToCart(o) {
     }
     
     updateCartUI();
-    posSearchObat();
 }
 
 function changeCartQty(id, qty) {
     const item = cart.find(i => i.id_obat === id);
     if (item) {
-        item.jumlah = parseFloat(qty) || 1;
-        updateCartUI();
+        const val = parseFloat(qty);
+        if (val <= 0) {
+            removeCartItem(id);
+        } else {
+            item.jumlah = val;
+            updateCartUI();
+        }
+    }
+}
+
+function stepCartQty(id, delta) {
+    const item = cart.find(i => i.id_obat === id);
+    if (item) {
+        const newQty = item.jumlah + delta;
+        if (newQty <= 0) {
+            removeCartItem(id);
+        } else {
+            item.jumlah = newQty;
+            updateCartUI();
+        }
     }
 }
 
@@ -773,6 +822,20 @@ function updateCartUI() {
     const container = document.getElementById('pos-cart-items');
     container.innerHTML = '';
     
+    if (cart.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
+                <div style="font-size:36px; margin-bottom:8px;">🛒</div>
+                <div style="font-size:13px; font-weight:600;">Keranjang Masih Kosong</div>
+                <div style="font-size:11.5px; margin-top:4px;">Klik barang di sebelah kiri untuk menambah ke keranjang</div>
+            </div>
+        `;
+        document.getElementById('pos-grand-total').textContent = 'Rp 0';
+        const badge = document.getElementById('pos-cart-count-badge');
+        if (badge) badge.textContent = '0';
+        return;
+    }
+
     let grandTotal = 0;
     let totalQty = 0;
     cart.forEach(item => {
@@ -791,19 +854,23 @@ function updateCartUI() {
         
         const div = document.createElement('div');
         div.className = 'cart-item';
+        div.style.cssText = 'background:var(--bg-main); border:1px solid var(--border-color); padding:10px; border-radius:8px; margin-bottom:8px;';
         div.innerHTML = `
-            <div class="cart-item-header">
-                <span>${item.nama_obat}</span>
-                <strong>Rp ${formatMoney(subtotal)}</strong>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                <span style="font-size:13px; font-weight:700; color:var(--text-main); line-height:1.2;">${item.nama_obat}</span>
+                <strong style="color:var(--primary-color); font-size:13.5px;">Rp ${formatMoney(subtotal)}</strong>
             </div>
-            <div class="cart-item-details">
-                <div>
-                    <input type="number" class="cart-qty-input" value="${item.jumlah}" min="1" onchange="changeCartQty('${item.id_obat}', this.value)" style="width:50px; text-align:center; padding: 2px;">
-                    <select class="form-control" style="width: auto; display: inline-block; height: 28px; padding: 2px 5px; font-size: 12px; margin-left: 8px;" onchange="changeCartUnit('${item.id_obat}', this)">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:13px; line-height:1;" onclick="stepCartQty('${item.id_obat}', -1)">-</button>
+                    <input type="number" value="${item.jumlah}" min="1" onchange="changeCartQty('${item.id_obat}', this.value)" style="width:45px; text-align:center; padding:2px; font-size:12px; border:1px solid var(--border-color); border-radius:4px;">
+                    <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:13px; line-height:1;" onclick="stepCartQty('${item.id_obat}', 1)">+</button>
+
+                    <select class="form-control" style="width: auto; height: 28px; padding: 2px 4px; font-size: 11.5px; margin-left: 4px;" onchange="changeCartUnit('${item.id_obat}', this)">
                         ${unitOptions}
                     </select>
                 </div>
-                <button class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" onclick="removeCartItem('${item.id_obat}')">Hapus</button>
+                <button class="btn btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="removeCartItem('${item.id_obat}')">✕</button>
             </div>
         `;
         container.appendChild(div);

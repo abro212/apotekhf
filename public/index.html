@@ -303,34 +303,60 @@
                     <div class="pos-layout">
                         <!-- Left Side: Item Search & Selection -->
                         <div class="view-card pos-section-wrapper" id="pos-catalog-container" style="padding: 20px;">
-                            <div class="form-group" style="display: flex; gap: 8px; margin-bottom: 10px;">
-                                <input type="text" id="pos-search-input" class="form-control" placeholder="Cari obat..." oninput="posSearchObat()">
-                                <button type="button" class="btn btn-secondary" style="padding: 8px 14px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">📷 Scan</button>
+                            <!-- Top Bar: Customer & Camera Scan -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label style="font-size: 13px; font-weight: 700; margin: 0; white-space: nowrap;">👤 Pelanggan:</label>
+                                    <select id="pos-customer-select" class="form-control" style="width: auto; min-width: 140px; padding: 4px 8px; font-size: 12px;" onchange="posChangeCustomer()"></select>
+                                    <span id="pos-customer-level" class="badge badge-info" style="font-size: 11px;">Level 1</span>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">📷 Scan Kamera</button>
                             </div>
-                            <div class="form-group" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                                <select id="pos-customer-select" class="form-control" style="width: 200px;" onchange="posChangeCustomer()"></select>
-                                <span id="pos-customer-level" class="badge badge-info" style="align-self: center;">Level 1</span>
+
+                            <!-- Search Input -->
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <input type="text" id="pos-search-input" class="form-control" placeholder="Ketik nama obat atau scan barcode..." oninput="posSearchObat()" autocomplete="off">
                             </div>
+
+                            <!-- Quick Category Pills -->
+                            <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none;">
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('')">Semua Obat</button>
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Obat Bebas')">Obat Bebas</button>
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Resep Dokter')">Resep Dokter</button>
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Vitamin & Suplemen')">Vitamin</button>
+                            </div>
+
+                            <!-- Search Results List -->
                             <div class="pos-search-results" id="pos-search-results"></div>
                         </div>
+
                         <!-- Right Side: Cart & Checkout -->
                         <div class="pos-cart pos-section-wrapper" id="pos-cart-container">
-                            <h3 class="desktop-only-title">Detail Keranjang</h3>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
+                                <h3 class="desktop-only-title" style="margin: 0; font-size: 15px; font-weight: 700;">🛒 Keranjang Belanja</h3>
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="clearCart()">Kosongkan</button>
+                            </div>
+
+                            <!-- Cart Items List -->
                             <div class="pos-cart-items" id="pos-cart-items"></div>
+
+                            <!-- Cart Totals & Checkout -->
                             <div class="pos-cart-totals">
-                                <div class="total-row">
-                                    <span>Metode Bayar:</span>
-                                    <select id="pos-pay-method" class="form-control" style="width: 120px; height: 32px; padding: 4px 8px;">
-                                        <option value="CASH">CASH</option>
-                                        <option value="TEMPO">TEMPO</option>
-                                        <option value="QRIS">QRIS</option>
+                                <div class="total-row" style="margin-bottom: 8px;">
+                                    <span style="font-size: 13px; font-weight: 600;">Metode Pembayaran:</span>
+                                    <select id="pos-pay-method" class="form-control" style="width: 120px; height: 32px; padding: 4px 8px; font-size: 12px;">
+                                        <option value="CASH">💵 CASH</option>
+                                        <option value="TEMPO">⏳ TEMPO</option>
+                                        <option value="QRIS">📱 QRIS</option>
                                     </select>
                                 </div>
                                 <div class="total-row grand-total">
-                                    <span>Total:</span>
-                                    <span id="pos-grand-total">Rp 0</span>
+                                    <span style="font-size: 15px; font-weight: 700;">Total Bayar:</span>
+                                    <span id="pos-grand-total" style="font-size: 20px; font-weight: 800; color: var(--primary-color);">Rp 0</span>
                                 </div>
-                                <button class="btn btn-primary" style="width: 100%; padding: 12px; margin-top: 15px;" onclick="posCheckout()">Selesaikan Transaksi</button>
+                                <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700; margin-top: 12px;" onclick="posCheckout()">
+                                    💳 Selesaikan & Cetak Struk
+                                </button>
                             </div>
                         </div>
                     </div>
