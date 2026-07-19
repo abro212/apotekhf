@@ -561,9 +561,13 @@ async function loadDashboard() {
     try {
         const { data: menusData } = await supabaseClient.from('menu').select('*');
         const grid = document.getElementById('dashboard-menu-grid');
-        grid.innerHTML = '';
+        const pintasanGrid = document.getElementById('pintasan-menu-grid');
+
+        if (grid) grid.innerHTML = '';
+        if (pintasanGrid) pintasanGrid.innerHTML = '';
         
         if (menusData) {
+            const validItems = [];
             menusData.forEach(item => {
                 if (item.menu === 'SETTINGS' || item.judul === 'LOG OUT' || item.judul === 'LOG IN') return;
                 
@@ -581,6 +585,8 @@ async function loadDashboard() {
                 else if (item.menu === 'KAS') viewTarget = 'view-kas';
                 else if (item.menu === 'Supplier dan Pelanggan') viewTarget = 'view-supplier-pelanggan';
                 else return;
+
+                validItems.push({ item, viewTarget });
                 
                 const card = document.createElement('div');
                 card.className = 'menu-card';
@@ -594,8 +600,27 @@ async function loadDashboard() {
                     </div>
                     <div class="menu-card-title">${item.judul}</div>
                 `;
-                grid.appendChild(card);
+                
+                if (grid) grid.appendChild(card);
             });
+
+            if (pintasanGrid) {
+                validItems.forEach(({ item, viewTarget }) => {
+                    const card = document.createElement('div');
+                    card.className = 'menu-card';
+                    card.onclick = () => switchView(viewTarget);
+                    
+                    const svgIcon = menuIcons[item.menu] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="12" cy="12" r="10"></circle></svg>`;
+                    
+                    card.innerHTML = `
+                        <div class="menu-card-icon-wrapper">
+                            ${svgIcon}
+                        </div>
+                        <div class="menu-card-title">${item.judul}</div>
+                    `;
+                    pintasanGrid.appendChild(card);
+                });
+            }
         }
     } catch (e) {
         console.error('Error rendering dashboard menus:', e);

@@ -105,6 +105,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
                     <span>Dashboard</span>
                 </a>
+                <a href="#" class="nav-link" data-target="view-pintasan">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <span>Pintasan Cepat</span>
+                </a>
                 <a href="#" class="nav-link" data-target="view-kasir">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span>Kasir POS</span>
@@ -263,6 +267,21 @@
                                     <div style="color: var(--text-muted); text-align: center; padding: 10px;">Mengambil data...</div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: PINTASAN CEPAT -->
+                <section id="view-pintasan" class="hidden">
+                    <div class="view-title" style="margin-bottom: 20px;">
+                        <span>⚡ Pintasan Cepat Menu</span>
+                    </div>
+                    <div class="view-card">
+                        <p style="color: var(--text-muted); font-size: 13.5px; margin-top: 0; margin-bottom: 20px; font-weight: 500;">
+                            Pilih modul atau pintasan di bawah ini untuk mengakses fitur aplikasi secara cepat:
+                        </p>
+                        <div class="menu-grid" id="pintasan-menu-grid">
+                            <!-- Populated dynamically -->
                         </div>
                     </div>
                 </section>
