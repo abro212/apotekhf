@@ -847,16 +847,108 @@
                     </div>
                 </section>
 
-                <!-- 12. VIEW: TENTANG APLIKASI -->
+                <!-- 12. VIEW: TENTANG APLIKASI & INFO SISTEM -->
                 <section id="view-info" class="hidden">
-                    <div class="view-card" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 40px;">
-                        <h2 style="color: var(--primary-color); margin-bottom: 10px;">APOTEK HF</h2>
-                        <p style="color: var(--text-muted); margin-bottom: 30px;">Sistem Portal Apoteker & POS Inventaris Premium</p>
-                        <div style="text-align: left; font-size: 14px; display: flex; flex-direction: column; gap: 15px; background: #fafbfc; padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
-                            <p><strong>Total Obat Terdaftar:</strong> <span id="info-total-obat">-</span> item</p>
-                            <p><strong>Total Transaksi Terlapor:</strong> <span id="info-total-transaksi">-</span> invoice</p>
-                            <p><strong>Total Pelanggan Aktif:</strong> <span id="info-total-pelanggan">-</span> orang</p>
-                            <p><strong>Total Supplier Mitra:</strong> <span id="info-total-supplier">-</span> perusahaan</p>
+                    <!-- Brand Header Card -->
+                    <div class="view-card" style="background: linear-gradient(135deg, var(--bg-card) 0%, rgba(13, 148, 136, 0.06) 100%); border: 1px solid var(--border-color); text-align: center; padding: 30px 20px; margin-bottom: 20px;">
+                        <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: rgba(13, 148, 136, 0.1); border-radius: 16px; margin-bottom: 12px; border: 1px solid rgba(13, 148, 136, 0.2);">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 36px; height: 36px; color: var(--primary-color);"><path d="M10.5 3.5a2.12 2.12 0 0 1 3 0l7 7a2.12 2.12 0 0 1 0 3l-7 7a2.12 2.12 0 0 1-3 0l-7-7a2.12 2.12 0 0 1 0-3l7-7z"></path><path d="m8.5 10.5 5 5"></path></svg>
+                        </div>
+                        <h2 style="font-size: 24px; font-weight: 800; color: var(--text-main); margin-bottom: 6px;">APOTEK HF PORTAL</h2>
+                        <p style="color: var(--text-muted); font-size: 13.5px; max-width: 480px; margin: 0 auto 16px auto;">Sistem Informasi Manajemen Apoteker, Kasir POS & Dokumentasi Stok Terpadu</p>
+                        <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                            <span class="badge badge-info" style="font-size: 11px;">v2.5 Enterprise</span>
+                            <span class="badge" style="background:#ecfdf5; color:#10b981; font-size:11px;">● Online (Supabase Cloud)</span>
+                            <span class="badge" style="background:#eff6ff; color:#3b82f6; font-size:11px;">📱 Mobile PWA Ready</span>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Grid (4 Metric Cards) -->
+                    <div class="report-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <div style="font-size: 24px; margin-bottom: 4px;">💊</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Total Obat Terdaftar</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="info-total-obat">-</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <div style="font-size: 24px; margin-bottom: 4px;">📑</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Total Transaksi Jual</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="info-total-transaksi">-</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <div style="font-size: 24px; margin-bottom: 4px;">👤</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Pelanggan Terdaftar</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: #16a34a; margin: 0;" id="info-total-pelanggan">-</h2>
+                        </div>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
+                            <div style="font-size: 24px; margin-bottom: 4px;">📦</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Supplier Mitra</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: #d97706; margin: 0;" id="info-total-supplier">-</h2>
+                        </div>
+                    </div>
+
+                    <!-- System Info & Features Grid -->
+                    <div class="pembelian-layout">
+                        <!-- Key Modules & Capabilities -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--primary-color);">🚀 Modul Utama Sistem</h3>
+                            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+                                <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <span style="font-size: 18px;">🖥️</span>
+                                    <div>
+                                        <strong>Point of Sales (Kasir & Barcode)</strong>
+                                        <div style="font-size: 11.5px; color: var(--text-muted);">Pencarian instant, scanner kamera HP, struk belanja thermal.</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <span style="font-size: 18px;">💳</span>
+                                    <div>
+                                        <strong>Manajemen Piutang & Hutang</strong>
+                                        <div style="font-size: 11.5px; color: var(--text-muted);">Monitoring tagihan TEMPO pelanggan & faktur supplier.</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <span style="font-size: 18px;">↩️</span>
+                                    <div>
+                                        <strong>Retur Penjualan & Restock Automatis</strong>
+                                        <div style="font-size: 11.5px; color: var(--text-muted);">Pengembalian barang retur yang otomatis memperbarui stok obat.</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                                    <span style="font-size: 18px;">🩺</span>
+                                    <div>
+                                        <strong>Rekam Kesehatan Pasien</strong>
+                                        <div style="font-size: 11.5px; color: var(--text-muted);">Catatan tensi, gula darah, kolesterol & rekomendasi terapi obat.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Specifications & Security -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">⚙️ Spesifikasi & Keamanan</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                                    <span style="color: var(--text-muted);">Database Cloud:</span>
+                                    <strong>Supabase PostgreSQL (AWS ap-northeast-1)</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                                    <span style="color: var(--text-muted);">Hosting Server:</span>
+                                    <strong>Vercel Edge Network</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                                    <span style="color: var(--text-muted);">Akses Pengguna:</span>
+                                    <strong id="info-current-user">Administrator Staf</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
+                                    <span style="color: var(--text-muted);">Arsitektur UI:</span>
+                                    <strong>Vanilla HTML/CSS/JS SPA Engine</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-top: 4px;">
+                                    <span style="color: var(--text-muted);">Lisensi Aplikasi:</span>
+                                    <strong style="color: var(--primary-color);">Apotek HF Internal Enterprise</strong>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>

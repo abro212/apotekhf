@@ -3181,6 +3181,11 @@ async function loadInfoStats() {
         document.getElementById('info-total-transaksi').textContent = totalTrans || '0';
         document.getElementById('info-total-pelanggan').textContent = totalPel || '0';
         document.getElementById('info-total-supplier').textContent = totalSup || '0';
+
+        const userEl = document.getElementById('info-current-user');
+        if (userEl) {
+            userEl.textContent = currentUser ? `${currentUser.nama_staf || currentUser.user} (${currentUser.role || 'Staf'})` : 'Staf Kasir Apotek';
+        }
     } catch (e) {
         console.error('Error loading stats:', e);
     }
