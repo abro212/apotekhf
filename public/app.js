@@ -970,15 +970,101 @@ function updateCartUI() {
     }
 }
 
-async function posCheckout() {
+function posCheckout() {
     if (cart.length === 0) {
         alert('Keranjang belanja kosong!');
         return;
     }
-    
+
+    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const payMethodSelect = document.getElementById('pos-pay-method');
+    const selectedMethod = payMethodSelect ? payMethodSelect.value : 'CASH';
+
+    const totalDisplay = document.getElementById('pay-modal-total-display');
+    const methodSelect = document.getElementById('pay-modal-method');
+    const amountInput = document.getElementById('pay-modal-amount-input');
+
+    if (totalDisplay) totalDisplay.textContent = `Rp ${formatMoney(total_bayar)}`;
+    if (methodSelect) methodSelect.value = selectedMethod;
+    if (amountInput) amountInput.value = total_bayar;
+
+    onPayMethodChange();
+    calculatePosChange();
+    document.getElementById('modal-pos-payment')?.classList.remove('hidden');
+    amountInput?.focus();
+}
+
+function onPayMethodChange() {
+    const method = document.getElementById('pay-modal-method')?.value || 'CASH';
+    const amountGroup = document.getElementById('pay-modal-amount-group');
+    const changeGroup = document.getElementById('pay-modal-change-group');
+    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const amountInput = document.getElementById('pay-modal-amount-input');
+
+    if (method === 'CASH') {
+        if (amountGroup) amountGroup.style.display = '';
+        if (changeGroup) changeGroup.style.display = '';
+        calculatePosChange();
+    } else {
+        if (amountGroup) amountGroup.style.display = 'none';
+        if (changeGroup) changeGroup.style.display = 'none';
+        if (amountInput) amountInput.value = total_bayar;
+    }
+}
+
+function calculatePosChange() {
+    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const payAmountVal = parseFloat(document.getElementById('pay-modal-amount-input')?.value || 0);
+    const changeDisplay = document.getElementById('pay-modal-change-display');
+
+    const change = payAmountVal - total_bayar;
+
+    if (changeDisplay) {
+        if (change >= 0) {
+            changeDisplay.textContent = `Rp ${formatMoney(change)}`;
+            changeDisplay.style.color = '#047857';
+        } else {
+            changeDisplay.textContent = `Kurang Rp ${formatMoney(Math.abs(change))}`;
+            changeDisplay.style.color = '#ef4444';
+        }
+    }
+}
+
+function setPayPreset(val) {
+    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const amountInput = document.getElementById('pay-modal-amount-input');
+    if (!amountInput) return;
+
+    if (val === 'PAS') {
+        amountInput.value = total_bayar;
+    } else {
+        amountInput.value = val;
+    }
+    calculatePosChange();
+}
+
+async function submitPosPayment(e) {
+    if (e) e.preventDefault();
+    if (cart.length === 0) {
+        alert('Keranjang belanja kosong!');
+        closeModal('modal-pos-payment');
+        return;
+    }
+
+    const total_bayar = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const payMethod = document.getElementById('pay-modal-method')?.value || 'CASH';
+    const payAmount = parseFloat(document.getElementById('pay-modal-amount-input')?.value || 0);
+
+    if (payMethod === 'CASH' && payAmount < total_bayar) {
+        alert(`Uang pembayaran kurang! Total Tagihan Rp ${formatMoney(total_bayar)}, Uang Bayar Rp ${formatMoney(payAmount)} (Kurang Rp ${formatMoney(total_bayar - payAmount)})`);
+        return;
+    }
+
+    const kembalian = payMethod === 'CASH' ? (payAmount - total_bayar) : 0;
+
     try {
         if (!supabaseClient) return;
-        
+
         // ID Jual YYMMDD-user-suffix
         const dateObj = new Date();
         const yy = String(dateObj.getFullYear()).substring(2);
@@ -1000,7 +1086,6 @@ async function posCheckout() {
         };
         const tanggalStr = formatJSDate(dateObj);
 
-        let total_bayar = 0;
         const detailsToInsert = [];
         const stockUpdates = [];
 
@@ -1008,7 +1093,6 @@ async function posCheckout() {
             const qty = parseFloat(item.jumlah);
             const price = parseFloat(item.harga);
             const subtotal = qty * price;
-            total_bayar += subtotal;
 
             const o = item.obat;
             let hpp_unit = 0;
@@ -1049,7 +1133,6 @@ async function posCheckout() {
         }
 
         // 1. Insert into transaksi_jual
-        const payMethod = document.getElementById('pos-pay-method').value;
         const { error: txErr } = await supabaseClient.from('transaksi_jual').insert([{
             id_jual: id_jual,
             tanggal: tanggalStr,
@@ -1071,8 +1154,9 @@ async function posCheckout() {
             await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
         }
 
-        alert('Checkout Berhasil!');
-        showReceipt(id_jual, total_bayar, tanggalStr);
+        closeModal('modal-pos-payment');
+        alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '\nKembalian: Rp ' + formatMoney(kembalian) : ''}`);
+        showReceipt(id_jual, total_bayar, tanggalStr, payMethod === 'CASH' ? payAmount : total_bayar, kembalian);
         initPOS();
     } catch (e) {
         console.error('Checkout failed:', e);
@@ -1627,11 +1711,11 @@ function renderThermalReceiptHTML(data) {
 
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #333;">
                 <span>Tunai / Bayar (${metode_bayar})</span>
-                <span>Rp${formatMoney(total_bayar)}</span>
+                <span>Rp${formatMoney(data.uang_bayar !== undefined ? data.uang_bayar : total_bayar)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; color: #333;">
                 <span>Kembalian</span>
-                <span>Rp0</span>
+                <span style="font-weight: 800; color: #000;">Rp${formatMoney(data.kembalian !== undefined ? data.kembalian : 0)}</span>
             </div>
         </div>
 
@@ -1684,9 +1768,9 @@ async function showReceiptDetail(id_jual) {
     }
 }
 
-function showReceipt(id_jual, total, tanggal) {
+function showReceipt(id_jual, total, tanggal, uangBayar, kembalian) {
     const customerName = activeCustomer ? activeCustomer.nama : 'UMUM';
-    const payMethod = document.getElementById('pos-pay-method')?.value || 'CASH';
+    const payMethod = document.getElementById('pay-modal-method')?.value || document.getElementById('pos-pay-method')?.value || 'CASH';
 
     const items = cart.map(item => ({
         nama_obat: item.nama_obat,
@@ -1703,7 +1787,9 @@ function showReceipt(id_jual, total, tanggal) {
         pelanggan: customerName,
         metode_bayar: payMethod,
         items: items,
-        total_bayar: total
+        total_bayar: total,
+        uang_bayar: uangBayar,
+        kembalian: kembalian
     });
 
     const printArea = document.getElementById('receipt-print-area');

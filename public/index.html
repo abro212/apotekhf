@@ -1848,6 +1848,67 @@
         </div>
     </div>
 
+    <!-- MODAL PEMBAYARAN KASIR POS -->
+    <div id="modal-pos-payment" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 440px; border-radius: 16px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="font-size: 16px; font-weight: 800; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span>💳</span> Pembayaran Kasir POS
+                </h3>
+                <button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);" onclick="closeModal('modal-pos-payment')">✕</button>
+            </div>
+
+            <form id="form-pos-payment" onsubmit="submitPosPayment(event)">
+                <!-- Total Grand Display -->
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">TOTAL TAGIHAN</div>
+                    <div id="pay-modal-total-display" style="font-size: 26px; font-weight: 800; color: var(--primary-color); margin-top: 4px;">Rp 0</div>
+                </div>
+
+                <!-- Metode Pembayaran -->
+                <div class="form-group">
+                    <label style="font-weight: 700;">Metode Pembayaran</label>
+                    <select id="pay-modal-method" class="form-control" onchange="onPayMethodChange()">
+                        <option value="CASH" selected>💵 CASH (TUNAI)</option>
+                        <option value="QRIS">📱 QRIS / DIGITAL</option>
+                        <option value="TEMPO">⏳ TEMPO / PIUTANG</option>
+                    </select>
+                </div>
+
+                <!-- Nominal Uang Bayar -->
+                <div class="form-group" id="pay-modal-amount-group">
+                    <label style="font-weight: 700;">Nominal Uang Bayar (Rp)</label>
+                    <input type="number" id="pay-modal-amount-input" class="form-control" style="font-size: 18px; font-weight: 800; height: 46px;" placeholder="0" oninput="calculatePosChange()">
+                    
+                    <!-- Preset Nominal Buttons -->
+                    <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;" id="pay-modal-presets">
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setPayPreset('PAS')">Uang Pas</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setPayPreset(10000)">10rb</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setPayPreset(20000)">20rb</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setPayPreset(50000)">50rb</button>
+                        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px; font-weight: 700;" onclick="setPayPreset(100000)">100rb</button>
+                    </div>
+                </div>
+
+                <!-- Kembalian Display -->
+                <div id="pay-modal-change-group" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <span style="font-weight: 700; font-size: 13px; color: #047857;">Uang Kembalian:</span>
+                    <strong id="pay-modal-change-display" style="font-size: 20px; font-weight: 800; color: #047857;">Rp 0</strong>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-size: 14px; font-weight: 700;">
+                        💳 Proses & Cetak Struk
+                    </button>
+                    <button type="button" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 13px;" onclick="closeModal('modal-pos-payment')">
+                        Batal
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Supabase JS Client & Export Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
