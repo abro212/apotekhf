@@ -804,8 +804,16 @@ body {
     align-items: start;
 }
 
+#pos-catalog-container {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 140px);
+}
+
 .pos-search-results {
-    max-height: 400px;
+    flex: 1;
+    min-height: 320px;
+    max-height: calc(100vh - 280px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -877,7 +885,8 @@ body {
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 120px);
+    min-height: calc(100vh - 140px);
+    max-height: calc(100vh - 140px);
     position: sticky;
     top: 90px;
     overflow: hidden;
@@ -1529,7 +1538,14 @@ body {
         max-width: 160px;
     }
 
+    #pos-catalog-container,
+    .pos-cart {
+        min-height: auto !important;
+        max-height: none !important;
+    }
+
     .pos-search-results {
+        min-height: auto !important;
         max-height: none !important;
         overflow-y: visible !important;
     }
