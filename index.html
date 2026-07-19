@@ -926,17 +926,32 @@
 
                 <!-- 11. VIEW: SUPPLIER & PELANGGAN -->
                 <section id="view-supplier-pelanggan" class="hidden">
-                    <!-- Tab Switcher -->
-                    <div class="mobile-tab-switcher" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <button type="button" class="btn btn-primary" id="mitra-tab-supplier" style="flex: 1;" onclick="switchMitraTab('supplier')">📦 Daftar Supplier</button>
-                        <button type="button" class="btn btn-secondary" id="mitra-tab-pelanggan" style="flex: 1;" onclick="switchMitraTab('pelanggan')">👤 Daftar Pelanggan</button>
+                    <!-- Top Navigation & Tab Bar (Desktop & Mobile) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <span>🤝</span> Manajemen Kemitraan (Supplier & Pelanggan)
+                        </h3>
+                        
+                        <!-- Segmented Pill Tab Switcher -->
+                        <div style="display: flex; background: var(--bg-main); padding: 4px; border-radius: 12px; border: 1px solid var(--border-color); gap: 4px;">
+                            <button type="button" class="btn btn-primary" id="mitra-tab-supplier" style="padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;" onclick="switchMitraTab('supplier')">
+                                📦 Supplier / Distributor
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="mitra-tab-pelanggan" style="padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;" onclick="switchMitraTab('pelanggan')">
+                                👤 Pelanggan / Member
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Supplier Tab Content -->
                     <div id="mitra-content-supplier" class="view-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="supplier-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari nama supplier, kontak, atau alamat..." oninput="loadSuppliers(1)">
-                            <button class="btn btn-primary" onclick="showAddSupplierModal()">✚ Tambah Supplier Baru</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 280px; max-width: 480px;">
+                                <input type="text" id="supplier-search-input" class="form-control" placeholder="🔍 Cari ID, nama supplier, kontak, atau alamat..." oninput="loadSuppliers(1)" style="font-size: 13px; height: 38px;">
+                            </div>
+                            <button class="btn btn-primary" onclick="showAddSupplierModal()" style="padding: 10px 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                ✚ Tambah Supplier Baru
+                            </button>
                         </div>
                         
                         <!-- Desktop Table -->
@@ -944,11 +959,11 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>ID Supplier</th>
+                                        <th style="width: 140px;">ID Supplier</th>
                                         <th>Nama Supplier</th>
-                                        <th>Alamat</th>
-                                        <th>Kontak Telepon</th>
-                                        <th>Aksi</th>
+                                        <th>Alamat Kantor / Gudang</th>
+                                        <th style="width: 180px;">Kontak Telepon / WA</th>
+                                        <th style="width: 200px; text-align: center;">Aksi Management</th>
                                     </tr>
                                 </thead>
                                 <tbody id="supplier-table-body"></tbody>
@@ -961,9 +976,13 @@
 
                     <!-- Pelanggan Tab Content -->
                     <div id="mitra-content-pelanggan" class="view-card hidden">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="pelanggan-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari nama pelanggan, telepon, atau alamat..." oninput="loadPelanggan(1)">
-                            <button class="btn btn-primary" onclick="showAddPelangganModal()">✚ Tambah Pelanggan Baru</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 280px; max-width: 480px;">
+                                <input type="text" id="pelanggan-search-input" class="form-control" placeholder="🔍 Cari ID, nama pelanggan, no. telepon, atau alamat..." oninput="loadPelanggan(1)" style="font-size: 13px; height: 38px;">
+                            </div>
+                            <button class="btn btn-primary" onclick="showAddPelangganModal()" style="padding: 10px 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                                ✚ Tambah Pelanggan Baru
+                            </button>
                         </div>
 
                         <!-- Desktop Table -->
@@ -971,11 +990,11 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>ID Pelanggan</th>
+                                        <th style="width: 140px;">ID Pelanggan</th>
                                         <th>Nama Pelanggan</th>
-                                        <th>Alamat</th>
-                                        <th>Tingkat Harga</th>
-                                        <th>Aksi</th>
+                                        <th>Alamat Domisili</th>
+                                        <th style="width: 160px;">Tingkat Harga</th>
+                                        <th style="width: 200px; text-align: center;">Aksi Management</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pelanggan-table-body"></tbody>

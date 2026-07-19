@@ -4138,15 +4138,17 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${s.id_supplier}</strong></td>
-                    <td>${s.supplier}</td>
-                    <td>${s.alamat_supplier || '-'}</td>
-                    <td>${s.kontak_supplier || '-'}</td>
+                    <td><strong style="color:var(--primary-color); font-family:monospace; font-size:12.5px;">${s.id_supplier}</strong></td>
+                    <td><strong style="font-size:13.5px;">${s.supplier}</strong></td>
+                    <td><span style="color:var(--text-muted); font-size:12.5px;">${s.alamat_supplier || '-'}</span></td>
                     <td>
-                        <div style="display:flex; gap:4px;">
-                            <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showSupplierDetail('${encId}')">Detail</button>
-                            <button class="btn btn-primary" style="padding: 3px 6px; font-size: 11px;" onclick="editSupplier('${encId}')">Edit</button>
-                            <button class="btn btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="deleteSupplier('${encId}')">Hapus</button>
+                        ${s.kontak_supplier ? `<a href="https://wa.me/${s.kontak_supplier.replace(/[^0-9]/g, '')}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; font-weight:600; color:#10b981; text-decoration:none; background:#ecfdf5; padding:3px 8px; border-radius:6px; border:1px solid #a7f3d0; font-size:11.5px;">📞 ${s.kontak_supplier}</a>` : '<span style="color:var(--text-muted); font-size:12px;">-</span>'}
+                    </td>
+                    <td style="text-align:center;">
+                        <div style="display:flex; justify-content:center; gap:6px;">
+                            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="showSupplierDetail('${encId}')">👁️ Detail</button>
+                            <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="editSupplier('${encId}')">✏️ Edit</button>
+                            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="deleteSupplier('${encId}')">🗑️ Hapus</button>
                         </div>
                     </td>
                 `;
@@ -4210,19 +4212,24 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
         if (!error && csts) {
             csts.forEach(c => {
                 const encId = encodeURIComponent(c.id_pelanggan || '');
+                const lvlBadge = c.level_harga === 'Level 3' 
+                    ? 'background:#fef3c7; color:#b45309; border:1px solid #fde68a;' 
+                    : c.level_harga === 'Level 2' 
+                        ? 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;' 
+                        : 'background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;';
 
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><strong>${c.id_pelanggan}</strong></td>
-                    <td>${c.nama}</td>
-                    <td>${c.alamat || '-'}</td>
-                    <td><span class="badge badge-info">${c.level_harga || 'Level 1'}</span></td>
-                    <td>
-                        <div style="display:flex; gap:4px;">
-                            <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showPelangganDetail('${encId}')">Detail</button>
-                            <button class="btn btn-primary" style="padding: 3px 6px; font-size: 11px;" onclick="editPelanggan('${encId}')">Edit</button>
-                            <button class="btn btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="deletePelanggan('${encId}')">Hapus</button>
+                    <td><strong style="color:var(--primary-color); font-family:monospace; font-size:12.5px;">${c.id_pelanggan}</strong></td>
+                    <td><strong style="font-size:13.5px;">${c.nama}</strong></td>
+                    <td><span style="color:var(--text-muted); font-size:12.5px;">${c.alamat || '-'}</span></td>
+                    <td><span class="badge" style="${lvlBadge} font-weight:700; padding:4px 10px; font-size:11px;">${c.level_harga || 'Level 1'}</span></td>
+                    <td style="text-align:center;">
+                        <div style="display:flex; justify-content:center; gap:6px;">
+                            <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="showPelangganDetail('${encId}')">👁️ Detail</button>
+                            <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="editPelanggan('${encId}')">✏️ Edit</button>
+                            <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11.5px; font-weight:600;" onclick="deletePelanggan('${encId}')">🗑️ Hapus</button>
                         </div>
                     </td>
                 `;
