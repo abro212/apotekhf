@@ -2295,16 +2295,22 @@ async function initCekKesehatan() {
     document.getElementById('checkup-history-list').innerHTML = '<div style="color:var(--text-muted); text-align:center;">Pilih pasien untuk melihat riwayat.</div>';
 }
 
+let currentPatientCheckupData = [];
+
 async function checkupChangePasien() {
     const select = document.getElementById('checkup-pasien-select');
-    const id_pasien = select.value;
+    const id_pasien = select ? select.value : '';
     const badge = document.getElementById('checkup-patient-name-badge');
     
-    if (select.selectedIndex >= 0) {
+    if (select && select.selectedIndex >= 0) {
         badge.textContent = select.options[select.selectedIndex].text.split('(')[0].trim();
     }
 
-    if (!id_pasien) return;
+    if (!id_pasien) {
+        currentPatientCheckupData = [];
+        renderCheckupHistoryCards([]);
+        return;
+    }
     
     try {
         if (!supabaseClient) return;
@@ -2313,35 +2319,225 @@ async function checkupChangePasien() {
             .eq('id_pasien', id_pasien)
             .order('tanggal', { ascending: false });
             
-        const container = document.getElementById('checkup-history-list');
-        container.innerHTML = '';
-        
-        if (data && data.length > 0) {
-            data.forEach(r => {
-                const div = document.createElement('div');
-                div.className = 'price-card-mobile';
-                div.innerHTML = `
-                    <div class="price-card-header">
-                        <div>
-                            <div class="price-card-title" style="font-size:13px; color:var(--primary-color);">🩸 Tensi: ${r.tensi || '-'}</div>
-                            <div class="price-card-sub">📅 ${r.tanggal || '-'} • Petugas: ${r.user || 'Staf'}</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-                        <span class="price-pill">🍬 Gula: <strong>${r.gula_darah || '-'}</strong></span>
-                        <span class="price-pill">🦴 Asam Urat: <strong>${r.asam_urat || '-'}</strong></span>
-                        <span class="price-pill">🥑 Kolesterol: <strong>${r.kolesterol || '-'}</strong></span>
-                    </div>
-                    ${r.rekomendasi_obat ? `<div style="margin-top:8px; font-size:12px; background:var(--bg-main); padding:6px 10px; border-radius:6px;"><strong>💊 Obat:</strong> ${r.rekomendasi_obat}</div>` : ''}
-                    ${r.keterangan ? `<div style="margin-top:4px; font-size:11.5px; color:var(--text-muted); font-style:italic;">📝 ${r.keterangan}</div>` : ''}
-                `;
-                container.appendChild(div);
-            });
-        } else {
-            container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:25px; font-size:13px;">Belum ada riwayat rekam kontrol untuk pasien ini.</div>';
-        }
+        currentPatientCheckupData = data || [];
+        filterCheckupHistoryList();
     } catch (e) {
         console.error(e);
+    }
+}
+
+function filterCheckupHistoryList() {
+    const searchVal = document.getElementById('checkup-history-search')?.value.toLowerCase().trim() || '';
+    if (!searchVal) {
+        renderCheckupHistoryCards(currentPatientCheckupData);
+        return;
+    }
+
+    const filtered = currentPatientCheckupData.filter(r => {
+        const text = `${r.tanggal || ''} ${r.tensi || ''} ${r.gula_darah || ''} ${r.asam_urat || ''} ${r.kolesterol || ''} ${r.rekomendasi_obat || ''} ${r.keterangan || ''} ${r.user || ''}`.toLowerCase();
+        return text.includes(searchVal);
+    });
+
+    renderCheckupHistoryCards(filtered);
+}
+
+function renderCheckupHistoryCards(records) {
+    const container = document.getElementById('checkup-history-list');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    if (records && records.length > 0) {
+        records.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'price-card-mobile';
+            div.style.cssText = 'background:var(--bg-main); border:1px solid var(--border-color); padding:12px; border-radius:10px; transition: all 0.2s ease;';
+            div.innerHTML = `
+                <div class="price-card-header" style="margin-bottom:6px;">
+                    <div>
+                        <div class="price-card-title" style="font-size:13.5px; font-weight:800; color:var(--primary-color);">
+                            🩺 Tensi: ${r.tensi || '-'}
+                        </div>
+                        <div class="price-card-sub" style="font-size:11px; margin-top:2px;">
+                            📅 ${r.tanggal || '-'} • Staf: <strong>${r.user || 'Staf'}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;">
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-weight:600; border-radius:6px;">🍬 Gula: <strong>${r.gula_darah || '-'}</strong> mg/dL</span>
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:600; border-radius:6px;">🦴 Asam Urat: <strong>${r.asam_urat || '-'}</strong> mg/dL</span>
+                    <span class="price-pill" style="font-size:11px; padding:3px 8px; background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:600; border-radius:6px;">🥑 Kolesterol: <strong>${r.kolesterol || '-'}</strong> mg/dL</span>
+                </div>
+                ${r.rekomendasi_obat ? `<div style="margin-top:8px; font-size:12px; background:var(--bg-card); border:1px solid var(--border-color); padding:8px 10px; border-radius:8px;"><strong>💊 Obat/Terapi:</strong> ${r.rekomendasi_obat}</div>` : ''}
+                ${r.keterangan ? `<div style="margin-top:6px; font-size:11.5px; color:var(--text-muted); font-style:italic; padding-left:4px;">📝 ${r.keterangan}</div>` : ''}
+            `;
+            container.appendChild(div);
+        });
+    } else {
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:30px; font-size:13px;">Belum ada riwayat rekam medis ditemukan.</div>';
+    }
+}
+
+function generateRekamMedisPrintHTML(patientName) {
+    const appName = localStorage.getItem('app_name') || 'Apotek HF';
+    const appAddress = localStorage.getItem('app_address') || 'Makassar';
+    const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
+    const now = new Date();
+    const printDate = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    const printedBy = currentUser ? `${currentUser.nama_staf} (${currentUser.role})` : 'System Administrator';
+
+    let tableRowsHTML = '';
+    if (currentPatientCheckupData && currentPatientCheckupData.length > 0) {
+        currentPatientCheckupData.forEach((r, idx) => {
+            tableRowsHTML += `
+                <tr style="border-bottom: 1px solid #cbd5e1;">
+                    <td style="padding: 10px; text-align: center;">${idx + 1}</td>
+                    <td style="padding: 10px;"><strong>${r.tanggal || '-'}</strong></td>
+                    <td style="padding: 10px; font-weight: 700; color: #0f766e;">${r.tensi || '-'}</td>
+                    <td style="padding: 10px;">${r.gula_darah || '-'} mg/dL</td>
+                    <td style="padding: 10px;">${r.asam_urat || '-'} mg/dL</td>
+                    <td style="padding: 10px;">${r.kolesterol || '-'} mg/dL</td>
+                    <td style="padding: 10px;">${r.rekomendasi_obat || '-'}</td>
+                    <td style="padding: 10px; font-style: italic; color: #475569;">${r.keterangan || '-'}</td>
+                </tr>
+            `;
+        });
+    } else {
+        tableRowsHTML = `<tr><td colspan="8" style="padding: 20px; text-align: center; color: #94a3b8;">Belum ada data riwayat rekam medis.</td></tr>`;
+    }
+
+    return `
+        <div style="padding: 24px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
+            <!-- Header Banner -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 14px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <img src="${appLogo}" alt="Logo" style="height: 48px; object-fit: contain;">
+                    <div>
+                        <h1 style="font-size: 20px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase;">${appName}</h1>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appAddress}</div>
+                        <div style="font-size: 11px; color: #0d9488; font-weight: 600; margin-top: 1px;">KARTU REKAM MEDIS & KONTROL KESEHATAN PASIEN</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 14px; font-weight: 800; color: #0f172a;">KARTU PASIEN</div>
+                    <div style="font-size: 11px; color: #475569; margin-top: 3px;">Nama: <strong>${patientName}</strong></div>
+                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
+                </div>
+            </div>
+
+            <!-- Meta Details -->
+            <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 11.5px;">
+                <div>Nama Pasien: <strong style="color: #0f766e; font-size: 13px;">${patientName}</strong></div>
+                <div>Staf Pengunduh: <strong>${printedBy}</strong></div>
+            </div>
+
+            <!-- Table -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 25px;">
+                <thead>
+                    <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-align: left;">
+                        <th style="padding: 10px; text-align: center; width: 40px;">No</th>
+                        <th style="padding: 10px; width: 100px;">Tanggal</th>
+                        <th style="padding: 10px; width: 90px;">Tensi</th>
+                        <th style="padding: 10px; width: 85px;">Gula Darah</th>
+                        <th style="padding: 10px; width: 85px;">Asam Urat</th>
+                        <th style="padding: 10px; width: 85px;">Kolesterol</th>
+                        <th style="padding: 10px;">Rekomendasi Obat</th>
+                        <th style="padding: 10px;">Catatan / Keluhan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRowsHTML}
+                </tbody>
+            </table>
+
+            <!-- Signature -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px;">
+                <div style="font-size: 10px; color: #94a3b8;">
+                    <div>* Kartu ini merupakan catatan resmi rekam medis pemeriksaan kesehatan pasien pada ${appName}.</div>
+                </div>
+                <div style="text-align: center; min-width: 180px;">
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 40px;">${appAddress}, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Pemeriksa / Staf Kesehatan</div>
+                    <div style="font-weight: 800; font-size: 12px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Staf'} )</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function exportRekamMedisPDF() {
+    try {
+        const select = document.getElementById('checkup-pasien-select');
+        const patientName = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex].text.split('(')[0].trim() : 'Pasien';
+        
+        if (!select || !select.value) {
+            alert('Pilih pasien terlebih dahulu untuk mengexport rekam medis!');
+            return;
+        }
+
+        const printContent = generateRekamMedisPrintHTML(patientName);
+        const element = document.createElement('div');
+        element.style.width = '100%';
+        element.innerHTML = printContent;
+        document.body.appendChild(element);
+
+        const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        if (typeof html2pdf !== 'undefined') {
+            const opt = {
+                margin: [6, 6, 6, 6],
+                filename: `Rekam_Medis_${patientName.replace(/\s+/g, '_')}_${dateStr}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.no-break'] }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.body.removeChild(element);
+            }).catch(err => {
+                console.error('html2pdf error:', err);
+                document.body.removeChild(element);
+                triggerPrintWindow(printContent);
+            });
+        } else {
+            document.body.removeChild(element);
+            triggerPrintWindow(printContent);
+        }
+    } catch (err) {
+        console.error('Export PDF error:', err);
+        alert('Gagal mengexport PDF: ' + err.message);
+    }
+}
+
+function exportRekamMedisWord() {
+    try {
+        const select = document.getElementById('checkup-pasien-select');
+        const patientName = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex].text.split('(')[0].trim() : 'Pasien';
+
+        if (!select || !select.value) {
+            alert('Pilih pasien terlebih dahulu untuk mengexport rekam medis!');
+            return;
+        }
+
+        const printContent = generateRekamMedisPrintHTML(patientName);
+
+        const header = "<html xmlns:o='urn:schemas-microsoft-microsoft-com:office:office' " +
+            "xmlns:w='urn:schemas-microsoft-microsoft-com:office:word' " +
+            "xmlns='http://www.w3.org/TR/REC-html40'>" +
+            "<head><meta charset='utf-8'><title>Kartu Rekam Medis</title></head><body>";
+        const footer = "</body></html>";
+        const sourceHTML = header + printContent + footer;
+
+        const source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        const fileDownload = document.createElement("a");
+        document.body.appendChild(fileDownload);
+        fileDownload.href = source;
+        fileDownload.download = `Rekam_Medis_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.doc`;
+        fileDownload.click();
+        document.body.removeChild(fileDownload);
+    } catch (err) {
+        console.error('Export Word error:', err);
+        alert('Gagal mengexport Word: ' + err.message);
     }
 }
 

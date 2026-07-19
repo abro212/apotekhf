@@ -652,22 +652,26 @@
                     </div>
                 </section>
 
-                <!-- 8. VIEW: REKAM KESEHATAN -->
+                <!-- 8. VIEW: REKAM KESEHATAN & REKAM MEDIS -->
                 <section id="view-cek-kesehatan" class="hidden">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                        <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main);">🩺 Layanan & Rekam Kontrol Kesehatan</h3>
-                        <button class="btn btn-primary" onclick="showAddPasienModal()">✚ Daftar Pasien Baru</button>
+                        <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <span>🩺</span> Layanan & Rekam Medis Kontrol Kesehatan
+                        </h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary" onclick="showAddPasienModal()">✚ Daftar Pasien Baru</button>
+                        </div>
                     </div>
 
                     <div class="pembelian-layout">
                         <!-- Left Side: Form Checkup -->
                         <div class="view-card" style="margin-bottom: 0;">
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color);">
-                                📝 Form Catatan Pemeriksaan Pasien
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                                <span>📝</span> Form Catatan Pemeriksaan Pasien
                             </h3>
 
                             <div class="form-group">
-                                <label>Pilih Pasien</label>
+                                <label style="font-weight: 700;">Pilih Pasien</label>
                                 <select id="checkup-pasien-select" class="form-control" onchange="checkupChangePasien()"></select>
                             </div>
 
@@ -708,15 +712,34 @@
                             </button>
                         </div>
 
-                        <!-- Right Side: History Log -->
-                        <div class="view-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-                            <div>
-                                <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
-                                    <span>📋 Riwayat Rekam Medis</span>
-                                    <span id="checkup-patient-name-badge" class="badge badge-info">-</span>
-                                </h3>
-                                <div id="checkup-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 480px; overflow-y: auto; padding-right: 4px;"></div>
+                        <!-- Right Side: History Log & Export -->
+                        <div class="view-card" style="margin-bottom: 0; display: flex; flex-direction: column;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                                <div>
+                                    <h3 style="font-size: 15px; font-weight: 700; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                                        <span>📋</span> Riwayat Rekam Medis Pasien
+                                    </h3>
+                                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                        Pasien: <strong id="checkup-patient-name-badge" style="color: var(--primary-color);">-</strong>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <button class="btn btn-secondary" onclick="exportRekamMedisPDF()" style="padding: 6px 12px; font-size: 11.5px; font-weight: 700;" title="Export Kartu Rekam Medis ke PDF">
+                                        📄 Export PDF
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="exportRekamMedisWord()" style="padding: 6px 12px; font-size: 11.5px; font-weight: 700;" title="Export Kartu Rekam Medis ke Word (DOC)">
+                                        📝 Export Word
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- Search Filter within Patient History -->
+                            <div style="margin-bottom: 12px;">
+                                <input type="text" id="checkup-history-search" class="form-control" placeholder="🔍 Cari keluhan, obat, atau tanggal..." onkeyup="filterCheckupHistoryList()" style="font-size: 12px; height: 34px;">
+                            </div>
+
+                            <!-- History Container List -->
+                            <div id="checkup-history-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 440px; overflow-y: auto; padding-right: 4px;"></div>
                         </div>
                     </div>
                 </section>
