@@ -1511,7 +1511,10 @@ body {
     }
 
     .pos-section-wrapper {
-        padding: 12px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
