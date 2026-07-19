@@ -4300,6 +4300,7 @@ async function loadKasLedger(page = currentKasPage, pageSize = currentKasPageSiz
 
     if (!supabaseClient) return;
     const q = document.getElementById('kas-search-input')?.value.trim() || '';
+    const filterJenis = document.getElementById('kas-filter-jenis')?.value || 'ALL';
     const tbody = document.getElementById('kas-table-body');
     const mobileList = document.getElementById('kas-mobile-list');
 
@@ -4314,6 +4315,10 @@ async function loadKasLedger(page = currentKasPage, pageSize = currentKasPageSiz
 
         if (q) {
             query = query.or(`kategori.ilike.%${q}%,keterangan.ilike.%${q}%,id_kas.ilike.%${q}%`);
+        }
+
+        if (filterJenis && filterJenis !== 'ALL') {
+            query = query.eq('jenis_kas', filterJenis);
         }
 
         const { data: list, count, error } = await query.order('tanggal', { ascending: false }).range(from, to);
@@ -4344,48 +4349,70 @@ async function loadKasLedger(page = currentKasPage, pageSize = currentKasPageSiz
             const countBadge = document.getElementById('kas-count-badge');
             if (countBadge) countBadge.textContent = `${count !== null ? count : list.length} Mutasi`;
 
-            list.forEach(k => {
-                const isOut = k.jenis_kas === 'KELUAR';
-                const amtColor = isOut ? '#dc2626' : '#16a34a';
-                const badgeBg = isOut ? '#fef2f2' : '#ecfdf5';
-
-                // Desktop Row
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${k.id_kas}</strong></td>
-                    <td>${k.tanggal || '-'}</td>
-                    <td><span class="badge" style="background:${badgeBg}; color:${amtColor};">${k.jenis_kas}</span></td>
-                    <td>${k.kategori || '-'}</td>
-                    <td style="font-weight:700; color:${amtColor};">${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}</td>
-                    <td>${k.keterangan || '-'}</td>
-                    <td>${k.user || '-'}</td>
-                `;
-                tbody.appendChild(tr);
-
-                // Mobile Card
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data mutasi kas.</td></tr>';
                 if (mobileList) {
-                    const card = document.createElement('div');
-                    card.className = 'price-card-mobile';
-                    card.innerHTML = `
-                        <div class="price-card-header">
-                            <div>
-                                <div class="price-card-title" style="font-size:13px;">${k.kategori || 'Mutasi Kas'}</div>
-                                <div class="price-card-sub">🆔 ${k.id_kas} • ${k.tanggal}</div>
-                            </div>
-                            <strong style="color:${amtColor}; font-size:14px;">${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}</strong>
-                        </div>
-                        <div style="font-size:11.5px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:6px; align-items:center;">
-                            <span>Petugas: ${k.user || '-'}</span>
-                            <span class="badge" style="background:${badgeBg}; color:${amtColor}; font-size:10px;">${k.jenis_kas}</span>
-                        </div>
-                        ${k.keterangan ? `<div style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px;">📝 ${k.keterangan}</div>` : ''}
-                    `;
-                    mobileList.appendChild(card);
+                    mobileList.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:13px;">Tidak ada data mutasi kas.</div>';
                 }
-            });
+            } else {
+                list.forEach(k => {
+                    const isOut = k.jenis_kas === 'KELUAR';
+                    const amtColor = isOut ? '#dc2626' : '#16a34a';
+                    const badgeBg = isOut ? '#fef2f2' : '#ecfdf5';
 
-            const totalPages = Math.ceil((count !== null ? count : list.length) / pageSize);
-            renderPaginationControls('kas-pagination', page, totalPages, pageSize, 'loadKasLedger');
+                    // Desktop Row
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong style="font-family:monospace; color:var(--primary-color);">${k.id_kas}</strong></td>
+                        <td>${k.tanggal || '-'}</td>
+                        <td><span class="badge" style="background:${badgeBg}; color:${amtColor}; font-weight:700;">${k.jenis_kas}</span></td>
+                        <td><strong>${k.kategori || '-'}</strong></td>
+                        <td style="font-weight:800; color:${amtColor};">${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}</td>
+                        <td>${k.keterangan || '-'}</td>
+                        <td>${k.user || '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    // Mobile Card
+                    if (mobileList) {
+                        const card = document.createElement('div');
+                        card.className = 'price-card-mobile';
+                        card.style.cssText = 'background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);';
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                                    <div style="font-weight: 800; font-size: 14px; color: var(--text-main); margin-bottom: 2px;">${k.kategori || 'Mutasi Kas'}</div>
+                                    <div style="font-size: 11.5px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                        <span style="font-family: monospace; font-weight: 700; color: var(--primary-color);">#${k.id_kas}</span>
+                                        <span>•</span>
+                                        <span>📅 ${k.tanggal || '-'}</span>
+                                    </div>
+                                </div>
+                                <span class="badge" style="background:${badgeBg}; color:${amtColor}; font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 6px; flex-shrink: 0;">
+                                    ${isOut ? '🔴 KELUAR' : '🟢 MASUK'}
+                                </span>
+                            </div>
+
+                            ${k.keterangan ? `
+                                <div style="background: var(--bg-main); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; font-size: 12px; color: var(--text-main); line-height: 1.4; border-left: 3px solid ${amtColor};">
+                                    ${k.keterangan}
+                                </div>
+                            ` : ''}
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-top: 4px; border-top: 1px dashed var(--border-color);">
+                                <span style="color: var(--text-muted); font-size: 11.5px;">👤 Petugas: <strong>${k.user || '-'}</strong></span>
+                                <strong style="color: ${amtColor}; font-size: 15.5px; font-weight: 800;">
+                                    ${isOut ? '-' : '+'} Rp ${formatMoney(parseFloat(k.jumlah || 0))}
+                                </strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(card);
+                    }
+                });
+
+                const totalPages = Math.ceil((count !== null ? count : list.length) / pageSize);
+                renderPaginationControls('kas-pagination', page, totalPages, pageSize, 'loadKasLedger');
+            }
         }
     } catch (e) {
         console.error('Error loading kas ledger:', e);

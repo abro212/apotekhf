@@ -823,27 +823,39 @@
                 <!-- 10. VIEW: KAS OPERASIONAL -->
                 <section id="view-kas" class="hidden">
                     <!-- Summary Cards -->
-                    <div class="report-cards-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Total Kas Masuk (Pemasukan)</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: #16a34a; margin: 0;" id="kas-summary-masuk">Rp 0</h2>
+                    <div class="report-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+                        <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid #16a34a;">
+                            <div style="font-size: 24px; margin-bottom: 2px;">📈</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Total Kas Masuk (Pemasukan)</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: #16a34a; margin: 0;" id="kas-summary-masuk">Rp 0</h2>
                         </div>
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Total Kas Keluar (Pengeluaran)</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: #dc2626; margin: 0;" id="kas-summary-keluar">Rp 0</h2>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid #dc2626;">
+                            <div style="font-size: 24px; margin-bottom: 2px;">📉</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Total Kas Keluar (Pengeluaran)</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: #dc2626; margin: 0;" id="kas-summary-keluar">Rp 0</h2>
                         </div>
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Saldo Kas Netto</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="kas-summary-saldo">Rp 0</h2>
+                        <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid var(--primary-color);">
+                            <div style="font-size: 24px; margin-bottom: 2px;">⚖️</div>
+                            <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Saldo Kas Netto</h4>
+                            <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="kas-summary-saldo">Rp 0</h2>
                         </div>
                     </div>
 
                     <div class="view-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
-                            <input type="text" id="kas-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari kategori, keterangan, atau ID Kas..." oninput="loadKasLedger(1)">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <span class="badge badge-info" id="kas-count-badge">0 Mutasi</span>
-                                <button class="btn btn-primary" onclick="showAddKasModal()">✚ Mutasi Kas</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 8px; flex: 1; min-width: 260px; flex-wrap: wrap;">
+                                <input type="text" id="kas-search-input" class="form-control" style="flex: 1; min-width: 180px;" placeholder="🔍 Cari kategori, keterangan, ID..." oninput="loadKasLedger(1)">
+                                <select id="kas-filter-jenis" class="form-control" style="width: 135px;" onchange="loadKasLedger(1)">
+                                    <option value="ALL">Semua Tipe</option>
+                                    <option value="MASUK">🟢 Masuk</option>
+                                    <option value="KELUAR">🔴 Keluar</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                                <span class="badge badge-info" id="kas-count-badge" style="font-size: 12px; padding: 6px 12px;">0 Mutasi</span>
+                                <button class="btn btn-primary" style="font-weight: 700; padding: 8px 16px; display: flex; align-items: center; gap: 6px;" onclick="showAddKasModal()">
+                                    <span>✚</span> Mutasi Kas
+                                </button>
                             </div>
                         </div>
 
@@ -866,7 +878,7 @@
                         </div>
 
                         <!-- Mobile Card List -->
-                        <div id="kas-mobile-list" class="report-shift-mobile-container"></div>
+                        <div id="kas-mobile-list" class="mobile-only-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
                         <div id="kas-pagination"></div>
                     </div>
                 </section>
