@@ -1263,6 +1263,53 @@
         </div>
     </div>
 
+    <!-- Retur Penjualan Modal -->
+    <div id="modal-retur-penjualan" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 550px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #dc2626;">↩️ Retur Barang Penjualan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-retur-penjualan')">✕ Tutup</button>
+            </div>
+            
+            <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;">
+                <p style="margin-bottom: 4px;"><strong>ID Penjualan:</strong> <span id="retur-info-id">-</span></p>
+                <p style="margin-bottom: 4px;"><strong>Tanggal Transaksi:</strong> <span id="retur-info-tanggal">-</span></p>
+                <p style="margin-bottom: 0;"><strong>Pelanggan:</strong> <span id="retur-info-pelanggan">-</span></p>
+            </div>
+
+            <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 10px;">Pilih Item yang Diretur:</h4>
+            <div class="table-container" style="max-height: 220px; overflow-y: auto; margin-bottom: 15px;">
+                <table class="data-table" style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>Nama Obat</th>
+                            <th>Qty Jual</th>
+                            <th>Qty Retur</th>
+                            <th>Harga Satuan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="retur-items-body"></tbody>
+                </table>
+            </div>
+
+            <div class="form-group">
+                <label>Alasan Retur / Catatan</label>
+                <input type="text" id="retur-alasan" class="form-control" placeholder="Contoh: Barang kadaluarsa, salah beli, kemasan rusak..." required>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <div style="font-size: 13px;">
+                    <span style="color: var(--text-muted);">Total Pengembalian:</span>
+                    <strong style="color: #dc2626; font-size: 16px; margin-left: 6px;" id="retur-grand-total">Rp 0</strong>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-retur-penjualan')">Batal</button>
+                    <button type="button" class="btn btn-danger" onclick="submitReturPenjualan()">↩️ Proses Retur & Tambah Stok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- BARCODE / QR SCANNER MODAL -->
     <div id="modal-barcode-scanner" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 440px; text-align: center; padding: 20px;">

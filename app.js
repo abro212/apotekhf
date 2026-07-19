@@ -1340,7 +1340,10 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
                     <td><span class="badge" style="${metodeBadge}">${tx.metode_bayar}</span></td>
                     <td><strong>Rp ${formatMoney(tx.total_bayar)}</strong></td>
                     <td>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showReceiptDetail('${encId}')">Detail</button>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showReceiptDetail('${encId}')">Struk</button>
+                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="openReturPenjualanModal('${encId}')">↩️ Retur</button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1349,21 +1352,22 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
                 if (mobileList) {
                     const card = document.createElement('div');
                     card.className = 'price-card-mobile';
-                    card.onclick = () => showReceiptDetail(tx.id_jual);
-                    card.style.cursor = 'pointer';
                     card.innerHTML = `
-                        <div class="price-card-header">
+                        <div class="price-card-header" onclick="showReceiptDetail('${tx.id_jual}')" style="cursor:pointer;">
                             <div style="flex:1; min-width:0;">
                                 <div class="price-card-title" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${tx.id_jual}</div>
                                 <div class="price-card-sub">${tx.tanggal}</div>
                             </div>
                             <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(tx.total_bayar)}</strong>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
                             <div style="font-size:11px; color:var(--text-muted);">
                                 👤 ${tx.nama_pelanggan || 'UMUM'} • 🧑‍💼 ${tx.user || '-'}
                             </div>
-                            <span class="badge" style="${metodeBadge} font-size:10px;">${tx.metode_bayar}</span>
+                            <div style="display:flex; gap:6px; align-items:center;">
+                                <span class="badge" style="${metodeBadge} font-size:10px;">${tx.metode_bayar}</span>
+                                <button class="btn btn-danger" style="padding:3px 8px; font-size:10.5px;" onclick="openReturPenjualanModal('${encId}')">↩️ Retur</button>
+                            </div>
                         </div>
                     `;
                     mobileList.appendChild(card);
@@ -1439,6 +1443,164 @@ function printReceipt() {
 
 function closeReceiptModal() {
     document.getElementById('modal-receipt').classList.add('hidden');
+}
+
+// --------------------------------------------------------------------------
+// RETUR PENJUALAN LOGIC (RESTORE STOCK + LOG RETUR)
+// --------------------------------------------------------------------------
+let currentReturTx = null;
+let currentReturItems = [];
+
+async function openReturPenjualanModal(encId) {
+    const id_jual = decodeURIComponent(encId);
+    if (!supabaseClient || !id_jual) return;
+
+    try {
+        const { data: tx } = await supabaseClient.from('transaksi_jual').select('*').eq('id_jual', id_jual).single();
+        const { data: details } = await supabaseClient.from('detail_jual').select('*').eq('id_jual', id_jual);
+
+        if (!tx || !details || details.length === 0) {
+            alert('Data transaksi tidak ditemukan.');
+            return;
+        }
+
+        currentReturTx = tx;
+        currentReturItems = details;
+
+        document.getElementById('retur-info-id').textContent = tx.id_jual;
+        document.getElementById('retur-info-tanggal').textContent = tx.tanggal;
+        document.getElementById('retur-info-pelanggan').textContent = tx.nama_pelanggan || 'UMUM';
+        document.getElementById('retur-alasan').value = '';
+
+        const tbody = document.getElementById('retur-items-body');
+        tbody.innerHTML = '';
+
+        details.forEach((d, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${d.nama_obat}</strong> <div style="font-size:11px; color:var(--text-muted);">${d.satuan_dipilih || 'Pcs'}</div></td>
+                <td>${d.jumlah_beli}</td>
+                <td>
+                    <input type="number" id="retur-qty-${idx}" class="form-control" value="0" min="0" max="${d.jumlah_beli}" style="width:65px; text-align:center; padding:2px;" oninput="calculateReturTotal()">
+                </td>
+                <td>Rp ${formatMoney(d.harga_satuan)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        calculateReturTotal();
+        document.getElementById('modal-retur-penjualan').classList.remove('hidden');
+
+    } catch (e) {
+        console.error('Error opening retur modal:', e);
+        alert('Gagal memuat data retur.');
+    }
+}
+
+function calculateReturTotal() {
+    let grandTotal = 0;
+    if (currentReturItems) {
+        currentReturItems.forEach((d, idx) => {
+            const input = document.getElementById(`retur-qty-${idx}`);
+            const qtyRetur = parseFloat(input?.value) || 0;
+            const subtotal = qtyRetur * parseFloat(d.harga_satuan || 0);
+            grandTotal += subtotal;
+        });
+    }
+    document.getElementById('retur-grand-total').textContent = `Rp ${formatMoney(grandTotal)}`;
+}
+
+async function submitReturPenjualan() {
+    if (!currentReturTx || !currentReturItems) return;
+
+    const alasan = document.getElementById('retur-alasan').value.trim();
+    if (!alasan) {
+        alert('Harap isi alasan / catatan retur!');
+        return;
+    }
+
+    const itemsToRetur = [];
+    currentReturItems.forEach((d, idx) => {
+        const input = document.getElementById(`retur-qty-${idx}`);
+        const qtyRetur = parseFloat(input?.value) || 0;
+        if (qtyRetur > 0) {
+            itemsToRetur.push({
+                detail: d,
+                qtyRetur: qtyRetur
+            });
+        }
+    });
+
+    if (itemsToRetur.length === 0) {
+        alert('Harap masukkan minimal 1 barang dengan Qty Retur > 0!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        for (const item of itemsToRetur) {
+            const d = item.detail;
+            const qtyRetur = item.qtyRetur;
+
+            // 1. Catat ke tabel retur_jual
+            const id_retur = 'R' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            const { error: returErr } = await supabaseClient.from('retur_jual').insert([{
+                id_retur,
+                id_jual: currentReturTx.id_jual,
+                id_obat: d.id_obat,
+                nama_obat: d.nama_obat,
+                jumlah_retur: String(qtyRetur),
+                satuan_retur: d.satuan_dipilih || 'Pcs',
+                alasan_retur: alasan,
+                tanggal_retur: dateStr,
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+
+            if (returErr) throw returErr;
+
+            // 2. KEMBALIKAN STOK: Ambil stok saat ini dari master_obat dan tambahkan kembali
+            const { data: med } = await supabaseClient.from('master_obat').select('stok_unit_kecil').eq('id_obat', d.id_obat).single();
+            if (med) {
+                const currentStock = parseFloat(med.stok_unit_kecil || 0);
+                // Hitung konversi jika ada, default 1
+                const konversi = parseFloat(d.konversi_satuan || 1);
+                const addedStock = qtyRetur * konversi;
+                const newStock = currentStock + addedStock;
+
+                const { error: updateErr } = await supabaseClient.from('master_obat').update({
+                    stok_unit_kecil: String(newStock)
+                }).eq('id_obat', d.id_obat);
+
+                if (updateErr) console.error('Error updating stock on retur:', updateErr);
+            }
+        }
+
+        // 3. Catat Mutasi Kas Keluar untuk Pengembalian Uang Retur
+        let totalPengembalian = 0;
+        itemsToRetur.forEach(item => {
+            totalPengembalian += item.qtyRetur * parseFloat(item.detail.harga_satuan || 0);
+        });
+
+        await supabaseClient.from('kas').insert([{
+            id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            tanggal: dateStr,
+            jenis_kas: 'KELUAR',
+            kategori: 'Pengembalian Retur Penjualan',
+            jumlah: String(totalPengembalian),
+            keterangan: `Retur Nota ${currentReturTx.id_jual}: ${alasan}`,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        alert('✅ Retur barang berhasil diproses! Stok obat telah ditambahkan kembali.');
+        closeModal('modal-retur-penjualan');
+        loadRiwayatPenjualan();
+
+    } catch (e) {
+        console.error('Error processing retur:', e);
+        alert('Gagal memproses retur barang.');
+    }
 }
 
 // --------------------------------------------------------------------------
