@@ -93,6 +93,9 @@
     <!-- MAIN APP SHELL (Hidden during login) -->
     <div class="app-container hidden" id="main-app-shell">
         
+        <!-- Mobile Sidebar Backdrop Overlay -->
+        <div class="sidebar-overlay hidden" id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
         <!-- Modern SaaS Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-brand" style="display: flex; align-items: center; gap: 10px;">
@@ -198,6 +201,13 @@
             <!-- Sticky Header -->
             <header class="header">
                 <div class="header-left" style="display: flex; align-items: center; gap: 10px;">
+                    <button type="button" class="btn-hamburger" id="hamburger-btn" onclick="toggleMobileSidebar()" aria-label="Buka Menu Sidebar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 22px; height: 22px;">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
                     <img src="logo_hf.png" alt="Logo APOTEK HF" class="mobile-brand-logo" style="height: 28px; width: auto; object-fit: contain; display: none;" title="APOTEK HF">
                     <h1 id="page-title">Dashboard</h1>
                 </div>

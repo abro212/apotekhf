@@ -1192,6 +1192,59 @@ body {
         font-weight: 700;
     }
 
+/* Hamburger Button (Desktop Hidden) */
+.btn-hamburger {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-main);
+    padding: 6px;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.btn-hamburger:hover {
+    background-color: var(--bg-hover);
+}
+
+@media (max-width: 768px) {
+    .btn-hamburger {
+        display: inline-flex !important;
+    }
+
+    .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 998;
+        transition: opacity 0.25s ease;
+    }
+
+    .sidebar {
+        display: flex !important;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 999 !important;
+        position: fixed !important;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 270px !important;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0) !important;
+    }
+
     .mobile-brand-logo {
         display: block !important;
     }

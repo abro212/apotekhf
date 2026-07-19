@@ -377,6 +377,9 @@ function switchView(viewId) {
         currentView = viewId;
     }
     
+    // Close mobile drawer on view switch
+    closeMobileSidebar();
+
     // Toggle mobile bottom nav visibility
     const mNav = document.getElementById('mobile-bottom-nav');
     if (mNav) {
@@ -444,6 +447,26 @@ function switchView(viewId) {
     if (viewId === 'view-kas') loadKasLedger();
     if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
     if (viewId === 'view-info') loadInfoStats();
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!sidebar) return;
+
+    if (sidebar.classList.contains('mobile-open')) {
+        closeMobileSidebar();
+    } else {
+        sidebar.classList.add('mobile-open');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+}
+
+function closeMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (overlay) overlay.classList.add('hidden');
 }
 
 // --------------------------------------------------------------------------
