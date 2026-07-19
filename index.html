@@ -239,12 +239,12 @@
                     </div>
 
                     <!-- Main Dashboard Layout -->
-                    <div class="dashboard-main-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
-                        <!-- Left: Dashboard Analytics Charts -->
-                        <div style="display: flex; flex-direction: column; gap: 20px;">
-                            <!-- 1. Tren Penjualan (Flexible Period & Custom Date) -->
-                            <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                    <div class="dashboard-main-layout" style="display: flex; flex-direction: column; gap: 24px;">
+                        <!-- TOP ROW: Tren Penjualan & Stok Obat Menipis -->
+                        <div class="dash-top-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: stretch;">
+                            <!-- 1. Tren Penjualan -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color); display: flex; flex-direction: column; justify-content: space-between;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
                                     <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0; display: flex; align-items: center; gap: 8px;" id="dash-sales-trend-title">
                                         📈 Tren Penjualan
                                     </h3>
@@ -267,59 +267,71 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div style="position: relative; height: 220px; width: 100%;">
+                                <div style="position: relative; height: 210px; width: 100%;">
                                     <canvas id="chart-sales-trend"></canvas>
                                 </div>
                             </div>
 
-                            <!-- 2. Dual Sub-Charts: Metode Pembayaran & Top 5 Obat Terlaris -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
-                                <!-- Daftar Piutang Terlama -->
-                                <div class="view-card" style="padding: 20px; border-top: 3px solid #f59e0b;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
-                                        <h3 style="font-size: 14px; font-weight: 700; color: #b45309; margin: 0; display: flex; align-items: center; gap: 8px;">
-                                            ⏳ Piutang Pelanggan Terlama
-                                        </h3>
-                                        <span class="badge" style="background:#fffbeb; color:#b45309; border: 1px solid #fde68a; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-menu-tagihan')" title="Klik untuk mengelola Piutang">
-                                            Lihat Semua ➔
-                                        </span>
-                                    </div>
-                                    <div id="dash-oldest-piutang-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; max-height: 210px; overflow-y: auto;">
-                                        <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
-                                    </div>
-                                </div>
-
-                                <!-- Top 5 Obat Terlaris -->
-                                <div class="view-card" style="padding: 20px; border-top: 3px solid #10b981;">
-                                    <h3 style="font-size: 14px; font-weight: 700; color: #047857; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
-                                        🏆 Top 5 Produk Obat Terlaris
+                            <!-- 2. Low Stock Alert Widget -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid #ef4444; display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 8px; margin: 0;">
+                                        ⚠️ Stok Obat Menipis
                                     </h3>
-                                    <div id="dash-top-products-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px;">
-                                        <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
-                                    </div>
+                                    <span class="badge" style="background:#fef2f2; color:#ef4444; border: 1px solid #fecaca; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-master-obat')" title="Klik untuk mengelola Stok Master Obat">
+                                        Detail ➔
+                                    </span>
+                                </div>
+                                <div id="dash-lowstock-list" style="display: flex; flex-direction: column; gap: 10px; flex: 1; max-height: 210px; overflow-y: auto; font-size: 12.5px; padding-right: 2px;">
+                                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Right: Sidebar widgets -->
-                        <div style="display: flex; flex-direction: column; gap: 20px;">
-                            <!-- Low Stock alert -->
-                            <div class="view-card" style="padding: 20px; border-top: 3px solid #ef4444;">
-                                <h3 style="font-size: 14px; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                    ⚠️ Stok Obat Menipis
-                                </h3>
-                                <div id="dash-lowstock-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; font-size: 13px;">
-                                    <div style="color: var(--text-muted); text-align: center; padding: 10px;">Mengambil data...</div>
+                        <!-- BOTTOM ROW: 3 Equal-Width Precision Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; align-items: stretch;">
+                            <!-- Card 1: Piutang Pelanggan Terlama -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid #f59e0b; display: flex; flex-direction: column; height: 100%; min-height: 310px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #b45309; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        ⏳ Piutang Pelanggan Terlama
+                                    </h3>
+                                    <span class="badge" style="background:#fffbeb; color:#b45309; border: 1px solid #fde68a; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-menu-tagihan')" title="Klik untuk mengelola Piutang">
+                                        Lihat Semua ➔
+                                    </span>
+                                </div>
+                                <div id="dash-oldest-piutang-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; flex: 1; max-height: 230px; overflow-y: auto; padding-right: 2px;">
+                                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
                                 </div>
                             </div>
 
-                            <!-- Recent sales -->
-                            <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color);">
-                                <h3 style="font-size: 14px; font-weight: 700; color: var(--primary-color); display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                                    🕒 Penjualan Terbaru
-                                </h3>
-                                <div id="dash-recent-sales" style="display: flex; flex-direction: column; gap: 10px; max-height: 250px; overflow-y: auto; font-size: 13px;">
-                                    <div style="color: var(--text-muted); text-align: center; padding: 10px;">Mengambil data...</div>
+                            <!-- Card 2: Top 5 Produk Obat Terlaris -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid #10b981; display: flex; flex-direction: column; height: 100%; min-height: 310px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: #047857; margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        🏆 Top 5 Produk Obat Terlaris
+                                    </h3>
+                                    <span class="badge" style="background:#ecfdf5; color:#047857; border: 1px solid #a7f3d0; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-master-obat')" title="Klik untuk melihat Data Obat">
+                                        Obat ➔
+                                    </span>
+                                </div>
+                                <div id="dash-top-products-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; flex: 1; max-height: 230px; overflow-y: auto; padding-right: 2px;">
+                                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
+                                </div>
+                            </div>
+
+                            <!-- Card 3: Penjualan Terbaru -->
+                            <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color); display: flex; flex-direction: column; height: 100%; min-height: 310px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
+                                    <h3 style="font-size: 14px; font-weight: 700; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                        🕒 Penjualan Terbaru
+                                    </h3>
+                                    <span class="badge" style="background:#f0fdf4; color:var(--primary-color); border: 1px solid #bbf7d0; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-menu-penjualan')" title="Klik untuk Riwayat Penjualan">
+                                        Riwayat ➔
+                                    </span>
+                                </div>
+                                <div id="dash-recent-sales" style="display: flex; flex-direction: column; gap: 10px; flex: 1; max-height: 230px; overflow-y: auto; font-size: 12.5px; padding-right: 2px;">
+                                    <div style="color: var(--text-muted); text-align: center; padding: 20px;">Mengambil data...</div>
                                 </div>
                             </div>
                         </div>

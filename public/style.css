@@ -1283,8 +1283,11 @@ body {
     }
     
     .dashboard-main-layout {
-        grid-template-columns: 1fr !important;
         gap: 16px;
+    }
+
+    .dash-top-row {
+        grid-template-columns: 1fr !important;
     }
 
     /* Glassmorphism Mobile Bottom Navigation */
