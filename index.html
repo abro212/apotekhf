@@ -891,7 +891,8 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-preview-obat')">Tutup</button>
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-preview-obat'); editObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">✏️ Edit Obat</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-preview-obat'); deleteObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">🗑️ Hapus Obat</button>
             </div>
         </div>
     </div>
