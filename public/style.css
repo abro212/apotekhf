@@ -1663,4 +1663,23 @@ body {
     color: var(--text-main);
 }
 
+/* RESPONSIVE TABLE VS MOBILE LIST VISIBILITY */
+@media(min-width: 769px) {
+    .desktop-only-table {
+        display: block !important;
+    }
+    .mobile-only-list {
+        display: none !important;
+    }
+}
+
+@media(max-width: 768px) {
+    .desktop-only-table {
+        display: none !important;
+    }
+    .mobile-only-list {
+        display: flex !important;
+    }
+}
+
 
