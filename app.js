@@ -2946,42 +2946,42 @@ function generateReportPrintHTML() {
 
     return `
         <style>
-            @page { size: A4 landscape; margin: 10mm; }
+            @page { size: A4 landscape; margin: 8mm; }
             * { box-sizing: border-box; }
             body { font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff; margin: 0; padding: 0; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 25px; page-break-inside: auto; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px; table-layout: auto; }
             tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-            td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
+            td, th { page-break-inside: avoid !important; break-inside: avoid !important; word-break: break-word; line-height: 1.4; }
             thead { display: table-header-group; }
             tfoot { display: table-footer-group; }
-            .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+            .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
         </style>
-        <div style="padding: 20px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
+        <div style="padding: 16px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
             <!-- Official Header Banner -->
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 14px; margin-bottom: 16px; page-break-inside: avoid;">
-                <div style="display: flex; align-items: center; gap: 16px;">
-                    <img src="${appLogo}" alt="Logo" style="height: 48px; object-fit: contain;">
+            <div class="no-break" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 12px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <img src="${appLogo}" alt="Logo" style="height: 44px; object-fit: contain;">
                     <div>
-                        <h1 style="font-size: 20px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
-                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appAddress} • Sulawesi Selatan, Indonesia</div>
-                        <div style="font-size: 11px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
+                        <h1 style="font-size: 19px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${appAddress}</div>
+                        <div style="font-size: 10.5px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
                     </div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 15px; font-weight: 800; color: #0f172a;">${typeLabel.toUpperCase()}</div>
-                    <div style="font-size: 11px; color: #475569; margin-top: 3px;">Periode: <strong>${startDateVal}</strong> s/d <strong>${endDateVal}</strong></div>
-                    <div style="font-size: 10.5px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #0f172a;">${typeLabel.toUpperCase()}</div>
+                    <div style="font-size: 10.5px; color: #475569; margin-top: 3px;">Periode: <strong>${startDateVal}</strong> s/d <strong>${endDateVal}</strong></div>
+                    <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
                 </div>
             </div>
 
             <!-- Meta Details Bar -->
-            <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; margin-bottom: 16px; font-size: 11.5px; page-break-inside: avoid;">
+            <div class="no-break" style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 7px 12px; margin-bottom: 14px; font-size: 11px;">
                 <div>Staf Pengunduh: <strong>${printedBy}</strong></div>
                 <div>Status Dokumen: <span style="color: #10b981; font-weight: 700;">🟢 Terverifikasi Sistem</span></div>
             </div>
 
             <!-- Main Data Table -->
-            <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; margin-bottom: 25px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 20px;">
                 <thead>
                     ${tableHeadHTML}
                 </thead>
@@ -2994,14 +2994,14 @@ function generateReportPrintHTML() {
             </table>
 
             <!-- Footer Signature Block -->
-            <div class="signature-block" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; page-break-inside: avoid;">
-                <div style="font-size: 10.5px; color: #94a3b8;">
+            <div class="no-break" style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 24px;">
+                <div style="font-size: 10px; color: #94a3b8;">
                     <div>* Laporan ini dihasilkan secara otomatis oleh sistem ${appName}.</div>
                     <div>* Keabsahan dokumen sah tanpa tanda tangan basah jika dicetak dari akun terdaftar.</div>
                 </div>
                 <div style="text-align: center; min-width: 180px;">
-                    <div style="font-size: 11.5px; color: #475569; margin-bottom: 45px;">Makassar, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Penanggung Jawab Apotek</div>
-                    <div style="font-weight: 800; font-size: 12.5px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Manager'} )</div>
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 40px;">${appAddress}, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Penanggung Jawab Apotek</div>
+                    <div style="font-weight: 800; font-size: 12px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Manager'} )</div>
                 </div>
             </div>
         </div>
@@ -3023,12 +3023,12 @@ function exportLaporanPDF() {
 
         if (typeof html2pdf !== 'undefined') {
             const opt = {
-                margin: [8, 8, 8, 8],
+                margin: [6, 6, 6, 6],
                 filename: `Laporan_${typeVal}_${appName.replace(/\s+/g, '_')}_${dateStr}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, logging: false },
+                html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.no-break'] }
             };
 
             html2pdf().set(opt).from(element).save().then(() => {
