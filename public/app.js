@@ -362,6 +362,7 @@ function switchView(viewId) {
     if (viewId === 'view-master-obat') loadMasterObat();
     if (viewId === 'view-menu-penjualan') loadRiwayatPenjualan();
     if (viewId === 'view-menu-pembelian') initPembelian();
+    if (viewId === 'view-dokumentasi-faktur') loadDokumentasiFaktur();
     if (viewId === 'view-menu-laporan') loadLaporanView();
     if (viewId === 'view-menu-tagihan') loadTagihanData();
     if (viewId === 'view-menu-stok-opname') initStokOpname();
@@ -2254,6 +2255,153 @@ async function submitBayarTagihan(e) {
     } catch (e) {
         console.error('Error submitting pelunasan:', e);
         alert('Gagal mencatat pembayaran pelunasan.');
+    }
+}
+
+// --------------------------------------------------------------------------
+// DOKUMENTASI FAKTUR PEMBELIAN
+// --------------------------------------------------------------------------
+let currentFakturPage = 1;
+let currentFakturPageSize = 10;
+
+async function loadDokumentasiFaktur(page = currentFakturPage, pageSize = currentFakturPageSize) {
+    currentFakturPage = page;
+    currentFakturPageSize = pageSize;
+
+    if (!supabaseClient) return;
+    const q = document.getElementById('faktur-search-input')?.value.trim() || '';
+    const tbody = document.getElementById('faktur-table-body');
+    const mobileList = document.getElementById('faktur-mobile-list');
+
+    tbody.innerHTML = '';
+    if (mobileList) mobileList.innerHTML = '';
+
+    try {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+
+        let query = supabaseClient.from('faktur_beli').select('*', { count: 'exact' });
+
+        if (q) {
+            query = query.or(`nomor_faktur.ilike.%${q}%,supplier.ilike.%${q}%`);
+        }
+
+        const { data: list, count, error } = await query.order('tanggal_masuk', { ascending: false }).range(from, to);
+
+        if (list) {
+            const countBadge = document.getElementById('faktur-count-badge');
+            if (countBadge) countBadge.textContent = `${count !== null ? count : list.length} Faktur`;
+
+            list.forEach(fk => {
+                const total = parseFloat(fk.total_harga || 0);
+                const metodeBadge = fk.metode_bayar === 'CASH' 
+                    ? 'background:#ecfdf5;color:#10b981;' 
+                    : 'background:#fef3c7;color:#f59e0b;';
+
+                const encNo = encodeURIComponent(fk.nomor_faktur || fk.id_faktur || '');
+
+                // Desktop Row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${fk.nomor_faktur || fk.id_faktur}</strong></td>
+                    <td>${fk.tanggal_masuk || '-'}</td>
+                    <td>${fk.supplier || '-'}</td>
+                    <td><strong>Rp ${formatMoney(total)}</strong></td>
+                    <td><span class="badge" style="${metodeBadge}">${fk.metode_bayar || 'CASH'}</span></td>
+                    <td>${fk.user || '-'}</td>
+                    <td>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showDetailFaktur('${encNo}')">🔍 Detail Item</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Mobile Card
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.onclick = () => showDetailFaktur(fk.nomor_faktur || fk.id_faktur);
+                    card.style.cursor = 'pointer';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div style="flex:1; min-width:0;">
+                                <div class="price-card-title" style="font-size:13px;">Faktur: ${fk.nomor_faktur || fk.id_faktur}</div>
+                                <div class="price-card-sub">📦 ${fk.supplier} • ${fk.tanggal_masuk}</div>
+                            </div>
+                            <strong style="color:var(--primary-color); font-size:14px;">Rp ${formatMoney(total)}</strong>
+                        </div>
+                        <div style="font-size:11.5px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:6px; align-items:center;">
+                            <span>Petugas: ${fk.user || '-'}</span>
+                            <span class="badge" style="${metodeBadge} font-size:10px;">${fk.metode_bayar || 'CASH'}</span>
+                        </div>
+                    `;
+                    mobileList.appendChild(card);
+                }
+            });
+
+            const totalPages = Math.ceil((count !== null ? count : list.length) / pageSize);
+            renderPaginationControls('faktur-pagination', page, totalPages, pageSize, 'loadDokumentasiFaktur');
+        }
+    } catch (e) {
+        console.error('Error loading dokumentasi faktur:', e);
+    }
+}
+
+async function showDetailFaktur(encNo) {
+    const noFaktur = decodeURIComponent(encNo);
+    if (!supabaseClient || !noFaktur) return;
+
+    try {
+        // Fetch Header
+        const { data: header } = await supabaseClient.from('faktur_beli').select('*').or(`nomor_faktur.eq.${noFaktur},id_faktur.eq.${noFaktur}`).single();
+        // Fetch Items from log_beli
+        const { data: items } = await supabaseClient.from('log_beli').select('*').or(`id_faktur.eq.${noFaktur},id_faktur.eq.${header?.id_faktur || noFaktur}`);
+
+        if (header) {
+            document.getElementById('faktur-detail-no').textContent = header.nomor_faktur || header.id_faktur;
+            document.getElementById('faktur-detail-tanggal').textContent = header.tanggal_masuk || '-';
+            document.getElementById('faktur-detail-supplier').textContent = header.supplier || '-';
+            document.getElementById('faktur-detail-metode').textContent = header.metode_bayar || 'CASH';
+            document.getElementById('faktur-detail-total').textContent = `Rp ${formatMoney(parseFloat(header.total_harga || 0))}`;
+            document.getElementById('faktur-detail-user').textContent = header.user || '-';
+        }
+
+        const tbody = document.getElementById('faktur-detail-items-body');
+        tbody.innerHTML = '';
+
+        if (items && items.length > 0) {
+            // Fetch medicine names
+            const medIds = items.map(i => i.id_obat).filter(Boolean);
+            let medMap = {};
+            if (medIds.length > 0) {
+                const { data: meds } = await supabaseClient.from('master_obat').select('id_obat, nama_obat').in('id_obat', medIds);
+                if (meds) meds.forEach(m => medMap[m.id_obat] = m.nama_obat);
+            }
+
+            items.forEach(item => {
+                const qty = parseFloat(item.jumlah_masuk || 0);
+                const price = parseFloat(item.harga_beli_item || 0);
+                const total = parseFloat(item.total_harga || (qty * price));
+                const namaObat = medMap[item.id_obat] || item.id_obat || 'Obat';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${namaObat}</strong></td>
+                    <td><span class="badge badge-info">${item.satuan_masuk || 'Pcs'}</span></td>
+                    <td>${qty}</td>
+                    <td>Rp ${formatMoney(price)}</td>
+                    <td><strong>Rp ${formatMoney(total)}</strong></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Tidak ada rincian item log untuk faktur ini.</td></tr>';
+        }
+
+        document.getElementById('modal-detail-faktur').classList.remove('hidden');
+
+    } catch (e) {
+        console.error('Error opening detail faktur:', e);
+        alert('Gagal memuat detail faktur.');
     }
 }
 

@@ -124,6 +124,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
                     <span>Pembelian Stok</span>
                 </a>
+                <a href="#" class="nav-link" data-target="view-dokumentasi-faktur">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    <span>Dokumentasi Faktur</span>
+                </a>
                 <a href="#" class="nav-link" data-target="view-menu-stok-opname">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
                     <span>Stok Opname</span>
@@ -503,6 +507,38 @@
                             </div>
                         </div>
 
+                    </div>
+                </section>
+
+                <!-- VIEW: DOKUMENTASI FAKTUR PEMBELIAN -->
+                <section id="view-dokumentasi-faktur" class="hidden">
+                    <div class="view-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="faktur-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari nomor faktur atau supplier..." oninput="loadDokumentasiFaktur(1)">
+                            <span class="badge badge-info" id="faktur-count-badge">0 Faktur</span>
+                        </div>
+
+                        <!-- Desktop Table -->
+                        <div class="table-container desktop-only-table">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>No. Faktur</th>
+                                        <th>Tanggal Masuk</th>
+                                        <th>Supplier</th>
+                                        <th>Total Pembelian</th>
+                                        <th>Metode Bayar</th>
+                                        <th>Petugas</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="faktur-table-body"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Mobile Card List -->
+                        <div id="faktur-mobile-list" class="report-shift-mobile-container"></div>
+                        <div id="faktur-pagination"></div>
                     </div>
                 </section>
 
@@ -1119,6 +1155,49 @@
                     <button type="submit" class="btn btn-primary">💵 Simpan Pelunasan</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Detail Faktur Pembelian Modal -->
+    <div id="modal-detail-faktur" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-color);">Detail Faktur Pembelian</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-faktur')">✕ Tutup</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-bottom: 16px; background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div>
+                    <p style="margin-bottom: 6px;"><strong>No. Faktur:</strong> <span id="faktur-detail-no">-</span></p>
+                    <p style="margin-bottom: 6px;"><strong>Tanggal Masuk:</strong> <span id="faktur-detail-tanggal">-</span></p>
+                    <p style="margin-bottom: 0;"><strong>Mitra Supplier:</strong> <span id="faktur-detail-supplier">-</span></p>
+                </div>
+                <div>
+                    <p style="margin-bottom: 6px;"><strong>Metode Bayar:</strong> <span id="faktur-detail-metode" class="badge badge-info">-</span></p>
+                    <p style="margin-bottom: 6px;"><strong>Total Pembelian:</strong> <span id="faktur-detail-total" style="font-weight: 800; color: var(--primary-color);">-</span></p>
+                    <p style="margin-bottom: 0;"><strong>Petugas Input:</strong> <span id="faktur-detail-user">-</span></p>
+                </div>
+            </div>
+
+            <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Rincian Item Obat Masuk</h4>
+            <div class="table-container">
+                <table class="data-table" style="font-size: 12px;">
+                    <thead>
+                        <tr>
+                            <th>Nama Obat</th>
+                            <th>Satuan Masuk</th>
+                            <th>Qty Masuk</th>
+                            <th>Harga Beli Satuan</th>
+                            <th>Total Harga</th>
+                        </tr>
+                    </thead>
+                    <tbody id="faktur-detail-items-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-detail-faktur')">Tutup</button>
+            </div>
         </div>
     </div>
 
