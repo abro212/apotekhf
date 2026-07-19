@@ -225,10 +225,43 @@ body {
     letter-spacing: 0.5px;
 }
 
-.login-card p {
-    color: var(--text-muted);
-    font-size: 13px;
-    margin-bottom: 24px;
+.login-brand-topright {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    z-index: 2;
+}
+
+.login-brand-topright img {
+    height: 38px;
+    width: auto;
+    object-fit: contain;
+}
+
+.login-brand-topright span {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.5px;
+}
+
+.login-lottie-hero {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.login-subtitle {
+    color: #64748b;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 8px;
+    margin-bottom: 22px;
 }
 
 /* PIN Display and Keyboard */
