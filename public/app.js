@@ -3759,36 +3759,84 @@ function renderUserManagementTable(users) {
     if (tbody) tbody.innerHTML = '';
     if (mobileList) mobileList.innerHTML = '';
 
+    // Update Stat Cards
+    const totalCount = userManagementData.length;
+    const adminCount = userManagementData.filter(u => String(u.role || '').toUpperCase() === 'ADMIN').length;
+    const kasirCount = userManagementData.filter(u => String(u.role || '').toUpperCase() === 'KASIR').length;
+    const apotekerCount = userManagementData.filter(u => String(u.role || '').toUpperCase() === 'APOTEKER').length;
+
+    const elTotal = document.getElementById('user-stat-total');
+    const elAdmin = document.getElementById('user-stat-admin');
+    const elKasir = document.getElementById('user-stat-kasir');
+    const elApoteker = document.getElementById('user-stat-apoteker');
+
+    if (elTotal) elTotal.textContent = totalCount;
+    if (elAdmin) elAdmin.textContent = adminCount;
+    if (elKasir) elKasir.textContent = kasirCount;
+    if (elApoteker) elApoteker.textContent = apotekerCount;
+
     if (!users || users.length === 0) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data staf ditemukan.</td></tr>';
-        if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data staf.</div>';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted); font-size:13px;">Tidak ada data staf ditemukan.</td></tr>';
+        if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); font-size:13px;">Tidak ada data staf.</div>';
         return;
     }
 
-    users.forEach(u => {
+    users.forEach((u, idx) => {
         const cleanPin = String(u.pin || '').replace(/\.0$/, '');
         const roleUpper = String(u.role || '').toUpperCase();
-        const roleBadgeStyle = roleUpper === 'ADMIN'
-            ? 'background:#f3e8ff; color:#7e22ce;'
-            : roleUpper === 'APOTEKER'
-                ? 'background:#fef3c7; color:#d97706;'
-                : 'background:#ecfdf5; color:#10b981;';
+        
+        let roleBadgeHTML = '';
+        let avatarBg = '#3b82f6';
+        if (roleUpper === 'ADMIN') {
+            roleBadgeHTML = '<span class="badge" style="background:#f3e8ff; color:#7e22ce; border:1px solid #e9d5ff; font-weight:700; font-size:11px; padding:4px 10px;">🛡️ ADMIN</span>';
+            avatarBg = '#7e22ce';
+        } else if (roleUpper === 'APOTEKER') {
+            roleBadgeHTML = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700; font-size:11px; padding:4px 10px;">💊 APOTEKER</span>';
+            avatarBg = '#d97706';
+        } else {
+            roleBadgeHTML = '<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-weight:700; font-size:11px; padding:4px 10px;">💻 KASIR</span>';
+            avatarBg = '#10b981';
+        }
 
+        const initial = (u.nama_staf || '?').substring(0, 1).toUpperCase();
         const encId = encodeURIComponent(u.id || u.user);
+        const pinToggleId = `pin-val-${idx}`;
 
         // Desktop Table Row
         if (tbody) {
             const tr = document.createElement('tr');
+            tr.style.cssText = 'border-bottom: 1px solid var(--border-color); transition: background 0.15s ease;';
             tr.innerHTML = `
-                <td><strong>${u.id || '-'}</strong></td>
-                <td><strong>${u.nama_staf || '-'}</strong></td>
-                <td><code>${u.user || '-'}</code></td>
-                <td><span class="badge" style="${roleBadgeStyle} font-size:11px;">${roleUpper}</span></td>
-                <td><code>${cleanPin ? '•••• (' + cleanPin + ')' : '-'}</code></td>
-                <td>
-                    <div style="display:flex; gap:6px;">
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openEditUserModal('${encId}')">✏️ Edit</button>
-                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
+                <td style="padding: 12px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:38px; height:38px; border-radius:50%; background:${avatarBg}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;">
+                            ${initial}
+                        </div>
+                        <div>
+                            <div style="font-weight:700; font-size:13.5px; color:var(--text-main);">${u.nama_staf || '-'}</div>
+                            <div style="font-size:11.5px; color:var(--text-muted);">ID: ${u.id || '-'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <code style="background:var(--bg-main); padding:3px 8px; border-radius:6px; font-weight:700; color:var(--primary-color); border:1px solid var(--border-color); font-size:12px;">${u.user || '-'}</code>
+                </td>
+                <td style="padding: 12px 16px;">
+                    ${roleBadgeHTML}
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="${pinToggleId}" style="font-family:monospace; font-weight:700; letter-spacing:2px; font-size:13px;">••••••</span>
+                        <button type="button" class="btn btn-secondary" style="padding:2px 6px; font-size:11px;" onclick="toggleShowPin('${pinToggleId}', '${cleanPin}')" title="Lihat PIN">👁️</button>
+                    </div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:600; font-size:11px;">🟢 Aktif</span>
+                </td>
+                <td style="padding: 12px 16px; text-align: right;">
+                    <div style="display:flex; gap:6px; justify-content:flex-end;">
+                        <button class="btn btn-secondary" style="padding: 5px 10px; font-size: 11.5px; font-weight:600;" onclick="openEditUserModal('${encId}')">✏️ Edit</button>
+                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11.5px; font-weight:600;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
                     </div>
                 </td>
             `;
@@ -3799,17 +3847,30 @@ function renderUserManagementTable(users) {
         if (mobileList) {
             const card = document.createElement('div');
             card.className = 'price-card-mobile';
+            card.style.cssText = 'background:var(--bg-card); border:1px solid var(--border-color); border-radius:12px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,0.04);';
             card.innerHTML = `
-                <div class="price-card-header">
-                    <div>
-                        <div class="price-card-title" style="font-size:14px; font-weight:700;">${u.nama_staf || '-'}</div>
-                        <div class="price-card-sub">Username: <code>${u.user || '-'}</code> • PIN: ${cleanPin || '-'}</div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:50%; background:${avatarBg}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">
+                            ${initial}
+                        </div>
+                        <div>
+                            <div style="font-size:14px; font-weight:700; color:var(--text-main);">${u.nama_staf || '-'}</div>
+                            <div style="font-size:11.5px; color:var(--text-muted);">Username: <code style="color:var(--primary-color); font-weight:700;">${u.user || '-'}</code></div>
+                        </div>
                     </div>
-                    <span class="badge" style="${roleBadgeStyle} font-size:10px;">${roleUpper}</span>
+                    ${roleBadgeHTML}
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:8px;">
-                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="openEditUserModal('${encId}')">✏️ Edit</button>
-                    <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-main); padding:8px 12px; border-radius:8px; border:1px solid var(--border-color); font-size:12px; margin-bottom:10px;">
+                    <span style="color:var(--text-muted);">PIN Akses:</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span id="m-${pinToggleId}" style="font-family:monospace; font-weight:700;">••••••</span>
+                        <button type="button" class="btn btn-secondary" style="padding:1px 5px; font-size:10px;" onclick="toggleShowPin('m-${pinToggleId}', '${cleanPin}')">👁️</button>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:8px;">
+                    <button class="btn btn-secondary" style="flex:1; padding:6px 10px; font-size:12px; font-weight:600;" onclick="openEditUserModal('${encId}')">✏️ Edit Data</button>
+                    <button class="btn btn-danger" style="flex:1; padding:6px 10px; font-size:12px; font-weight:600;" onclick="deleteUser('${encId}')">🗑️ Hapus</button>
                 </div>
             `;
             mobileList.appendChild(card);
@@ -3817,17 +3878,40 @@ function renderUserManagementTable(users) {
     });
 }
 
+function toggleShowPin(elementId, realPin) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    if (el.textContent === '••••••' || el.textContent === '••••') {
+        el.textContent = realPin || '(Kosong)';
+        el.style.color = 'var(--primary-color)';
+    } else {
+        el.textContent = '••••••';
+        el.style.color = 'inherit';
+    }
+}
+
+let currentUserRoleFilter = '';
+function filterUserRole(role) {
+    currentUserRoleFilter = role;
+    filterUserManagementTable();
+}
+
 function filterUserManagementTable() {
     const q = document.getElementById('user-search-input')?.value.toLowerCase().trim() || '';
-    if (!q) {
-        renderUserManagementTable(userManagementData);
-        return;
+    let filtered = userManagementData;
+
+    if (currentUserRoleFilter) {
+        filtered = filtered.filter(u => String(u.role || '').toUpperCase() === currentUserRoleFilter);
     }
-    const filtered = userManagementData.filter(u => 
-        String(u.nama_staf || '').toLowerCase().includes(q) ||
-        String(u.user || '').toLowerCase().includes(q) ||
-        String(u.role || '').toLowerCase().includes(q)
-    );
+
+    if (q) {
+        filtered = filtered.filter(u => 
+            String(u.nama_staf || '').toLowerCase().includes(q) ||
+            String(u.user || '').toLowerCase().includes(q) ||
+            String(u.role || '').toLowerCase().includes(q)
+        );
+    }
+
     renderUserManagementTable(filtered);
 }
 

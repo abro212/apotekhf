@@ -1046,27 +1046,58 @@
 
                     <!-- Panel 2: User Management -->
                     <div id="settings-panel-users" class="hidden">
-                        <div class="view-card" style="margin-bottom: 20px; padding: 15px 20px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 250px;">
-                                    <input type="text" id="user-search-input" class="form-control" placeholder="Cari nama staf atau username..." oninput="filterUserManagementTable()">
+                        <!-- Stat Cards Grid -->
+                        <div class="report-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+                            <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                                <div style="font-size: 22px; margin-bottom: 2px;">👥</div>
+                                <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Staf Terdaftar</h4>
+                                <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;" id="user-stat-total">0</h2>
+                            </div>
+                            <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                                <div style="font-size: 22px; margin-bottom: 2px;">🛡️</div>
+                                <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Administrator</h4>
+                                <h2 style="font-size: 18px; font-weight: 800; color: #7e22ce; margin: 0;" id="user-stat-admin">0</h2>
+                            </div>
+                            <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                                <div style="font-size: 22px; margin-bottom: 2px;">💻</div>
+                                <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Kasir POS</h4>
+                                <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;" id="user-stat-kasir">0</h2>
+                            </div>
+                            <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                                <div style="font-size: 22px; margin-bottom: 2px;">💊</div>
+                                <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Apoteker</h4>
+                                <h2 style="font-size: 18px; font-weight: 800; color: #d97706; margin: 0;" id="user-stat-apoteker">0</h2>
+                            </div>
+                        </div>
+
+                        <!-- Action Bar & Filter Pills -->
+                        <div class="view-card" style="margin-bottom: 20px; padding: 16px 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 240px;">
+                                    <input type="text" id="user-search-input" class="form-control" placeholder="🔍 Cari nama staf, username, atau role..." oninput="filterUserManagementTable()">
                                 </div>
-                                <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; white-space: nowrap;" onclick="openAddUserModal()">➕ Tambah Staf Baru</button>
+                                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('')">Semua Role</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('ADMIN')">🛡️ Admin</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('KASIR')">💻 Kasir</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('APOTEKER')">💊 Apoteker</button>
+                                </div>
+                                <button type="button" class="btn btn-primary" style="padding: 9px 18px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px;" onclick="openAddUserModal()">➕ Tambah Staf Baru</button>
                             </div>
                         </div>
 
                         <!-- User Desktop Table -->
-                        <div class="view-card desktop-only-table" style="padding: 0; overflow: hidden;">
+                        <div class="view-card desktop-only-table" style="padding: 0; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-sm);">
                             <div class="table-container">
                                 <table class="table" style="margin: 0;">
                                     <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Nama Staf</th>
-                                            <th>Username (User)</th>
-                                            <th>Role Hak Akses</th>
-                                            <th>Kode / PIN</th>
-                                            <th>Aksi</th>
+                                        <tr style="background: var(--bg-main);">
+                                            <th style="padding: 14px 16px;">ANGGOTA STAF</th>
+                                            <th style="padding: 14px 16px;">USERNAME</th>
+                                            <th style="padding: 14px 16px;">HAK AKSES / ROLE</th>
+                                            <th style="padding: 14px 16px;">PIN AKSES</th>
+                                            <th style="padding: 14px 16px;">STATUS</th>
+                                            <th style="padding: 14px 16px; text-align: right;">AKSI</th>
                                         </tr>
                                     </thead>
                                     <tbody id="user-table-body">
@@ -1077,7 +1108,7 @@
                         </div>
 
                         <!-- User Mobile List -->
-                        <div id="user-mobile-list" class="mobile-only-list"></div>
+                        <div id="user-mobile-list" class="mobile-only-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
                     </div>
                 </section>
 
