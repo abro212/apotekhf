@@ -2266,21 +2266,17 @@ async function submitStokOpname() {
 // --------------------------------------------------------------------------
 // 8. REKAM KESEHATAN & PELAYANAN
 // --------------------------------------------------------------------------
+let allPasienList = [];
+
 async function initCekKesehatan() {
     // Load patients
     try {
         if (!supabaseClient) return;
         const { data } = await supabaseClient.from('pasien').select('*').order('nama_pasien');
-        const select = document.getElementById('checkup-pasien-select');
-        select.innerHTML = '<option value="" disabled selected>Pilih Pasien...</option>';
-        if (data) {
-            data.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id_pasien;
-                opt.textContent = `${p.nama_pasien} (${p.whatsapp})`;
-                select.appendChild(opt);
-            });
-        }
+        allPasienList = data || [];
+        const searchInput = document.getElementById('checkup-pasien-search');
+        if (searchInput) searchInput.value = '';
+        populatePasienDropdown(allPasienList);
     } catch (e) {
         console.error(e);
     }
@@ -2293,6 +2289,41 @@ async function initCekKesehatan() {
     document.getElementById('checkup-obat').value = '';
     document.getElementById('checkup-keterangan').value = '';
     document.getElementById('checkup-history-list').innerHTML = '<div style="color:var(--text-muted); text-align:center;">Pilih pasien untuk melihat riwayat.</div>';
+}
+
+function filterCheckupPasienDropdown() {
+    const searchVal = document.getElementById('checkup-pasien-search')?.value.toLowerCase().trim() || '';
+    if (!searchVal) {
+        populatePasienDropdown(allPasienList);
+        return;
+    }
+
+    const filtered = allPasienList.filter(p => {
+        const text = `${p.nama_pasien || ''} ${p.alamat || ''} ${p.whatsapp || ''} ${p.id_pasien || ''}`.toLowerCase();
+        return text.includes(searchVal);
+    });
+
+    populatePasienDropdown(filtered, true);
+}
+
+function populatePasienDropdown(pasienArray, isFiltered = false) {
+    const select = document.getElementById('checkup-pasien-select');
+    if (!select) return;
+    const currentVal = select.value;
+    select.innerHTML = '<option value="" disabled selected>-- Pilih Pasien --</option>';
+    
+    pasienArray.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id_pasien;
+        opt.textContent = `${p.nama_pasien} (${p.whatsapp || '-'}) - ${p.alamat || '-'}`;
+        if (p.id_pasien === currentVal) opt.selected = true;
+        select.appendChild(opt);
+    });
+
+    if (isFiltered && pasienArray.length === 1) {
+        select.selectedIndex = 1;
+        checkupChangePasien();
+    }
 }
 
 let currentPatientCheckupData = [];

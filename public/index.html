@@ -671,7 +671,8 @@
                             </h3>
 
                             <div class="form-group">
-                                <label style="font-weight: 700;">Pilih Pasien</label>
+                                <label style="font-weight: 700;">Pilih / Cari Pasien</label>
+                                <input type="text" id="checkup-pasien-search" class="form-control" placeholder="🔍 Cari Nama, Alamat, atau No. WA Pasien..." oninput="filterCheckupPasienDropdown()" style="margin-bottom: 6px; font-size: 13px;">
                                 <select id="checkup-pasien-select" class="form-control" onchange="checkupChangePasien()"></select>
                             </div>
 
