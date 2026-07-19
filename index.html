@@ -806,6 +806,7 @@
                                             <th>Supplier</th>
                                             <th>Alamat</th>
                                             <th>Kontak</th>
+                                            <th>Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="supplier-table-body"></tbody>
@@ -835,6 +836,7 @@
                                             <th>Nama</th>
                                             <th>Alamat</th>
                                             <th>Tingkat Harga</th>
+                                            <th>Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="pelanggan-table-body"></tbody>
@@ -1115,6 +1117,107 @@
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Edit Supplier -->
+    <div id="modal-edit-supplier" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Edit Data Supplier</h3>
+            <form id="form-edit-supplier" onsubmit="submitEditSupplier(event)">
+                <input type="hidden" id="edit-sup-id">
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Nama Supplier</label>
+                    <input type="text" id="edit-sup-nama" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Alamat Supplier</label>
+                    <input type="text" id="edit-sup-alamat" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Nomor Telepon / Kontak</label>
+                    <input type="text" id="edit-sup-telp" class="form-control">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-supplier')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Pelanggan -->
+    <div id="modal-edit-pelanggan" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Edit Data Pelanggan</h3>
+            <form id="form-edit-pelanggan" onsubmit="submitEditPelanggan(event)">
+                <input type="hidden" id="edit-pel-id">
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Nama Pelanggan</label>
+                    <input type="text" id="edit-pel-nama" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Alamat Pelanggan</label>
+                    <input type="text" id="edit-pel-alamat" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Nomor Telepon</label>
+                    <input type="text" id="edit-pel-telp" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Level Harga</label>
+                    <select id="edit-pel-level" class="form-control">
+                        <option value="Level 1">Level 1</option>
+                        <option value="Level 2">Level 2</option>
+                        <option value="Level 3">Level 3</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-pelanggan')">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Detail Supplier Modal -->
+    <div id="modal-detail-supplier" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--primary-color);">Detail Supplier</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-supplier')">✕ Tutup</button>
+            </div>
+            <div style="font-size: 13.5px; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>ID Supplier:</strong> <span id="detail-sup-id">-</span></p>
+                <p style="margin-bottom: 8px;"><strong>Nama Supplier:</strong> <span id="detail-sup-nama">-</span></p>
+                <p style="margin-bottom: 8px;"><strong>Alamat:</strong> <span id="detail-sup-alamat">-</span></p>
+                <p style="margin-bottom: 0;"><strong>Kontak Telepon:</strong> <span id="detail-sup-telp">-</span></p>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-supplier'); editSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">✏️ Edit</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-supplier'); deleteSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">🗑️ Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Pelanggan Modal -->
+    <div id="modal-detail-pelanggan" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 450px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--primary-color);">Detail Pelanggan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-pelanggan')">✕ Tutup</button>
+            </div>
+            <div style="font-size: 13.5px; margin-bottom: 20px;">
+                <p style="margin-bottom: 8px;"><strong>ID Pelanggan:</strong> <span id="detail-pel-id">-</span></p>
+                <p style="margin-bottom: 8px;"><strong>Nama Pelanggan:</strong> <span id="detail-pel-nama">-</span></p>
+                <p style="margin-bottom: 8px;"><strong>Alamat:</strong> <span id="detail-pel-alamat">-</span></p>
+                <p style="margin-bottom: 8px;"><strong>Kontak Telepon:</strong> <span id="detail-pel-telp">-</span></p>
+                <p style="margin-bottom: 0;"><strong>Tingkat Harga:</strong> <span id="detail-pel-level" class="badge badge-info">-</span></p>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-pelanggan'); editPelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">✏️ Edit</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-pelanggan'); deletePelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">🗑️ Hapus</button>
+            </div>
         </div>
     </div>
 

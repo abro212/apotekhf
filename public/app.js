@@ -2784,6 +2784,8 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
 
         if (!error && sups) {
             sups.forEach(s => {
+                const encId = encodeURIComponent(s.id_supplier || '');
+
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -2791,6 +2793,13 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
                     <td>${s.supplier}</td>
                     <td>${s.alamat_supplier || '-'}</td>
                     <td>${s.kontak_supplier || '-'}</td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showSupplierDetail('${encId}')">Detail</button>
+                            <button class="btn btn-primary" style="padding: 3px 6px; font-size: 11px;" onclick="editSupplier('${encId}')">Edit</button>
+                            <button class="btn btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="deleteSupplier('${encId}')">Hapus</button>
+                        </div>
+                    </td>
                 `;
                 sBody.appendChild(tr);
 
@@ -2799,7 +2808,7 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
                     const card = document.createElement('div');
                     card.className = 'price-card-mobile';
                     card.innerHTML = `
-                        <div class="price-card-header">
+                        <div class="price-card-header" onclick="showSupplierDetail('${encId}')" style="cursor:pointer;">
                             <div>
                                 <div class="price-card-title" style="font-size:13px;">📦 ${s.supplier}</div>
                                 <div class="price-card-sub">🆔 ${s.id_supplier}</div>
@@ -2809,6 +2818,11 @@ async function loadSuppliers(page = currentSupplierPage, pageSize = currentSuppl
                         <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
                             <div>📍 ${s.alamat_supplier || 'Alamat tidak diisi'}</div>
                             <div>📞 ${s.kontak_supplier || 'Telepon tidak diisi'}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; margin-top:8px; justify-content:flex-end;">
+                            <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="showSupplierDetail('${encId}')">👁️ Detail</button>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="editSupplier('${encId}')">✏️ Edit</button>
+                            <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deleteSupplier('${encId}')">🗑️ Hapus</button>
                         </div>
                     `;
                     sMobile.appendChild(card);
@@ -2846,6 +2860,8 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
 
         if (!error && csts) {
             csts.forEach(c => {
+                const encId = encodeURIComponent(c.id_pelanggan || '');
+
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -2853,6 +2869,13 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
                     <td>${c.nama}</td>
                     <td>${c.alamat || '-'}</td>
                     <td><span class="badge badge-info">${c.level_harga || 'Level 1'}</span></td>
+                    <td>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn btn-secondary" style="padding: 3px 6px; font-size: 11px;" onclick="showPelangganDetail('${encId}')">Detail</button>
+                            <button class="btn btn-primary" style="padding: 3px 6px; font-size: 11px;" onclick="editPelanggan('${encId}')">Edit</button>
+                            <button class="btn btn-danger" style="padding: 3px 6px; font-size: 11px;" onclick="deletePelanggan('${encId}')">Hapus</button>
+                        </div>
+                    </td>
                 `;
                 cBody.appendChild(tr);
 
@@ -2861,7 +2884,7 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
                     const card = document.createElement('div');
                     card.className = 'price-card-mobile';
                     card.innerHTML = `
-                        <div class="price-card-header">
+                        <div class="price-card-header" onclick="showPelangganDetail('${encId}')" style="cursor:pointer;">
                             <div>
                                 <div class="price-card-title" style="font-size:13px;">👤 ${c.nama}</div>
                                 <div class="price-card-sub">🆔 ${c.id_pelanggan} • 📞 ${c.kontak || '-'}</div>
@@ -2870,6 +2893,11 @@ async function loadPelanggan(page = currentPelangganPage, pageSize = currentPela
                         </div>
                         <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px;">
                             <div>📍 ${c.alamat || 'Alamat tidak diisi'}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; margin-top:8px; justify-content:flex-end;">
+                            <button class="btn btn-secondary" style="padding:4px 10px; font-size:11px;" onclick="showPelangganDetail('${encId}')">👁️ Detail</button>
+                            <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="editPelanggan('${encId}')">✏️ Edit</button>
+                            <button class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="deletePelanggan('${encId}')">🗑️ Hapus</button>
                         </div>
                     `;
                     cMobile.appendChild(card);
@@ -2946,6 +2974,172 @@ async function submitAddPelanggan(e) {
     } catch (e) {
         console.error(e);
         alert('Gagal menambah pelanggan.');
+    }
+}
+
+// SUPPLIER: DETAIL, EDIT, DELETE
+async function showSupplierDetail(encId) {
+    const id = decodeURIComponent(encId);
+    if (!supabaseClient || !id) return;
+
+    try {
+        const { data: s } = await supabaseClient.from('supplier').select('*').eq('id_supplier', id).single();
+        if (s) {
+            document.getElementById('detail-sup-id').textContent = s.id_supplier;
+            document.getElementById('detail-sup-nama').textContent = s.supplier;
+            document.getElementById('detail-sup-alamat').textContent = s.alamat_supplier || '-';
+            document.getElementById('detail-sup-telp').textContent = s.kontak_supplier || '-';
+            document.getElementById('modal-detail-supplier').classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memuat detail supplier.');
+    }
+}
+
+async function editSupplier(encId) {
+    const id = decodeURIComponent(encId);
+    if (!supabaseClient || !id) return;
+
+    try {
+        const { data: s } = await supabaseClient.from('supplier').select('*').eq('id_supplier', id).single();
+        if (s) {
+            document.getElementById('edit-sup-id').value = s.id_supplier;
+            document.getElementById('edit-sup-nama').value = s.supplier;
+            document.getElementById('edit-sup-alamat').value = s.alamat_supplier || '';
+            document.getElementById('edit-sup-telp').value = s.kontak_supplier || '';
+            document.getElementById('modal-edit-supplier').classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Gagal mengambil data supplier.');
+    }
+}
+
+async function submitEditSupplier(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-sup-id').value;
+    const nama = document.getElementById('edit-sup-nama').value.trim();
+    const alamat = document.getElementById('edit-sup-alamat').value.trim();
+    const telp = document.getElementById('edit-sup-telp').value.trim();
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('supplier').update({
+            supplier: nama,
+            alamat_supplier: alamat,
+            kontak_supplier: telp
+        }).eq('id_supplier', id);
+
+        if (error) throw error;
+        alert('Data supplier berhasil diperbarui!');
+        closeModal('modal-edit-supplier');
+        loadSuppliers();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memperbarui data supplier.');
+    }
+}
+
+async function deleteSupplier(encId) {
+    const id = decodeURIComponent(encId);
+    if (!id) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus Supplier "${id}"?`)) return;
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('supplier').delete().eq('id_supplier', id);
+        if (error) throw error;
+        alert('Supplier berhasil dihapus!');
+        loadSuppliers();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menghapus supplier.');
+    }
+}
+
+// PELANGGAN: DETAIL, EDIT, DELETE
+async function showPelangganDetail(encId) {
+    const id = decodeURIComponent(encId);
+    if (!supabaseClient || !id) return;
+
+    try {
+        const { data: c } = await supabaseClient.from('pelanggan').select('*').eq('id_pelanggan', id).single();
+        if (c) {
+            document.getElementById('detail-pel-id').textContent = c.id_pelanggan;
+            document.getElementById('detail-pel-nama').textContent = c.nama;
+            document.getElementById('detail-pel-alamat').textContent = c.alamat || '-';
+            document.getElementById('detail-pel-telp').textContent = c.kontak || '-';
+            document.getElementById('detail-pel-level').textContent = c.level_harga || 'Level 1';
+            document.getElementById('modal-detail-pelanggan').classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memuat detail pelanggan.');
+    }
+}
+
+async function editPelanggan(encId) {
+    const id = decodeURIComponent(encId);
+    if (!supabaseClient || !id) return;
+
+    try {
+        const { data: c } = await supabaseClient.from('pelanggan').select('*').eq('id_pelanggan', id).single();
+        if (c) {
+            document.getElementById('edit-pel-id').value = c.id_pelanggan;
+            document.getElementById('edit-pel-nama').value = c.nama;
+            document.getElementById('edit-pel-alamat').value = c.alamat || '';
+            document.getElementById('edit-pel-telp').value = c.kontak || '';
+            document.getElementById('edit-pel-level').value = c.level_harga || 'Level 1';
+            document.getElementById('modal-edit-pelanggan').classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Gagal mengambil data pelanggan.');
+    }
+}
+
+async function submitEditPelanggan(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-pel-id').value;
+    const nama = document.getElementById('edit-pel-nama').value.trim();
+    const alamat = document.getElementById('edit-pel-alamat').value.trim();
+    const telp = document.getElementById('edit-pel-telp').value.trim();
+    const level = document.getElementById('edit-pel-level').value;
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('pelanggan').update({
+            nama: nama,
+            alamat: alamat,
+            kontak: telp,
+            level_harga: level
+        }).eq('id_pelanggan', id);
+
+        if (error) throw error;
+        alert('Data pelanggan berhasil diperbarui!');
+        closeModal('modal-edit-pelanggan');
+        loadPelanggan();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal memperbarui data pelanggan.');
+    }
+}
+
+async function deletePelanggan(encId) {
+    const id = decodeURIComponent(encId);
+    if (!id) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus Pelanggan "${id}"?`)) return;
+
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('pelanggan').delete().eq('id_pelanggan', id);
+        if (error) throw error;
+        alert('Pelanggan berhasil dihapus!');
+        loadPelanggan();
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menghapus pelanggan.');
     }
 }
 
