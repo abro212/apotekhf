@@ -168,6 +168,13 @@ function saveSupabaseConfig() {
     }
 }
 
+function getInitialDefaultView() {
+    if (window.innerWidth <= 768) {
+        return 'view-pintasan';
+    }
+    return 'view-dashboard';
+}
+
 // Session Management
 function checkSession() {
     loadAppSettings();
@@ -175,7 +182,7 @@ function checkSession() {
     if (savedUser) {
         currentUser = JSON.parse(savedUser);
         updateUserHeader();
-        switchView('view-dashboard');
+        switchView(getInitialDefaultView());
         loadDashboard();
         loadAllDropdowns();
     } else {
@@ -314,7 +321,7 @@ function submitPin() {
         currentUser = user;
         sessionStorage.setItem('activeUser', JSON.stringify(user));
         updateUserHeader();
-        switchView('view-dashboard');
+        switchView(getInitialDefaultView());
         loadDashboard();
         loadAllDropdowns();
         clearPin();
