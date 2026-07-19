@@ -823,61 +823,8 @@ async function renderDashboardCharts() {
             });
         }
 
-        // 2. Prepare Payment Methods Breakdown
-        const methodCounts = { 'TUNAI': 0, 'QRIS': 0, 'TEMPO': 0, 'LAINNYA': 0 };
-        let totalVal = 0;
-        salesData.forEach(tx => {
-            const m = String(tx.metode_bayar || 'TUNAI').toUpperCase().trim();
-            const val = parseFloat(tx.total_bayar || 0);
-            totalVal += val;
-            if (m.includes('TUNAI') || m === 'CASH') methodCounts['TUNAI'] += val;
-            else if (m.includes('QRIS') || m.includes('TRANSFER') || m.includes('BANK')) methodCounts['QRIS'] += val;
-            else if (m.includes('TEMPO') || m.includes('PIUTANG')) methodCounts['TEMPO'] += val;
-            else methodCounts['LAINNYA'] += val;
-        });
-
-        const methodCtx = document.getElementById('chart-payment-methods');
-        if (methodCtx && typeof Chart !== 'undefined') {
-            if (chartPaymentMethodsInstance) chartPaymentMethodsInstance.destroy();
-
-            chartPaymentMethodsInstance = new Chart(methodCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Tunai (Cash)', 'QRIS / Bank', 'Tempo (Piutang)', 'Lainnya'],
-                    datasets: [{
-                        data: [
-                            methodCounts['TUNAI'],
-                            methodCounts['QRIS'],
-                            methodCounts['TEMPO'],
-                            methodCounts['LAINNYA']
-                        ],
-                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#6b7280'],
-                        borderWidth: 2,
-                        borderColor: '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '68%',
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { boxWidth: 10, padding: 8, font: { size: 10.5 } }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const val = context.parsed;
-                                    const pct = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) : 0;
-                                    return ` ${context.label}: Rp ${formatMoney(val)} (${pct}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
+        // 2. Render Oldest Piutang Widget
+        renderOldestPiutangWidget();
 
         // 3. Render Top 5 Best-Selling Medicines from detail_jual
         const topListElem = document.getElementById('dash-top-products-list');
@@ -972,6 +919,86 @@ async function renderDashboardCharts() {
 
     } catch (e) {
         console.error('Error rendering dashboard charts:', e);
+    }
+}
+
+async function renderOldestPiutangWidget() {
+    const listElem = document.getElementById('dash-oldest-piutang-list');
+    if (!listElem) return;
+
+    try {
+        if (!supabaseClient) return;
+
+        // 1. Fetch TEMPO sales transactions ordered by date ascending (oldest first)
+        const { data: tempoTx } = await supabaseClient
+            .from('transaksi_jual')
+            .select('id_jual, tanggal, total_bayar, nama_pelanggan')
+            .eq('metode_bayar', 'TEMPO')
+            .order('tanggal', { ascending: true })
+            .limit(100);
+
+        // 2. Fetch all pelunasan logs
+        const { data: logs } = await supabaseClient
+            .from('log_pelunasan_jual')
+            .select('id_jual, jumlah_bayar');
+
+        const paidMap = {};
+        if (logs) {
+            logs.forEach(l => {
+                paidMap[l.id_jual] = (paidMap[l.id_jual] || 0) + parseFloat(l.jumlah_bayar || 0);
+            });
+        }
+
+        listElem.innerHTML = '';
+
+        if (!tempoTx || tempoTx.length === 0) {
+            listElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">🎉 Tidak ada piutang jatuh tempo.</div>';
+            return;
+        }
+
+        // 3. Filter unpaid transactions with sisa > 0
+        const unpaidList = [];
+        tempoTx.forEach(tx => {
+            const tot = parseFloat(tx.total_bayar || 0);
+            const pd = paidMap[tx.id_jual] || 0;
+            const sisa = Math.max(0, tot - pd);
+            if (sisa > 0) {
+                unpaidList.push({ ...tx, sisa });
+            }
+        });
+
+        const top5Oldest = unpaidList.slice(0, 5);
+
+        if (top5Oldest.length === 0) {
+            listElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">🎉 Semua piutang sudah LUNAS!</div>';
+            return;
+        }
+
+        top5Oldest.forEach(item => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: #fffbeb; border-radius: 8px; border: 1px solid #fef3c7; border-left: 3px solid #f59e0b; cursor: pointer;';
+            row.onclick = () => switchView('view-menu-tagihan');
+            row.title = 'Klik untuk kelola & bayar piutang ini';
+
+            row.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; padding-right:6px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <strong style="color:#92400e; font-size:12px;">${item.id_jual}</strong>
+                        <span style="font-size:10px; color:#b45309; background:#fef3c7; padding:1px 5px; border-radius:4px; font-weight:600;">${item.nama_pelanggan || 'UMUM'}</span>
+                    </div>
+                    <div style="font-size:10.5px; color:#a16207;">📅 Tgl Nota: ${item.tanggal || '-'}</div>
+                </div>
+                <div style="text-align:right; flex-shrink:0;">
+                    <strong style="color:#b91c1c; font-size:12px;">Rp ${formatMoney(item.sisa)}</strong>
+                    <div style="font-size:10px; color:#ef4444; font-weight:600;">⚠️ Sisa Piutang</div>
+                </div>
+            `;
+            listElem.appendChild(row);
+        });
+
+    } catch (e) {
+        console.error('Error rendering oldest piutang widget:', e);
+        listElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Gagal memuat data piutang.</div>';
     }
 }
 
