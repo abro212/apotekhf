@@ -1315,23 +1315,57 @@ async function loadRiwayatPenjualan(page = currentPenjualanPage, pageSize = curr
             .range(from, to);
 
         const tbody = document.getElementById('penjualan-table-body');
+        const mobileList = document.getElementById('penjualan-mobile-list');
         tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
         
         if (!error && data) {
             data.forEach(tx => {
+                const encId = encodeURIComponent(tx.id_jual || '');
+                const metodeBadge = tx.metode_bayar === 'CASH' 
+                    ? 'background:#ecfdf5;color:#10b981;' 
+                    : tx.metode_bayar === 'QRIS' 
+                        ? 'background:#eff6ff;color:#3b82f6;' 
+                        : 'background:#fef3c7;color:#f59e0b;';
+
+                // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${tx.id_jual}</strong></td>
                     <td>${tx.tanggal}</td>
                     <td>${tx.nama_pelanggan || 'UMUM'}</td>
                     <td>${tx.user}</td>
-                    <td><span class="badge badge-info">${tx.metode_bayar}</span></td>
-                    <td>Rp ${formatMoney(tx.total_bayar)}</td>
+                    <td><span class="badge" style="${metodeBadge}">${tx.metode_bayar}</span></td>
+                    <td><strong>Rp ${formatMoney(tx.total_bayar)}</strong></td>
                     <td>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showReceiptDetail('${tx.id_jual}')">Detail</button>
+                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="showReceiptDetail('${encId}')">Detail</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                // Mobile card
+                if (mobileList) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card-mobile';
+                    card.onclick = () => showReceiptDetail(tx.id_jual);
+                    card.style.cursor = 'pointer';
+                    card.innerHTML = `
+                        <div class="price-card-header">
+                            <div style="flex:1; min-width:0;">
+                                <div class="price-card-title" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${tx.id_jual}</div>
+                                <div class="price-card-sub">${tx.tanggal}</div>
+                            </div>
+                            <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(tx.total_bayar)}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                            <div style="font-size:11px; color:var(--text-muted);">
+                                👤 ${tx.nama_pelanggan || 'UMUM'} • 🧑‍💼 ${tx.user || '-'}
+                            </div>
+                            <span class="badge" style="${metodeBadge} font-size:10px;">${tx.metode_bayar}</span>
+                        </div>
+                    `;
+                    mobileList.appendChild(card);
+                }
             });
 
             const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
