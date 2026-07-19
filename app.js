@@ -56,17 +56,17 @@ function setupEventListeners() {
         if (currentUser) switchView('view-cek-harga');
     });
 
+    const bDash = document.getElementById('bottom-nav-dash');
+    if (bDash) {
+        bDash.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (currentUser) switchView('view-dashboard');
+        });
+    }
+
     document.getElementById('bottom-nav-pos').addEventListener('click', (e) => {
         e.preventDefault();
         if (currentUser) switchView('view-kasir');
-    });
-
-    document.getElementById('bottom-nav-info').addEventListener('click', (e) => {
-        e.preventDefault();
-        if (currentUser) {
-            switchView('view-info');
-            loadInfoStats();
-        }
     });
 
     document.getElementById('bottom-nav-logout').addEventListener('click', (e) => {
@@ -411,18 +411,18 @@ function switchView(viewId) {
     });
     
     // Set active item based on current view
-    if (viewId === 'view-dashboard' || viewId === 'view-pintasan') {
+    if (viewId === 'view-pintasan') {
         const bh = document.getElementById('bottom-nav-home');
         if (bh) bh.classList.add('active');
+    } else if (viewId === 'view-dashboard') {
+        const bd = document.getElementById('bottom-nav-dash');
+        if (bd) bd.classList.add('active');
     } else if (viewId === 'view-cek-harga') {
         const bs = document.getElementById('bottom-nav-search');
         if (bs) bs.classList.add('active');
     } else if (viewId === 'view-kasir') {
         const bp = document.getElementById('bottom-nav-pos');
         if (bp) bp.classList.add('active');
-    } else if (viewId === 'view-info') {
-        const bi = document.getElementById('bottom-nav-info');
-        if (bi) bi.classList.add('active');
     }
 
     if (viewId === 'view-menu-laporan') {
