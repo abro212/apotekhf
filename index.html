@@ -786,66 +786,64 @@
 
                 <!-- 11. VIEW: SUPPLIER & PELANGGAN -->
                 <section id="view-supplier-pelanggan" class="hidden">
-                    <div class="pembelian-layout">
-                        <!-- Suppliers Card -->
-                        <div class="view-card" style="margin-bottom: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
-                                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Daftar Supplier</h3>
-                                <button class="btn btn-primary" onclick="showAddSupplierModal()">✚ Supplier</button>
-                            </div>
-                            <div style="margin-bottom: 15px;">
-                                <input type="text" id="supplier-search-input" class="form-control" placeholder="Cari supplier atau kontak..." oninput="loadSuppliers(1)">
-                            </div>
-                            
-                            <!-- Desktop Table -->
-                            <div class="table-container desktop-only-table">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Supplier</th>
-                                            <th>Alamat</th>
-                                            <th>Kontak</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="supplier-table-body"></tbody>
-                                </table>
-                            </div>
-                            <!-- Mobile Card List -->
-                            <div id="supplier-mobile-list" class="report-shift-mobile-container"></div>
-                            <div id="supplier-pagination" style="margin-top: 10px;"></div>
+                    <!-- Tab Switcher -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="btn btn-primary" id="mitra-tab-supplier" onclick="switchMitraTab('supplier')">📦 Daftar Supplier</button>
+                        <button type="button" class="btn btn-secondary" id="mitra-tab-pelanggan" onclick="switchMitraTab('pelanggan')">👤 Daftar Pelanggan</button>
+                    </div>
+
+                    <!-- Supplier Tab Content -->
+                    <div id="mitra-content-supplier" class="view-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="supplier-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari nama supplier, kontak, atau alamat..." oninput="loadSuppliers(1)">
+                            <button class="btn btn-primary" onclick="showAddSupplierModal()">✚ Tambah Supplier Baru</button>
+                        </div>
+                        
+                        <!-- Desktop Table -->
+                        <div class="table-container desktop-only-table">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID Supplier</th>
+                                        <th>Nama Supplier</th>
+                                        <th>Alamat</th>
+                                        <th>Kontak Telepon</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="supplier-table-body"></tbody>
+                            </table>
+                        </div>
+                        <!-- Mobile Card List -->
+                        <div id="supplier-mobile-list" class="report-shift-mobile-container"></div>
+                        <div id="supplier-pagination" style="margin-top: 15px;"></div>
+                    </div>
+
+                    <!-- Pelanggan Tab Content -->
+                    <div id="mitra-content-pelanggan" class="view-card hidden">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <input type="text" id="pelanggan-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari nama pelanggan, telepon, atau alamat..." oninput="loadPelanggan(1)">
+                            <button class="btn btn-primary" onclick="showAddPelangganModal()">✚ Tambah Pelanggan Baru</button>
                         </div>
 
-                        <!-- Customers Card -->
-                        <div class="view-card" style="margin-bottom: 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 8px;">
-                                <h3 style="font-size: 16px; font-weight: 700; margin: 0;">Daftar Pelanggan</h3>
-                                <button class="btn btn-primary" onclick="showAddPelangganModal()">✚ Pelanggan</button>
-                            </div>
-                            <div style="margin-bottom: 15px;">
-                                <input type="text" id="pelanggan-search-input" class="form-control" placeholder="Cari nama atau telepon..." oninput="loadPelanggan(1)">
-                            </div>
-
-                            <!-- Desktop Table -->
-                            <div class="table-container desktop-only-table">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Nama</th>
-                                            <th>Alamat</th>
-                                            <th>Tingkat Harga</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="pelanggan-table-body"></tbody>
-                                </table>
-                            </div>
-                            <!-- Mobile Card List -->
-                            <div id="pelanggan-mobile-list" class="report-shift-mobile-container"></div>
-                            <div id="pelanggan-pagination" style="margin-top: 10px;"></div>
+                        <!-- Desktop Table -->
+                        <div class="table-container desktop-only-table">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID Pelanggan</th>
+                                        <th>Nama Pelanggan</th>
+                                        <th>Alamat</th>
+                                        <th>Tingkat Harga</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pelanggan-table-body"></tbody>
+                            </table>
                         </div>
+                        <!-- Mobile Card List -->
+                        <div id="pelanggan-mobile-list" class="report-shift-mobile-container"></div>
+                        <div id="pelanggan-pagination" style="margin-top: 15px;"></div>
                     </div>
                 </section>
 

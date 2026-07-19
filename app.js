@@ -2755,9 +2755,32 @@ let currentSupplierPageSize = 10;
 let currentPelangganPage = 1;
 let currentPelangganPageSize = 10;
 
+let currentMitraTab = 'supplier'; // 'supplier' or 'pelanggan'
+
+function switchMitraTab(tab) {
+    currentMitraTab = tab;
+    const btnSup = document.getElementById('mitra-tab-supplier');
+    const btnPel = document.getElementById('mitra-tab-pelanggan');
+    const contentSup = document.getElementById('mitra-content-supplier');
+    const contentPel = document.getElementById('mitra-content-pelanggan');
+
+    if (tab === 'supplier') {
+        btnSup.className = 'btn btn-primary';
+        btnPel.className = 'btn btn-secondary';
+        contentSup.classList.remove('hidden');
+        contentPel.classList.add('hidden');
+        loadSuppliers(1);
+    } else {
+        btnSup.className = 'btn btn-secondary';
+        btnPel.className = 'btn btn-primary';
+        contentSup.classList.add('hidden');
+        contentPel.classList.remove('hidden');
+        loadPelanggan(1);
+    }
+}
+
 async function loadSupplierPelanggan() {
-    loadSuppliers(1);
-    loadPelanggan(1);
+    switchMitraTab(currentMitraTab);
 }
 
 async function loadSuppliers(page = currentSupplierPage, pageSize = currentSupplierPageSize) {
