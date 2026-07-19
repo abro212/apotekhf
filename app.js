@@ -2691,6 +2691,64 @@ async function loadLaporanData() {
                 .select('*')
                 .order('tanggal_masuk', { ascending: false });
             if (!error && purchases) data = purchases;
+        } else if (currentLaporanType === 'piutang') {
+            const { data: sales, error } = await supabaseClient
+                .from('transaksi_jual')
+                .select('*')
+                .eq('metode_bayar', 'TEMPO')
+                .order('tanggal', { ascending: false });
+            
+            const { data: logs } = await supabaseClient.from('log_pelunasan_jual').select('*');
+            const paidMap = {};
+            if (logs) {
+                logs.forEach(l => {
+                    paidMap[l.id_jual] = (paidMap[l.id_jual] || 0) + parseFloat(l.jumlah_bayar || 0);
+                });
+            }
+
+            if (!error && sales) {
+                data = sales.map(s => {
+                    const total = parseFloat(s.total_bayar || 0);
+                    const paid = paidMap[s.id_jual] || 0;
+                    const sisa = Math.max(0, total - paid);
+                    return {
+                        ...s,
+                        sudah_dibayar: paid,
+                        sisa_piutang: sisa,
+                        status_lunas: sisa <= 0 ? 'LUNAS' : 'BELUM LUNAS'
+                    };
+                });
+            }
+        } else if (currentLaporanType === 'hutang') {
+            const { data: purchases, error } = await supabaseClient
+                .from('faktur_beli')
+                .select('*')
+                .eq('metode_bayar', 'TEMPO')
+                .order('tanggal_masuk', { ascending: false });
+            
+            const { data: hLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('*');
+            const paidHutangMap = {};
+            if (hLogs) {
+                hLogs.forEach(l => {
+                    const key = l.no_faktur || l.id_faktur;
+                    if (key) paidHutangMap[key] = (paidHutangMap[key] || 0) + parseFloat(l.nominal_dibayar || 0);
+                });
+            }
+
+            if (!error && purchases) {
+                data = purchases.map(p => {
+                    const key = p.nomor_faktur || p.id_faktur;
+                    const total = parseFloat(p.total_harga || 0);
+                    const paid = paidHutangMap[key] || paidHutangMap[p.id_faktur] || 0;
+                    const sisa = Math.max(0, total - paid);
+                    return {
+                        ...p,
+                        sudah_dibayar: paid,
+                        sisa_hutang: sisa,
+                        status_lunas: sisa <= 0 ? 'LUNAS' : 'BELUM LUNAS'
+                    };
+                });
+            }
         } else if (currentLaporanType === 'kas') {
             const { data: cash, error } = await supabaseClient
                 .from('kas')
@@ -2933,6 +2991,198 @@ function renderLaporanTable(data) {
                 <tr>
                     <td colspan="4" style="padding: 14px 16px; text-align: right;">TOTAL KESELURUHAN PEMBELIAN:</td>
                     <td style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalPurchases)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'piutang') {
+        const countTx = data.length;
+        const totalPiutang = data.reduce((sum, x) => sum + parseFloat(x.total_bayar || 0), 0);
+        const totalSisaPiutang = data.reduce((sum, x) => sum + parseFloat(x.sisa_piutang || 0), 0);
+        const totalPaidPiutang = data.reduce((sum, x) => sum + parseFloat(x.sudah_dibayar || 0), 0);
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💳</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Nota Piutang</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${countTx} Nota</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💰</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Nominal Piutang</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #3b82f6; margin: 0;">${formatRp(totalPiutang)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🔴</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Sisa Piutang (Belum Lunas)</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0;">${formatRp(totalSisaPiutang)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🟢</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Pelunasan Masuk</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalPaidPiutang)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 16%;">NO. NOTA</th>
+                    <th style="padding: 14px 16px; width: 16%;">TANGGAL</th>
+                    <th style="padding: 14px 16px; width: 18%;">PELANGGAN</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">TOTAL NOTA</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">SUDAH DIBAYAR</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">SISA PIUTANG</th>
+                    <th style="padding: 14px 16px; width: 12%; text-align: center;">STATUS</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data piutang pelanggan pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const isLunas = x.status_lunas === 'LUNAS';
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.id_jual || '-'}</code></td>
+                        <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
+                        <td style="padding: 12px 16px;"><strong>${x.nama_pelanggan || 'UMUM'}</strong></td>
+                        <td style="padding: 12px 16px; text-align: right;">${formatRp(x.total_bayar)}</td>
+                        <td style="padding: 12px 16px; text-align: right; color: #16a34a; font-weight: 700;">${formatRp(x.sudah_dibayar)}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: ${isLunas ? '#16a34a' : '#dc2626'};">${formatRp(x.sisa_piutang)}</td>
+                        <td style="padding: 12px 16px; text-align: center;">
+                            <span class="badge" style="${isLunas ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-weight:700;">${x.status_lunas}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.id_jual || '-'}</div>
+                                    <div class="price-card-sub">👤 ${x.nama_pelanggan || 'UMUM'} • ${x.tanggal || '-'}</div>
+                                </div>
+                                <span class="badge" style="${isLunas ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-size:10px;">${x.status_lunas}</span>
+                            </div>
+                            <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px; display:flex; justify-content:space-between;">
+                                <span>Dibayar: ${formatRp(x.sudah_dibayar)}</span>
+                                <strong style="color:${isLunas ? '#16a34a' : '#dc2626'};">Sisa: ${formatRp(x.sisa_piutang)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL SISA PIUTANG OUTSTANDING:</td>
+                    <td colspan="2" style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalSisaPiutang)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'hutang') {
+        const countFk = data.length;
+        const totalHutang = data.reduce((sum, x) => sum + parseFloat(x.total_harga || 0), 0);
+        const totalSisaHutang = data.reduce((sum, x) => sum + parseFloat(x.sisa_hutang || 0), 0);
+        const totalPaidHutang = data.reduce((sum, x) => sum + parseFloat(x.sudah_dibayar || 0), 0);
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">📦</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Faktur Hutang</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${countFk} Faktur</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💰</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Nominal Hutang</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #3b82f6; margin: 0;">${formatRp(totalHutang)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🔴</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Sisa Hutang (Belum Lunas)</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0;">${formatRp(totalSisaHutang)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🟢</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Terbayar ke Supplier</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalPaidHutang)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 16%;">NO. FAKTUR</th>
+                    <th style="padding: 14px 16px; width: 16%;">TANGGAL MASUK</th>
+                    <th style="padding: 14px 16px; width: 18%;">SUPPLIER</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">TOTAL FAKTUR</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">SUDAH DIBAYAR</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">SISA HUTANG</th>
+                    <th style="padding: 14px 16px; width: 12%; text-align: center;">STATUS</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data hutang supplier pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const isLunas = x.status_lunas === 'LUNAS';
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color); page-break-inside: avoid !important; break-inside: avoid !important;';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.nomor_faktur || x.id_faktur || '-'}</code></td>
+                        <td style="padding: 12px 16px;">${x.tanggal_masuk || '-'}</td>
+                        <td style="padding: 12px 16px;"><strong>${x.supplier || 'Supplier'}</strong></td>
+                        <td style="padding: 12px 16px; text-align: right;">${formatRp(x.total_harga)}</td>
+                        <td style="padding: 12px 16px; text-align: right; color: #16a34a; font-weight: 700;">${formatRp(x.sudah_dibayar)}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: ${isLunas ? '#16a34a' : '#dc2626'};">${formatRp(x.sisa_hutang)}</td>
+                        <td style="padding: 12px 16px; text-align: center;">
+                            <span class="badge" style="${isLunas ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-weight:700;">${x.status_lunas}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.nomor_faktur || x.id_faktur || '-'}</div>
+                                    <div class="price-card-sub">📦 ${x.supplier || 'Supplier'} • ${x.tanggal_masuk || '-'}</div>
+                                </div>
+                                <span class="badge" style="${isLunas ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-size:10px;">${x.status_lunas}</span>
+                            </div>
+                            <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px; display:flex; justify-content:space-between;">
+                                <span>Dibayar: ${formatRp(x.sudah_dibayar)}</span>
+                                <strong style="color:${isLunas ? '#16a34a' : '#dc2626'};">Sisa: ${formatRp(x.sisa_hutang)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL SISA HUTANG OUTSTANDING:</td>
+                    <td colspan="2" style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalSisaHutang)}</td>
                 </tr>
             `;
         }
@@ -3381,6 +3631,30 @@ function exportLaporanXLSX() {
                     'Supplier': x.supplier || '-',
                     'Staf': x.staf || '-',
                     'Total Faktur (Rp)': parseFloat(x.total_harga || x.total_bayar || 0)
+                });
+            });
+        } else if (currentLaporanType === 'piutang') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'No. Nota': x.id_jual || '-',
+                    'Tanggal': x.tanggal || '-',
+                    'Pelanggan': x.nama_pelanggan || 'UMUM',
+                    'Total Nota (Rp)': parseFloat(x.total_bayar || 0),
+                    'Sudah Dibayar (Rp)': parseFloat(x.sudah_dibayar || 0),
+                    'Sisa Piutang (Rp)': parseFloat(x.sisa_piutang || 0),
+                    'Status': x.status_lunas || 'BELUM LUNAS'
+                });
+            });
+        } else if (currentLaporanType === 'hutang') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'No. Faktur': x.nomor_faktur || x.id_faktur || '-',
+                    'Tanggal Masuk': x.tanggal_masuk || '-',
+                    'Supplier': x.supplier || 'Supplier',
+                    'Total Faktur (Rp)': parseFloat(x.total_harga || 0),
+                    'Sudah Dibayar (Rp)': parseFloat(x.sudah_dibayar || 0),
+                    'Sisa Hutang (Rp)': parseFloat(x.sisa_hutang || 0),
+                    'Status': x.status_lunas || 'BELUM LUNAS'
                 });
             });
         } else if (currentLaporanType === 'kas') {
