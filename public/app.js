@@ -3649,9 +3649,26 @@ function previewSettingImage(fileInputId, previewImgId) {
         const reader = new FileReader();
         reader.onload = function(e) {
             preview.src = e.target.result;
+            updateAppIdentityPreview();
         };
         reader.readAsDataURL(input.files[0]);
     }
+}
+
+function updateAppIdentityPreview() {
+    const nameVal = document.getElementById('setting-app-name')?.value.trim() || 'Apotek HF';
+    const logoSrc = document.getElementById('setting-logo-preview')?.src || 'logo_hf.png';
+    const favSrc = document.getElementById('setting-favicon-preview')?.src || 'logo_hf.png';
+
+    const mTabTitle = document.getElementById('mock-tab-title');
+    const mFavIcon = document.getElementById('mock-favicon-img');
+    const mSidebarLogo = document.getElementById('mock-sidebar-logo');
+    const mSidebarName = document.getElementById('mock-sidebar-name');
+
+    if (mTabTitle) mTabTitle.textContent = `${nameVal} - Portal Enterprise`;
+    if (mFavIcon) mFavIcon.src = favSrc;
+    if (mSidebarLogo) mSidebarLogo.src = logoSrc;
+    if (mSidebarName) mSidebarName.textContent = nameVal.toUpperCase();
 }
 
 // 3. App Settings Persistence (App Title, Logo, Favicon)
@@ -3691,6 +3708,8 @@ function loadAppSettings() {
         if (nameInput) nameInput.value = appName;
         if (logoPrev) logoPrev.src = appLogo;
         if (favPrev) favPrev.src = appFavicon;
+
+        updateAppIdentityPreview();
     } catch (e) {
         console.error('Error loading app settings:', e);
     }

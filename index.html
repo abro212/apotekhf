@@ -1002,44 +1002,100 @@
                     </div>
 
                     <!-- Panel 1: App Settings -->
-                    <div id="settings-panel-app" class="view-card" style="max-width: 650px;">
-                        <h3 style="font-size: 16px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px;">⚙️ Identitas & Branding Program</h3>
+                    <div id="settings-panel-app" style="max-width: 800px;">
+                        
+                        <!-- Live Mockup Hero Card -->
+                        <div class="view-card" style="background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); color: white; padding: 20px; border-radius: 14px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.2);">
+                            <div style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #99f6e4; margin-bottom: 12px;">Pratinjau Langsung (Live Brand Mockup)</div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+                                <!-- Mock 1: Browser Tab -->
+                                <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.25);">
+                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">🌐 Tab Browser:</div>
+                                    <div style="display: flex; align-items: center; gap: 8px; background: #fff; color: #0f172a; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        <img id="mock-favicon-img" src="logo_hf.png" style="width: 16px; height: 16px; object-fit: contain;">
+                                        <span id="mock-tab-title">Apotek HF - Portal Enterprise</span>
+                                    </div>
+                                </div>
+
+                                <!-- Mock 2: Sidebar Brand -->
+                                <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.25);">
+                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">📱 Sidebar Brand:</div>
+                                    <div style="display: flex; align-items: center; gap: 10px; background: #0f172a; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 800;">
+                                        <img id="mock-sidebar-logo" src="logo_hf.png" style="height: 24px; object-fit: contain;">
+                                        <span id="mock-sidebar-name" style="letter-spacing: 0.5px;">APOTEK HF</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Sections Grid -->
                         <form id="form-app-settings" onsubmit="saveAppSettings(event)">
-                            <div class="form-group">
-                                <label style="font-weight: 700;">Nama Program / Apotek</label>
-                                <input type="text" id="setting-app-name" class="form-control" placeholder="Apotek HF" required>
-                                <small style="color: var(--text-muted); font-size: 11.5px;">Nama ini akan digunakan pada judul aplikasi, sidebar, header, dan struk penjualan.</small>
-                            </div>
-
-                            <div class="form-group" style="margin-top: 15px;">
-                                <label style="font-weight: 700;">Logo Utama Aplikasi</label>
-                                <div style="display: flex; align-items: center; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
-                                    <div style="width: 70px; height: 70px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; padding: 4px;">
-                                        <img id="setting-logo-preview" src="logo_hf.png" alt="Preview Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                                    </div>
-                                    <div style="flex: 1; min-width: 200px;">
-                                        <input type="file" id="setting-logo-file" accept="image/*" class="form-control" style="font-size: 12px;" onchange="previewSettingImage('setting-logo-file', 'setting-logo-preview')">
-                                        <small style="color: var(--text-muted); font-size: 11px;">Format: PNG/JPG/SVG (Rekomendasi latar transparan)</small>
+                            <div style="display: flex; flex-direction: column; gap: 20px;">
+                                
+                                <!-- Card 1: App Title -->
+                                <div class="view-card" style="margin-bottom: 0; padding: 20px;">
+                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                        <span>🔤</span> Nama Program & Brand Apotek
+                                    </h3>
+                                    <div class="form-group" style="margin: 0;">
+                                        <label style="font-weight: 700;">Nama Utama Program / Apotek</label>
+                                        <input type="text" id="setting-app-name" class="form-control" placeholder="Apotek HF" required oninput="updateAppIdentityPreview()">
+                                        <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 4px; display: block;">
+                                            Nama ini akan digunakan secara konsisten pada judul browser, header aplikasi, sidebar, dan cetakan struk kasir.
+                                        </small>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="form-group" style="margin-top: 15px;">
-                                <label style="font-weight: 700;">Favicon Tab Browser</label>
-                                <div style="display: flex; align-items: center; gap: 15px; margin-top: 8px; flex-wrap: wrap;">
-                                    <div style="width: 48px; height: 48px; border: 1px solid var(--border-color); border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #fff; overflow: hidden; padding: 4px;">
-                                        <img id="setting-favicon-preview" src="logo_hf.png" alt="Preview Favicon" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                                    </div>
-                                    <div style="flex: 1; min-width: 200px;">
-                                        <input type="file" id="setting-favicon-file" accept="image/*" class="form-control" style="font-size: 12px;" onchange="previewSettingImage('setting-favicon-file', 'setting-favicon-preview')">
-                                        <small style="color: var(--text-muted); font-size: 11px;">Ikon tab browser (ICO / PNG 32x32)</small>
+                                <!-- Card 2: Main Logo -->
+                                <div class="view-card" style="margin-bottom: 0; padding: 20px;">
+                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                        <span>🖼️</span> Logo Utama Aplikasi
+                                    </h3>
+                                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                        <div style="width: 90px; height: 90px; border: 2px dashed var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-main); overflow: hidden; padding: 6px; flex-shrink: 0;">
+                                            <img id="setting-logo-preview" src="logo_hf.png" alt="Preview Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                        </div>
+                                        <div style="flex: 1; min-width: 220px;">
+                                            <label style="font-weight: 700; font-size: 12px; margin-bottom: 6px; display: block;">Unggah Berkas Logo Baru</label>
+                                            <input type="file" id="setting-logo-file" accept="image/*" class="form-control" style="font-size: 12px; padding: 6px 12px;" onchange="previewSettingImage('setting-logo-file', 'setting-logo-preview')">
+                                            <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 6px; display: block;">
+                                                Format yang didukung: <strong>PNG, JPG, SVG, WEBP</strong>. Rekomendasi gambar transparan rasio simetris.
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div style="display: flex; gap: 10px; margin-top: 25px; flex-wrap: wrap;">
-                                <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">💾 Simpan Pengaturan</button>
-                                <button type="button" class="btn btn-secondary" onclick="resetAppSettingsDefault()">🔄 Reset Default</button>
+                                <!-- Card 3: Favicon -->
+                                <div class="view-card" style="margin-bottom: 0; padding: 20px;">
+                                    <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                                        <span>🌐</span> Favicon Tab Browser
+                                    </h3>
+                                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                        <div style="width: 56px; height: 56px; border: 2px dashed var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-main); overflow: hidden; padding: 6px; flex-shrink: 0;">
+                                            <img id="setting-favicon-preview" src="logo_hf.png" alt="Preview Favicon" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                        </div>
+                                        <div style="flex: 1; min-width: 220px;">
+                                            <label style="font-weight: 700; font-size: 12px; margin-bottom: 6px; display: block;">Unggah Berkas Favicon Baru</label>
+                                            <input type="file" id="setting-favicon-file" accept="image/*" class="form-control" style="font-size: 12px; padding: 6px 12px;" onchange="previewSettingImage('setting-favicon-file', 'setting-favicon-preview')">
+                                            <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 6px; display: block;">
+                                                Favicon adalah ikon kecil yang muncul pada tab browser komputer/smartphone (Format: ICO / PNG).
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Save & Reset Action Bar -->
+                                <div class="view-card" style="margin-bottom: 0; padding: 16px 20px; background: var(--bg-main);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                                        <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; font-size: 13.5px;">
+                                            <span>💾</span> Simpan Pengaturan Identitas
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" style="padding: 10px 18px; font-weight: 600; font-size: 13px;" onclick="resetAppSettingsDefault()">
+                                            🔄 Reset Pengaturan Default
+                                        </button>
+                                    </div>
+                                </div>
+
                             </div>
                         </form>
                     </div>
