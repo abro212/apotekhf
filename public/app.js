@@ -289,6 +289,8 @@ function switchView(viewId) {
     if (viewId === 'view-login') {
         document.getElementById('main-app-shell').classList.add('hidden');
         document.getElementById('view-login').classList.remove('hidden');
+        const mNav = document.getElementById('mobile-bottom-nav');
+        if (mNav) mNav.classList.add('hidden');
         return;
     } else {
         document.getElementById('main-app-shell').classList.remove('hidden');
