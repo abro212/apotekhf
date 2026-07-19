@@ -610,6 +610,28 @@ async function loadDashboard() {
 let chartSalesTrendInstance = null;
 let chartPaymentMethodsInstance = null;
 
+function parseTxDateToIso(rawDateStr) {
+    if (!rawDateStr) return '';
+    const cleanStr = String(rawDateStr).trim();
+
+    if (cleanStr.includes('-')) {
+        return cleanStr.split(' ')[0].split('T')[0];
+    }
+
+    if (cleanStr.includes('/')) {
+        const parts = cleanStr.split(' ')[0].split('/');
+        if (parts.length === 3) {
+            const d = parts[0].padStart(2, '0');
+            const m = parts[1].padStart(2, '0');
+            let y = parts[2];
+            if (y.length === 2) y = '20' + y;
+            return `${y}-${m}-${d}`;
+        }
+    }
+
+    return '';
+}
+
 async function renderDashboardCharts() {
     try {
         if (!supabaseClient) return;
@@ -619,7 +641,7 @@ async function renderDashboardCharts() {
             .from('transaksi_jual')
             .select('*')
             .order('tanggal', { ascending: false })
-            .limit(100);
+            .limit(200);
 
         if (!salesData) return;
 
@@ -631,18 +653,18 @@ async function renderDashboardCharts() {
         for (let i = 6; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(today.getDate() - i);
-            const dateLabel = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
             
-            const yy = String(d.getFullYear()).substring(2);
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            const patternSlash = `${dd}/${mm}/20${yy}`;
-            const patternDash = `${d.getFullYear()}-${mm}-${dd}`;
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const targetIso = `${year}-${month}-${day}`;
+            
+            const dateLabel = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
 
             let daySum = 0;
             salesData.forEach(tx => {
-                const tDate = tx.tanggal || '';
-                if (tDate.includes(patternSlash) || tDate.includes(patternDash)) {
+                const txIso = parseTxDateToIso(tx.tanggal);
+                if (txIso === targetIso) {
                     daySum += parseFloat(tx.total_bayar || 0);
                 }
             });
@@ -719,12 +741,12 @@ async function renderDashboardCharts() {
         const methodCounts = { 'TUNAI': 0, 'QRIS': 0, 'TEMPO': 0, 'LAINNYA': 0 };
         let totalVal = 0;
         salesData.forEach(tx => {
-            const m = String(tx.metode_bayar || 'TUNAI').toUpperCase();
+            const m = String(tx.metode_bayar || 'TUNAI').toUpperCase().trim();
             const val = parseFloat(tx.total_bayar || 0);
             totalVal += val;
             if (m.includes('TUNAI') || m === 'CASH') methodCounts['TUNAI'] += val;
-            else if (m.includes('QRIS') || m.includes('TRANSFER')) methodCounts['QRIS'] += val;
-            else if (m.includes('TEMPO')) methodCounts['TEMPO'] += val;
+            else if (m.includes('QRIS') || m.includes('TRANSFER') || m.includes('BANK')) methodCounts['QRIS'] += val;
+            else if (m.includes('TEMPO') || m.includes('PIUTANG')) methodCounts['TEMPO'] += val;
             else methodCounts['LAINNYA'] += val;
         });
 
@@ -771,20 +793,48 @@ async function renderDashboardCharts() {
             });
         }
 
-        // 3. Render Top 5 Best-Selling Medicines
+        // 3. Render Top 5 Best-Selling Medicines from detail_jual
         const topListElem = document.getElementById('dash-top-products-list');
         if (topListElem) {
             topListElem.innerHTML = '';
             
-            const { data: topObatData } = await supabaseClient
-                .from('master_obat')
-                .select('id_obat, nama_obat, stok_unit_kecil, label_satuan_kecil')
-                .order('stok_unit_kecil', { ascending: false })
-                .limit(5);
+            const { data: detailJualData } = await supabaseClient
+                .from('detail_jual')
+                .select('id_obat, nama_obat, jumlah_beli, satuan_dipilih, subtotal')
+                .limit(300);
 
-            if (topObatData && topObatData.length > 0) {
+            const productSalesMap = {};
+
+            if (detailJualData && detailJualData.length > 0) {
+                detailJualData.forEach(dtl => {
+                    const key = dtl.nama_obat || dtl.id_obat;
+                    if (!key) return;
+
+                    const qty = parseFloat(dtl.jumlah_beli || 0);
+                    const subtotal = parseFloat(dtl.subtotal || 0);
+                    const unit = dtl.satuan_dipilih || 'Pcs';
+
+                    if (!productSalesMap[key]) {
+                        productSalesMap[key] = {
+                            id_obat: dtl.id_obat || '-',
+                            nama_obat: key,
+                            total_qty: 0,
+                            total_omset: 0,
+                            satuan: unit
+                        };
+                    }
+                    productSalesMap[key].total_qty += qty;
+                    productSalesMap[key].total_omset += subtotal;
+                });
+            }
+
+            const topSorted = Object.values(productSalesMap)
+                .sort((a, b) => b.total_qty - a.total_qty)
+                .slice(0, 5);
+
+            if (topSorted.length > 0) {
                 const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
-                topObatData.forEach((item, idx) => {
+                topSorted.forEach((item, idx) => {
                     const row = document.createElement('div');
                     row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border-color);';
                     row.innerHTML = `
@@ -792,17 +842,45 @@ async function renderDashboardCharts() {
                             <span style="font-size:15px; flex-shrink:0;">${medals[idx] || '🎖️'}</span>
                             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                                 <strong style="color:var(--text-main); font-size:12px;">${item.nama_obat}</strong>
-                                <div style="font-size:10.5px; color:var(--text-muted);">ID: ${item.id_obat}</div>
+                                <div style="font-size:10.5px; color:var(--text-muted);">Omset: Rp ${formatMoney(item.total_omset)}</div>
                             </div>
                         </div>
                         <span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; font-size:10.5px; flex-shrink:0;">
-                            ${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}
+                            Terjual: ${formatMoney(item.total_qty)} ${item.satuan}
                         </span>
                     `;
                     topListElem.appendChild(row);
                 });
             } else {
-                topListElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Belum ada data obat terlaris.</div>';
+                // Fallback if no detail_jual records yet
+                const { data: topObatData } = await supabaseClient
+                    .from('master_obat')
+                    .select('id_obat, nama_obat, stok_unit_kecil, label_satuan_kecil')
+                    .order('stok_unit_kecil', { ascending: false })
+                    .limit(5);
+
+                if (topObatData && topObatData.length > 0) {
+                    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+                    topObatData.forEach((item, idx) => {
+                        const row = document.createElement('div');
+                        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border-color);';
+                        row.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; padding-right:6px;">
+                                <span style="font-size:15px; flex-shrink:0;">${medals[idx] || '🎖️'}</span>
+                                <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                    <strong style="color:var(--text-main); font-size:12px;">${item.nama_obat}</strong>
+                                    <div style="font-size:10.5px; color:var(--text-muted);">ID: ${item.id_obat}</div>
+                                </div>
+                            </div>
+                            <span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; font-size:10.5px; flex-shrink:0;">
+                                ${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}
+                            </span>
+                        `;
+                        topListElem.appendChild(row);
+                    });
+                } else {
+                    topListElem.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">Belum ada data obat terlaris.</div>';
+                }
             }
         }
 
