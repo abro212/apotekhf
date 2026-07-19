@@ -671,47 +671,76 @@
                 </section>
 
                 <!-- 9. VIEW: LAPORAN GRAFIK -->
+                <!-- 9. VIEW: LAPORAN & EXPORT -->
                 <section id="view-menu-laporan" class="hidden">
-                    <div class="report-cards-grid">
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Penjualan Hari Ini</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="report-sales-today">Rp 0</h2>
-                        </div>
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Transaksi Hari Ini</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="report-tx-today">0</h2>
-                        </div>
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Penjualan Bulan Ini</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0;" id="report-sales-month">Rp 0</h2>
-                        </div>
-                        <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <h4 style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px 0;">Keuntungan Bersih (Bulan Ini)</h4>
-                            <h2 style="font-size: 22px; font-weight: 800; color: #16a34a; margin: 0;" id="report-profit-month">Rp 0</h2>
+                    <!-- Filter Control Bar -->
+                    <div class="view-card" style="margin-bottom: 20px; padding: 18px 20px;">
+                        <div style="display: flex; flex-direction: column; gap: 14px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                                <h3 style="font-size: 16px; font-weight: 800; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <span>📊</span> Laporan Operasional & Keuangan
+                                </h3>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; display: flex; align-items: center; gap: 6px;" onclick="exportLaporanPDF()">
+                                        <span>📄</span> Export PDF
+                                    </button>
+                                    <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border: none; display: flex; align-items: center; gap: 6px;" onclick="exportLaporanXLSX()">
+                                        <span>📊</span> Export XLSX (Excel)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: flex-end;">
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">JENIS LAPORAN</label>
+                                    <select id="laporan-type-select" class="form-control" onchange="loadLaporanData()">
+                                        <option value="penjualan" selected>🛒 Laporan Penjualan</option>
+                                        <option value="pembelian">📦 Laporan Pembelian & Restock</option>
+                                        <option value="kas">💵 Laporan Kas Operasional</option>
+                                        <option value="stok">💊 Laporan Stok & Valuasi Obat</option>
+                                        <option value="shift">📑 Laporan Shift Kasir</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">TANGGAL MULAI</label>
+                                    <input type="date" id="laporan-date-start" class="form-control" onchange="loadLaporanData()">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">TANGGAL SELESAI</label>
+                                    <input type="date" id="laporan-date-end" class="form-control" onchange="loadLaporanData()">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">CARI KATA KUNCI</label>
+                                    <input type="text" id="laporan-search-input" class="form-control" placeholder="Cari nota, nama, obat..." oninput="filterLaporanTable()">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <!-- Shift Log Section -->
-                    <div class="view-card" style="margin-top: 20px;">
-                        <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 15px;">Laporan Harian (Shift Cashier)</h3>
-                        <div class="table-container desktop-only-table">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Tanggal</th>
-                                        <th>Shift</th>
-                                        <th>Nama Staf</th>
-                                        <th>Modal Awal</th>
-                                        <th>Total Uang Akhir</th>
-                                        <th>Uang Masuk</th>
-                                        <th>Catatan</th>
-                                    </tr>
+
+                    <!-- Summary Metric Cards -->
+                    <div class="report-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;" id="laporan-metrics-container">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Report Table -->
+                    <div class="view-card desktop-only-table" style="padding: 0; overflow: hidden; border-radius: 12px; box-shadow: var(--shadow-sm);">
+                        <div class="table-container">
+                            <table class="data-table" style="width: 100%; margin: 0; border-collapse: collapse;">
+                                <thead id="laporan-table-head">
+                                    <!-- Populated dynamically -->
                                 </thead>
-                                <tbody id="report-shift-body"></tbody>
+                                <tbody id="laporan-table-body">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                                <tfoot id="laporan-table-foot" style="background: var(--bg-main); font-weight: 800;">
+                                    <!-- Populated dynamically -->
+                                </tfoot>
                             </table>
                         </div>
-                        <!-- Mobile Card List for Shift Reports -->
-                        <div id="report-shift-mobile-list" class="report-shift-mobile-container"></div>
                     </div>
+
+                    <!-- Report Mobile Cards -->
+                    <div id="laporan-mobile-list" class="mobile-only-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
                 </section>
 
                 <!-- 10. VIEW: KAS OPERASIONAL -->
@@ -1801,8 +1830,10 @@
         </div>
     </div>
 
-    <!-- Supabase JS Client -->
+    <!-- Supabase JS Client & Export Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

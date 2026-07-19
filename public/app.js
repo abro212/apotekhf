@@ -364,6 +364,10 @@ function switchView(viewId) {
         if (bi) bi.classList.add('active');
     }
 
+    if (viewId === 'view-menu-laporan') {
+        initLaporanView();
+    }
+
     // Set page header title
     const titleEl = document.getElementById('page-title');
     if (titleEl) {
@@ -2288,86 +2292,776 @@ async function submitAddPasien(e) {
 }
 
 // --------------------------------------------------------------------------
-// 9. LAPORAN GRAFIK & LAPORAN HARIAN SHIFT
+// 9. LAPORAN OPERASIONAL & KEUANGAN (PDF & EXPORT XLSX)
 // --------------------------------------------------------------------------
-async function loadLaporanView() {
-    if (!supabaseClient) return;
-    try {
-        const dateObj = new Date();
-        const yy = String(dateObj.getFullYear()).substring(2);
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        const todayPattern = `${dd}/${mm}/20${yy}%`;
-        const monthPattern = `%/${mm}/20${yy}%`;
+let currentLaporanData = [];
+let currentLaporanType = 'penjualan';
 
-        // Fetch sales today
-        const { data: salesTodayData } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', todayPattern);
-        const salesToday = salesTodayData ? salesTodayData.reduce((sum, tx) => sum + parseFloat(tx.total_bayar || 0), 0) : 0;
-        const countToday = salesTodayData ? salesTodayData.length : 0;
-        
-        // Month total sales
-        const { data: salesMonthData } = await supabaseClient.from('transaksi_jual').select('total_bayar').like('tanggal', monthPattern);
-        const salesMonth = salesMonthData ? salesMonthData.reduce((sum, tx) => sum + parseFloat(tx.total_bayar || 0), 0) : 0;
+function loadLaporanView() {
+    initLaporanView();
+}
 
-        // Month profit
-        const { data: profitMonthData } = await supabaseClient.from('detail_jual').select('laba_bersih').like('tanggal', monthPattern);
-        const profitMonth = profitMonthData ? profitMonthData.reduce((sum, d) => sum + parseFloat(d.laba_bersih || 0), 0) : 0;
-
-        document.getElementById('report-sales-today').textContent = `Rp ${formatMoney(salesToday)}`;
-        document.getElementById('report-tx-today').textContent = countToday;
-        document.getElementById('report-sales-month').textContent = `Rp ${formatMoney(salesMonth)}`;
-        document.getElementById('report-profit-month').textContent = `Rp ${formatMoney(profitMonth)}`;
-    } catch (e) {
-        console.error('Error loading reports:', e);
+function initLaporanView() {
+    const startInput = document.getElementById('laporan-date-start');
+    const endInput = document.getElementById('laporan-date-end');
+    
+    if (startInput && !startInput.value) {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        startInput.value = firstDay.toISOString().split('T')[0];
+    }
+    if (endInput && !endInput.value) {
+        const now = new Date();
+        endInput.value = now.toISOString().split('T')[0];
     }
     
-    // Load shift logs (laporan_harian)
+    loadLaporanData();
+}
+
+async function loadLaporanData() {
     try {
-        const { data, error } = await supabaseClient.from('laporan_harian').select('*').order('tanggal', { ascending: false }).limit(100);
-        const tbody = document.getElementById('report-shift-body');
-        const mobileList = document.getElementById('report-shift-mobile-list');
-        tbody.innerHTML = '';
-        if (mobileList) mobileList.innerHTML = '';
+        if (!supabaseClient) return;
+        const typeSelect = document.getElementById('laporan-type-select');
+        currentLaporanType = typeSelect ? typeSelect.value : 'penjualan';
 
-        if (data) {
-            data.forEach(s => {
-                // Desktop row
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${s.tanggal || '-'}</td>
-                    <td><span class="badge badge-info">${s.shift || '-'}</span></td>
-                    <td>${s.nama || s.user || '-'}</td>
-                    <td>Rp ${formatMoney(s.modal || 0)}</td>
-                    <td>Rp ${formatMoney(s.total_uang || 0)}</td>
-                    <td><strong>Rp ${formatMoney(s.masuk || 0)}</strong></td>
-                    <td>${s.catatan || '-'}</td>
-                `;
-                tbody.appendChild(tr);
+        const startDateVal = document.getElementById('laporan-date-start')?.value;
+        const endDateVal = document.getElementById('laporan-date-end')?.value;
 
-                // Mobile card
-                if (mobileList) {
-                    const card = document.createElement('div');
-                    card.className = 'price-card-mobile';
-                    card.innerHTML = `
-                        <div class="price-card-header">
-                            <div>
-                                <div class="price-card-title" style="font-size:13px;">${s.nama || s.user || 'Staf'} • <span class="badge badge-info" style="font-size:10px;">${s.shift || 'Shift'}</span></div>
-                                <div class="price-card-sub">${s.tanggal || '-'}</div>
-                            </div>
-                            <strong style="color:var(--primary-color); font-size:14px;">Rp ${formatMoney(s.masuk || 0)}</strong>
-                        </div>
-                        <div style="font-size:11.5px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:6px;">
-                            <span>Modal: Rp ${formatMoney(s.modal || 0)}</span>
-                            <span>Total Uang: Rp ${formatMoney(s.total_uang || 0)}</span>
-                        </div>
-                        ${s.catatan ? `<div style="font-size:11px; color:var(--text-muted); font-style:italic; margin-top:4px;">Catatan: ${s.catatan}</div>` : ''}
-                    `;
-                    mobileList.appendChild(card);
+        let data = [];
+
+        if (currentLaporanType === 'penjualan') {
+            const { data: sales, error } = await supabaseClient
+                .from('transaksi_jual')
+                .select('*')
+                .order('tanggal', { ascending: false });
+            if (!error && sales) data = sales;
+        } else if (currentLaporanType === 'pembelian') {
+            const { data: purchases, error } = await supabaseClient
+                .from('faktur_beli')
+                .select('*')
+                .order('tanggal_masuk', { ascending: false });
+            if (!error && purchases) data = purchases;
+        } else if (currentLaporanType === 'kas') {
+            const { data: cash, error } = await supabaseClient
+                .from('kas')
+                .select('*')
+                .order('tanggal', { ascending: false });
+            if (!error && cash) data = cash;
+        } else if (currentLaporanType === 'stok') {
+            const { data: stock, error } = await supabaseClient
+                .from('master_obat')
+                .select('*')
+                .order('nama_obat', { ascending: true });
+            if (!error && stock) data = stock;
+        } else if (currentLaporanType === 'shift') {
+            const { data: shift, error } = await supabaseClient
+                .from('laporan_harian')
+                .select('*')
+                .order('tanggal', { ascending: false });
+            if (!error && shift) data = shift;
+        }
+
+        // Apply Date Range Filter if dates exist and dataset has date field
+        if (startDateVal || endDateVal) {
+            data = data.filter(item => {
+                const rawDateStr = item.tanggal || item.tanggal_masuk || item.created_at || '';
+                if (!rawDateStr) return true;
+                let itemDateIso = '';
+                if (rawDateStr.includes('/')) {
+                    const parts = rawDateStr.split(' ')[0].split('/');
+                    if (parts.length === 3) {
+                        const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                        itemDateIso = `${year}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    }
+                } else if (rawDateStr.includes('-')) {
+                    itemDateIso = rawDateStr.split(' ')[0];
                 }
+
+                if (!itemDateIso) return true;
+                if (startDateVal && itemDateIso < startDateVal) return false;
+                if (endDateVal && itemDateIso > endDateVal) return false;
+                return true;
             });
         }
+
+        currentLaporanData = data;
+        filterLaporanTable();
     } catch (e) {
-        console.error('Error loading shift logs:', e);
+        console.error('Error loading laporan data:', e);
+    }
+}
+
+function filterLaporanTable() {
+    const q = document.getElementById('laporan-search-input')?.value.toLowerCase().trim() || '';
+    if (!q) {
+        renderLaporanTable(currentLaporanData);
+        return;
+    }
+
+    const filtered = currentLaporanData.filter(item => {
+        return Object.values(item).some(val => 
+            String(val || '').toLowerCase().includes(q)
+        );
+    });
+
+    renderLaporanTable(filtered);
+}
+
+function renderLaporanTable(data) {
+    const containerMetrics = document.getElementById('laporan-metrics-container');
+    const thead = document.getElementById('laporan-table-head');
+    const tbody = document.getElementById('laporan-table-body');
+    const tfoot = document.getElementById('laporan-table-foot');
+    const mobileList = document.getElementById('laporan-mobile-list');
+
+    if (containerMetrics) containerMetrics.innerHTML = '';
+    if (thead) thead.innerHTML = '';
+    if (tbody) tbody.innerHTML = '';
+    if (tfoot) tfoot.innerHTML = '';
+    if (mobileList) mobileList.innerHTML = '';
+
+    const formatRp = num => 'Rp ' + formatMoney(num || 0);
+
+    if (currentLaporanType === 'penjualan') {
+        const totalSales = data.reduce((sum, x) => sum + parseFloat(x.total_bayar || 0), 0);
+        const countTx = data.length;
+        const totalTempo = data.filter(x => String(x.metode_bayar || '').toUpperCase() === 'TEMPO').reduce((sum, x) => sum + parseFloat(x.total_bayar || 0), 0);
+        const totalTunai = totalSales - totalTempo;
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🧾</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Transaksi</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${countTx} Nota</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💵</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Penjualan</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${formatRp(totalSales)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🟢</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Penjualan Tunai / QRIS</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalTunai)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">⏳</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Penjualan Tempo / Piutang</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #d97706; margin: 0;">${formatRp(totalTempo)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 18%;">NO. NOTA</th>
+                    <th style="padding: 14px 16px; width: 18%;">TANGGAL & WAKTU</th>
+                    <th style="padding: 14px 16px; width: 18%;">PELANGGAN</th>
+                    <th style="padding: 14px 16px; width: 14%;">STAF KASIR</th>
+                    <th style="padding: 14px 16px; width: 14%;">METODE</th>
+                    <th style="padding: 14px 16px; width: 18%; text-align: right;">TOTAL BAYAR</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data penjualan pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.id_jual || '-'}</code></td>
+                        <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
+                        <td style="padding: 12px 16px;"><strong>${x.pelanggan || 'Umum'}</strong></td>
+                        <td style="padding: 12px 16px;">${x.staf || '-'}</td>
+                        <td style="padding: 12px 16px;"><span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700;">${x.metode_bayar || 'TUNAI'}</span></td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: var(--primary-color);">${formatRp(x.total_bayar)}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.id_jual || '-'}</div>
+                                    <div class="price-card-sub">${x.tanggal || '-'} • Staf: ${x.staf || '-'}</div>
+                                </div>
+                                <strong style="color:var(--primary-color); font-size:14px;">${formatRp(x.total_bayar)}</strong>
+                            </div>
+                            <div style="font-size:11.5px; color:var(--text-muted); margin-top:6px; display:flex; justify-content:space-between;">
+                                <span>Pelanggan: ${x.pelanggan || 'Umum'}</span>
+                                <span class="badge" style="font-size:10px;">${x.metode_bayar || 'TUNAI'}</span>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL KESELURUHAN PENJUALAN:</td>
+                    <td style="padding: 14px 16px; text-align: right; color: var(--primary-color); font-size: 15px;">${formatRp(totalSales)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'pembelian') {
+        const totalPurchases = data.reduce((sum, x) => sum + parseFloat(x.total_harga || x.total_bayar || 0), 0);
+        const countFaktur = data.length;
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">📦</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Faktur Beli</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${countFaktur} Faktur</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💰</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Nilai Pembelian</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0;">${formatRp(totalPurchases)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 20%;">NO. FAKTUR</th>
+                    <th style="padding: 14px 16px; width: 20%;">TANGGAL MASUK</th>
+                    <th style="padding: 14px 16px; width: 25%;">SUPPLIER</th>
+                    <th style="padding: 14px 16px; width: 15%;">STAF</th>
+                    <th style="padding: 14px 16px; width: 20%; text-align: right;">TOTAL FAKTUR</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data pembelian pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;"><code style="font-weight:700;">${x.id_faktur || '-'}</code></td>
+                        <td style="padding: 12px 16px;">${x.tanggal_masuk || x.tanggal || '-'}</td>
+                        <td style="padding: 12px 16px;"><strong>${x.supplier || '-'}</strong></td>
+                        <td style="padding: 12px 16px;">${x.staf || '-'}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #dc2626;">${formatRp(x.total_harga || x.total_bayar)}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.id_faktur || '-'}</div>
+                                    <div class="price-card-sub">${x.tanggal_masuk || '-'} • ${x.supplier || '-'}</div>
+                                </div>
+                                <strong style="color:#dc2626; font-size:14px;">${formatRp(x.total_harga || x.total_bayar)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="4" style="padding: 14px 16px; text-align: right;">TOTAL KESELURUHAN PEMBELIAN:</td>
+                    <td style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalPurchases)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'kas') {
+        const totalMasuk = data.filter(x => String(x.tipe || '').toUpperCase() === 'MASUK').reduce((sum, x) => sum + parseFloat(x.jumlah || 0), 0);
+        const totalKeluar = data.filter(x => String(x.tipe || '').toUpperCase() === 'KELUAR').reduce((sum, x) => sum + parseFloat(x.jumlah || 0), 0);
+        const saldoBersih = totalMasuk - totalKeluar;
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">📈</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Kas Masuk</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalMasuk)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">📉</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Kas Keluar</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0;">${formatRp(totalKeluar)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">⚖️</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Saldo Kas Bersih</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${formatRp(saldoBersih)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 18%;">TANGGAL</th>
+                    <th style="padding: 14px 16px; width: 14%;">TIPE</th>
+                    <th style="padding: 14px 16px; width: 20%;">KATEGORI</th>
+                    <th style="padding: 14px 16px; width: 28%;">KETERANGAN</th>
+                    <th style="padding: 14px 16px; width: 20%; text-align: right;">JUMLAH</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada transaksi kas pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const isMasuk = String(x.tipe || '').toUpperCase() === 'MASUK';
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
+                        <td style="padding: 12px 16px;"><span class="badge" style="${isMasuk ? 'background:#ecfdf5; color:#10b981;' : 'background:#fef2f2; color:#ef4444;'} font-weight:700;">${x.tipe || '-'}</span></td>
+                        <td style="padding: 12px 16px;"><strong>${x.kategori || '-'}</strong></td>
+                        <td style="padding: 12px 16px;">${x.keterangan || '-'}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: ${isMasuk ? '#16a34a' : '#dc2626'};">${formatRp(x.jumlah)}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.kategori || '-'}</div>
+                                    <div class="price-card-sub">${x.tanggal || '-'} • ${x.keterangan || '-'}</div>
+                                </div>
+                                <strong style="color:${isMasuk ? '#16a34a' : '#dc2626'}; font-size:14px;">${formatRp(x.jumlah)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="4" style="padding: 14px 16px; text-align: right;">SALDO KAS BERSIH:</td>
+                    <td style="padding: 14px 16px; text-align: right; color: var(--primary-color); font-size: 15px;">${formatRp(saldoBersih)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'stok') {
+        const totalItems = data.length;
+        const totalValuationBuy = data.reduce((sum, x) => sum + (parseFloat(x.stok_unit_kecil || 0) * parseFloat(x.harga_beli_satuan || 0)), 0);
+        const totalValuationSell = data.reduce((sum, x) => sum + (parseFloat(x.stok_unit_kecil || 0) * parseFloat(x.harga_jual_satuan || 0)), 0);
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💊</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Item Obat</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${totalItems} Obat</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">🏷️</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Valuasi Stok (Harga Beli)</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #3b82f6; margin: 0;">${formatRp(totalValuationBuy)}</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💎</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Valuasi Stok (Harga Jual)</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalValuationSell)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 14%;">KODE OBAT</th>
+                    <th style="padding: 14px 16px; width: 28%;">NAMA OBAT</th>
+                    <th style="padding: 14px 16px; width: 16%;">KATEGORI</th>
+                    <th style="padding: 14px 16px; width: 12%;">STOK</th>
+                    <th style="padding: 14px 16px; width: 15%; text-align: right;">HARGA BELI</th>
+                    <th style="padding: 14px 16px; width: 15%; text-align: right;">HARGA JUAL</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data stok obat ditemukan.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const stokVal = parseInt(x.stok_unit_kecil || 0);
+                    const stokBadge = stokVal <= 0 
+                        ? '<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">HABIS</span>'
+                        : `<span style="font-weight:800; color:${stokVal < 10 ? '#d97706' : 'var(--text-main)'};">${stokVal} ${x.unit_kecil || 'PCS'}</span>`;
+
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;"><code style="font-weight:700; color:var(--primary-color);">${x.id_obat || '-'}</code></td>
+                        <td style="padding: 12px 16px;"><strong>${x.nama_obat || '-'}</strong></td>
+                        <td style="padding: 12px 16px;">${x.kategori || '-'}</td>
+                        <td style="padding: 12px 16px;">${stokBadge}</td>
+                        <td style="padding: 12px 16px; text-align: right;">${formatRp(x.harga_beli_satuan)}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 700; color: var(--primary-color);">${formatRp(x.harga_jual_satuan)}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.nama_obat || '-'}</div>
+                                    <div class="price-card-sub">Kode: <code>${x.id_obat || '-'}</code> • Stok: ${stokVal} ${x.unit_kecil || 'PCS'}</div>
+                                </div>
+                                <strong style="color:var(--primary-color); font-size:14px;">${formatRp(x.harga_jual_satuan)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="4" style="padding: 14px 16px; text-align: right;">TOTAL VALUASI STOK (HARGA JUAL):</td>
+                    <td colspan="2" style="padding: 14px 16px; text-align: right; color: var(--primary-color); font-size: 15px;">${formatRp(totalValuationSell)}</td>
+                </tr>
+            `;
+        }
+    } else if (currentLaporanType === 'shift') {
+        const countShift = data.length;
+        const totalMasukShift = data.reduce((sum, x) => sum + parseFloat(x.masuk || 0), 0);
+
+        if (containerMetrics) {
+            containerMetrics.innerHTML = `
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">📑</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Shift Kasir</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;">${countShift} Shift</h2>
+                </div>
+                <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
+                    <div style="font-size: 22px; margin-bottom: 2px;">💵</div>
+                    <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Uang Masuk Shift</h4>
+                    <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;">${formatRp(totalMasukShift)}</h2>
+                </div>
+            `;
+        }
+
+        if (thead) {
+            thead.innerHTML = `
+                <tr style="background: var(--bg-main);">
+                    <th style="padding: 14px 16px; width: 16%;">TANGGAL</th>
+                    <th style="padding: 14px 16px; width: 12%;">SHIFT</th>
+                    <th style="padding: 14px 16px; width: 18%;">NAMA STAF</th>
+                    <th style="padding: 14px 16px; width: 16%; text-align: right;">MODAL AWAL</th>
+                    <th style="padding: 14px 16px; width: 18%; text-align: right;">TOTAL UANG AKHIR</th>
+                    <th style="padding: 14px 16px; width: 20%; text-align: right;">UANG MASUK</th>
+                </tr>
+            `;
+        }
+
+        if (tbody) {
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada laporan shift pada periode ini.</td></tr>';
+            } else {
+                data.forEach(x => {
+                    const tr = document.createElement('tr');
+                    tr.style.cssText = 'border-bottom: 1px solid var(--border-color);';
+                    tr.innerHTML = `
+                        <td style="padding: 12px 16px;">${x.tanggal || '-'}</td>
+                        <td style="padding: 12px 16px;"><span class="badge badge-info" style="font-weight:700;">${x.shift || '-'}</span></td>
+                        <td style="padding: 12px 16px;"><strong>${x.nama || x.user || '-'}</strong></td>
+                        <td style="padding: 12px 16px; text-align: right;">${formatRp(x.modal)}</td>
+                        <td style="padding: 12px 16px; text-align: right;">${formatRp(x.total_uang)}</td>
+                        <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #16a34a;">${formatRp(x.masuk)}</td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    if (mobileList) {
+                        const mCard = document.createElement('div');
+                        mCard.className = 'price-card-mobile';
+                        mCard.innerHTML = `
+                            <div class="price-card-header">
+                                <div>
+                                    <div class="price-card-title" style="font-size:13.5px; font-weight:700;">${x.nama || x.user || 'Staf'} (${x.shift || 'Shift'})</div>
+                                    <div class="price-card-sub">${x.tanggal || '-'}</div>
+                                </div>
+                                <strong style="color:#16a34a; font-size:14px;">${formatRp(x.masuk)}</strong>
+                            </div>
+                        `;
+                        mobileList.appendChild(mCard);
+                    }
+                });
+            }
+        }
+
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL UANG MASUK SHIFT:</td>
+                    <td style="padding: 14px 16px; text-align: right; color: #16a34a; font-size: 15px;">${formatRp(totalMasukShift)}</td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// --------------------------------------------------------------------------
+// EXPORT PDF & EXPORT XLSX DENGAN LOGO & BRANDING RESMI
+// --------------------------------------------------------------------------
+
+function generateReportPrintHTML() {
+    const appName = localStorage.getItem('app_name') || 'Apotek HF';
+    const appLogo = localStorage.getItem('app_logo') || 'logo_hf.png';
+    
+    const typeSelect = document.getElementById('laporan-type-select');
+    const typeLabel = typeSelect ? typeSelect.options[typeSelect.selectedIndex].text : 'Laporan';
+
+    const startDateVal = document.getElementById('laporan-date-start')?.value || '-';
+    const endDateVal = document.getElementById('laporan-date-end')?.value || '-';
+    
+    const now = new Date();
+    const printDate = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    const printedBy = currentUser ? `${currentUser.nama_staf} (${currentUser.role})` : 'System Administrator';
+
+    // Clone table HTML
+    const tableHeadHTML = document.getElementById('laporan-table-head')?.innerHTML || '';
+    const tableBodyHTML = document.getElementById('laporan-table-body')?.innerHTML || '';
+    const tableFootHTML = document.getElementById('laporan-table-foot')?.innerHTML || '';
+
+    return `
+        <div style="padding: 24px; font-family: 'Inter', -apple-system, sans-serif; color: #0f172a; background: #fff;">
+            <!-- Official Header Banner -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0d9488; padding-bottom: 16px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <img src="${appLogo}" alt="Logo" style="height: 52px; object-fit: contain;">
+                    <div>
+                        <h1 style="font-size: 22px; font-weight: 800; margin: 0; color: #0d9488; text-transform: uppercase; letter-spacing: 0.5px;">${appName}</h1>
+                        <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">Jl. Utama Apotek Enterprise • Sulawesi Selatan, Indonesia</div>
+                        <div style="font-size: 11.5px; color: #0d9488; font-weight: 600; margin-top: 1px;">Dokumen Laporan Resmi & Relevansi Akuntansi</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 16px; font-weight: 800; color: #0f172a;">${typeLabel.toUpperCase()}</div>
+                    <div style="font-size: 11.5px; color: #475569; margin-top: 4px;">Periode: <strong>${startDateVal}</strong> s/d <strong>${endDateVal}</strong></div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Dicetak: ${printDate}</div>
+                </div>
+            </div>
+
+            <!-- Meta Details Bar -->
+            <div style="display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; font-size: 12px;">
+                <div>Staf Pengunduh: <strong>${printedBy}</strong></div>
+                <div>Status Dokumen: <span style="color: #10b981; font-weight: 700;">🟢 Terverifikasi Sistem</span></div>
+            </div>
+
+            <!-- Main Data Table -->
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+                <thead>
+                    ${tableHeadHTML}
+                </thead>
+                <tbody>
+                    ${tableBodyHTML}
+                </tbody>
+                <tfoot>
+                    ${tableFootHTML}
+                </tfoot>
+            </table>
+
+            <!-- Footer Signature Block -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; page-break-inside: avoid;">
+                <div style="font-size: 11px; color: #94a3b8;">
+                    <div>* Laporan ini dihasilkan secara otomatis oleh sistem ${appName}.</div>
+                    <div>* Keabsahan dokumen sah tanpa tanda tangan basah jika dicetak dari akun terdaftar.</div>
+                </div>
+                <div style="text-align: center; min-width: 180px;">
+                    <div style="font-size: 12px; color: #475569; margin-bottom: 50px;">Makassar, ${now.getDate()} / ${(now.getMonth()+1)} / ${now.getFullYear()}<br>Penanggung Jawab Apotek</div>
+                    <div style="font-weight: 800; font-size: 13px; text-decoration: underline;">( ${currentUser ? currentUser.nama_staf : 'Apoteker / Manager'} )</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function exportLaporanPDF() {
+    try {
+        const printContent = generateReportPrintHTML();
+        const element = document.createElement('div');
+        element.innerHTML = printContent;
+        document.body.appendChild(element);
+
+        const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const typeSelect = document.getElementById('laporan-type-select');
+        const typeVal = typeSelect ? typeSelect.value : 'laporan';
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        if (typeof html2pdf !== 'undefined') {
+            const opt = {
+                margin: [8, 8, 8, 8],
+                filename: `Laporan_${typeVal}_${appName.replace(/\s+/g, '_')}_${dateStr}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.body.removeChild(element);
+            }).catch(err => {
+                console.error('html2pdf error, fallback to print window:', err);
+                document.body.removeChild(element);
+                triggerPrintWindow(printContent);
+            });
+        } else {
+            document.body.removeChild(element);
+            triggerPrintWindow(printContent);
+        }
+    } catch (err) {
+        console.error('Export PDF error:', err);
+        alert('Gagal mengexport PDF: ' + err.message);
+    }
+}
+
+function triggerPrintWindow(htmlContent) {
+    const printWin = window.open('', '_blank');
+    if (printWin) {
+        printWin.document.write(`
+            <html>
+                <head>
+                    <title>Cetak Laporan</title>
+                    <style>
+                        body { margin: 0; padding: 0; }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { border: 1px solid #cbd5e1; padding: 8px 12px; }
+                        th { background: #f1f5f9; text-align: left; }
+                    </style>
+                </head>
+                <body>
+                    ${htmlContent}
+                    <script>
+                        window.onload = function() { window.print(); window.close(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWin.document.close();
+    }
+}
+
+function exportLaporanXLSX() {
+    try {
+        if (typeof XLSX === 'undefined') {
+            alert('Library Excel (XLSX) tidak dimuat. Periksa koneksi internet Anda!');
+            return;
+        }
+
+        const appName = localStorage.getItem('app_name') || 'Apotek HF';
+        const typeSelect = document.getElementById('laporan-type-select');
+        const typeVal = typeSelect ? typeSelect.value : 'laporan';
+        const typeLabel = typeSelect ? typeSelect.options[typeSelect.selectedIndex].text : 'Laporan';
+
+        const startDateVal = document.getElementById('laporan-date-start')?.value || '-';
+        const endDateVal = document.getElementById('laporan-date-end')?.value || '-';
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        // Format data into array of objects for Excel sheet
+        const excelRows = [];
+        
+        // Metadata Title Rows
+        excelRows.push({ A: `${appName.toUpperCase()} - DOKUMEN LAPORAN RESMI` });
+        excelRows.push({ A: `Jenis Laporan: ${typeLabel}` });
+        excelRows.push({ A: `Periode: ${startDateVal} s/d ${endDateVal}` });
+        excelRows.push({ A: `Dicetak Pada: ${new Date().toLocaleString('id-ID')}` });
+        excelRows.push({ A: '' }); // Blank row
+
+        if (currentLaporanType === 'penjualan') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'No. Nota': x.id_jual || '-',
+                    'Tanggal': x.tanggal || '-',
+                    'Pelanggan': x.pelanggan || 'Umum',
+                    'Staf Kasir': x.staf || '-',
+                    'Metode Bayar': x.metode_bayar || 'TUNAI',
+                    'Total Bayar (Rp)': parseFloat(x.total_bayar || 0)
+                });
+            });
+        } else if (currentLaporanType === 'pembelian') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'No. Faktur': x.id_faktur || '-',
+                    'Tanggal Masuk': x.tanggal_masuk || x.tanggal || '-',
+                    'Supplier': x.supplier || '-',
+                    'Staf': x.staf || '-',
+                    'Total Faktur (Rp)': parseFloat(x.total_harga || x.total_bayar || 0)
+                });
+            });
+        } else if (currentLaporanType === 'kas') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'Tanggal': x.tanggal || '-',
+                    'Tipe Kas': x.tipe || '-',
+                    'Kategori': x.kategori || '-',
+                    'Keterangan': x.keterangan || '-',
+                    'Jumlah (Rp)': parseFloat(x.jumlah || 0)
+                });
+            });
+        } else if (currentLaporanType === 'stok') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'Kode Obat': x.id_obat || '-',
+                    'Nama Obat': x.nama_obat || '-',
+                    'Kategori': x.kategori || '-',
+                    'Stok': parseInt(x.stok_unit_kecil || 0),
+                    'Satuan': x.unit_kecil || 'PCS',
+                    'Harga Beli (Rp)': parseFloat(x.harga_beli_satuan || 0),
+                    'Harga Jual (Rp)': parseFloat(x.harga_jual_satuan || 0)
+                });
+            });
+        } else if (currentLaporanType === 'shift') {
+            currentLaporanData.forEach(x => {
+                excelRows.push({
+                    'Tanggal': x.tanggal || '-',
+                    'Shift': x.shift || '-',
+                    'Nama Staf': x.nama || x.user || '-',
+                    'Modal Awal (Rp)': parseFloat(x.modal || 0),
+                    'Total Uang Akhir (Rp)': parseFloat(x.total_uang || 0),
+                    'Uang Masuk (Rp)': parseFloat(x.masuk || 0),
+                    'Catatan': x.catatan || '-'
+                });
+            });
+        }
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelRows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
+
+        const fileName = `Laporan_${typeVal}_${appName.replace(/\s+/g, '_')}_${dateStr}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    } catch (err) {
+        console.error('Export XLSX error:', err);
+        alert('Gagal mengexport Excel: ' + err.message);
     }
 }
 

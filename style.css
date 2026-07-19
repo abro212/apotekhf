@@ -1682,4 +1682,11 @@ body {
     }
 }
 
+/* LAPORAN & REPORT STYLES */
+#laporan-table-foot td {
+    border-top: 2px solid var(--border-color);
+    background-color: var(--bg-main);
+    font-weight: 800;
+}
+
 
