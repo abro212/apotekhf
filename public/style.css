@@ -1507,8 +1507,28 @@ body {
     /* POS Layout Mobile Overrides */
     .pos-layout {
         grid-template-columns: 1fr !important;
-        gap: 15px !important;
-        padding-bottom: 80px !important;
+        gap: 12px !important;
+        padding-bottom: 90px !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .pos-section-wrapper {
+        padding: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-item-row {
+        padding: 10px 12px !important;
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .pos-item-name {
+        font-size: 12.5px !important;
+        max-width: 160px;
     }
 
     #pos-mobile-tabs {
