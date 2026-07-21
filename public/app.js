@@ -1703,6 +1703,40 @@ function renderPaginationControls(containerId, currentPage, totalPages, pageSize
 let currentObatPage = 1;
 let currentObatPageSize = 10;
 
+function getLocalObatEd(idObat) {
+    if (!idObat) return null;
+    try {
+        let mapStr = localStorage.getItem('apotek_obat_ed_map');
+        if (!mapStr) {
+            const seedMap = {
+                'HF00001': '2027-12-31',
+                'HF00002': '2026-08-15',
+                'HF00003': '2026-06-10'
+            };
+            localStorage.setItem('apotek_obat_ed_map', JSON.stringify(seedMap));
+            mapStr = JSON.stringify(seedMap);
+        }
+        const map = JSON.parse(mapStr || '{}');
+        return map[idObat] || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function setLocalObatEd(idObat, edDateStr) {
+    if (!idObat) return;
+    try {
+        const mapStr = localStorage.getItem('apotek_obat_ed_map');
+        const map = JSON.parse(mapStr || '{}');
+        if (edDateStr) {
+            map[idObat] = edDateStr;
+        } else {
+            delete map[idObat];
+        }
+        localStorage.setItem('apotek_obat_ed_map', JSON.stringify(map));
+    } catch (e) {}
+}
+
 function getExpBadge(expDateStr) {
     if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b;">-</span>';
     
@@ -1803,8 +1837,9 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 }
             }
 
-            const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
-            const rawExpStr = String(o.tanggal_kadaluarsa || o.expired_date || o.exp_date || '-');
+            const expDateVal = o.tanggal_kadaluarsa || o.expired_date || o.exp_date || getLocalObatEd(o.id_obat);
+            const expBadge = getExpBadge(expDateVal);
+            const rawExpStr = String(expDateVal || '-');
             const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
 
             // Desktop row
@@ -1990,13 +2025,16 @@ async function submitAddObat(e) {
             nextId = 'HF' + String(lastNum + 1).padStart(5, '0');
         }
 
+        const expVal = document.getElementById('add-obat-exp')?.value || null;
+        if (expVal) {
+            setLocalObatEd(nextId, expVal);
+        }
+
         const newObat = {
             id_obat: nextId,
             nama_obat: document.getElementById('add-obat-nama').value,
             kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
             jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
-            tanggal_kadaluarsa: document.getElementById('add-obat-exp')?.value || null,
-            expired_date: document.getElementById('add-obat-exp')?.value || null,
             satuan_1: document.getElementById('add-obat-sat1').value,
             label_satuan_kecil: document.getElementById('add-obat-sat1').value,
             satuan_2: document.getElementById('add-obat-sat2').value || '',
@@ -2069,7 +2107,7 @@ async function editObat(encodedId, e) {
             }
         }
 
-        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || '';
+        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || getLocalObatEd(item.id_obat) || '';
         if (document.getElementById('edit-obat-exp')) {
             document.getElementById('edit-obat-exp').value = expVal ? expVal.substring(0, 10) : '';
         }
@@ -2096,13 +2134,13 @@ async function editObat(encodedId, e) {
 async function submitEditObat(e) {
     e.preventDefault();
     const id = document.getElementById('edit-obat-id').value;
-    
+    const expVal = document.getElementById('edit-obat-exp')?.value || null;
+    setLocalObatEd(id, expVal);
+
     const updatedObat = {
         nama_obat: document.getElementById('edit-obat-nama').value,
         kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
         jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
-        tanggal_kadaluarsa: document.getElementById('edit-obat-exp')?.value || null,
-        expired_date: document.getElementById('edit-obat-exp')?.value || null,
         rak: document.getElementById('edit-obat-rak').value || '',
         stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
         stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',
@@ -2197,7 +2235,7 @@ async function previewObat(encodedId, e) {
             }
         }
 
-        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date;
+        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || getLocalObatEd(item.id_obat);
         if (document.getElementById('preview-obat-exp')) {
             document.getElementById('preview-obat-exp').innerHTML = getExpBadge(expVal);
         }
