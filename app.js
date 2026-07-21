@@ -1732,6 +1732,30 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     }
                 }
 
+function getExpBadge(expDateStr) {
+    if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b;">-</span>';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expDate = new Date(expDateStr);
+    if (isNaN(expDate.getTime())) return `<span class="badge" style="background:#f1f5f9; color:#64748b;">${expDateStr}</span>`;
+    
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    const formattedDate = expDate.toLocaleDateString('id-ID', options);
+
+    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return `<span class="badge" style="background:#fee2e2; color:#ef4444; font-weight:700;" title="Kadaluarsa">⚠️ ${formattedDate} (ED)</span>`;
+    } else if (diffDays <= 90) {
+        return `<span class="badge" style="background:#fef3c7; color:#d97706; font-weight:700;" title="Mendekati Kadaluarsa">⏳ ${formattedDate} (${diffDays} hr)</span>`;
+    } else {
+        return `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">📅 ${formattedDate}</span>`;
+    }
+}
+
+                const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
+
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1744,6 +1768,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                     <td>${marginBadge}</td>
                     <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
+                    <td>${expBadge}</td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${encId}', event)">Detail</button>
                         <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${encId}', event)">Edit</button>
@@ -1767,7 +1792,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         <div class="price-card-header">
                             <div style="flex:1;" onclick="previewObat('${encId}', event)">
                                 <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
-                                <div class="price-card-sub">ID: ${o.id_obat} • Jenis: ${o.jenis_item || 'NON KONSI'} • Kategori: ${o.kategori || '-'}</div>
+                                <div class="price-card-sub">ID: ${o.id_obat} • ED: ${(o.tanggal_kadaluarsa || o.expired_date || '-').substring(0,10)} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
                             </div>
                             <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
                         </div>
@@ -1917,6 +1942,8 @@ async function submitAddObat(e) {
             nama_obat: document.getElementById('add-obat-nama').value,
             kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
             jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
+            tanggal_kadaluarsa: document.getElementById('add-obat-exp')?.value || null,
+            expired_date: document.getElementById('add-obat-exp')?.value || null,
             satuan_1: document.getElementById('add-obat-sat1').value,
             label_satuan_kecil: document.getElementById('add-obat-sat1').value,
             satuan_2: document.getElementById('add-obat-sat2').value || '',
@@ -1989,6 +2016,11 @@ async function editObat(encodedId, e) {
             }
         }
 
+        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || '';
+        if (document.getElementById('edit-obat-exp')) {
+            document.getElementById('edit-obat-exp').value = expVal ? expVal.substring(0, 10) : '';
+        }
+
         document.getElementById('edit-obat-rak').value = item.rak || '';
         document.getElementById('edit-obat-stokmin').value = item.stok_minimal || '5';
         document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
@@ -2016,6 +2048,8 @@ async function submitEditObat(e) {
         nama_obat: document.getElementById('edit-obat-nama').value,
         kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
         jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
+        tanggal_kadaluarsa: document.getElementById('edit-obat-exp')?.value || null,
+        expired_date: document.getElementById('edit-obat-exp')?.value || null,
         rak: document.getElementById('edit-obat-rak').value || '',
         stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
         stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',
@@ -2062,6 +2096,7 @@ async function previewObat(encodedId, e) {
     document.getElementById('preview-obat-stok-min').textContent = '...';
     document.getElementById('preview-obat-jenis').textContent = '...';
     if (document.getElementById('preview-obat-margin')) document.getElementById('preview-obat-margin').textContent = '...';
+    if (document.getElementById('preview-obat-exp')) document.getElementById('preview-obat-exp').textContent = '...';
     document.getElementById('preview-obat-prices-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:var(--text-muted);">Memuat rincian harga...</td></tr>';
     
     modal.classList.remove('hidden');
@@ -2107,6 +2142,11 @@ async function previewObat(encodedId, e) {
             } else {
                 marginEl.textContent = 'Rp 0 (0%)';
             }
+        }
+
+        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date;
+        if (document.getElementById('preview-obat-exp')) {
+            document.getElementById('preview-obat-exp').innerHTML = getExpBadge(expVal);
         }
 
         const tbody = document.getElementById('preview-obat-prices-body');

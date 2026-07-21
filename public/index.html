@@ -528,6 +528,7 @@
                                         <th>Harga Beli</th>
                                         <th>Margin (%)</th>
                                         <th>Harga Jual L1</th>
+                                        <th>Expired Date</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -1505,6 +1506,10 @@
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>Tanggal Kadaluarsa (ED)</label>
+                        <input type="date" id="add-obat-exp" class="form-control">
+                    </div>
+                    <div class="form-group">
                         <label>Satuan 1 (Kecil)</label>
                         <input type="text" id="add-obat-sat1" class="form-control" placeholder="Pcs / Strip / Tablet" required>
                     </div>
@@ -1571,6 +1576,10 @@
                             <option value="KONSI">KONSI</option>
                             <option value="JASA">JASA</option>
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tanggal Kadaluarsa (ED)</label>
+                        <input type="date" id="edit-obat-exp" class="form-control">
                     </div>
                     <div class="form-group">
                         <label>Rak Tempat (Lokasi)</label>
@@ -1650,6 +1659,7 @@
                     <p style="margin-bottom: 8px;"><strong>Stok Minimal:</strong> <span id="preview-obat-stok-min">-</span></p>
                     <p style="margin-bottom: 8px;"><strong>Jenis Item:</strong> <span id="preview-obat-jenis">-</span></p>
                     <p style="margin-bottom: 8px;"><strong>Margin Keuntungan:</strong> <span id="preview-obat-margin">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Expired Date (ED):</strong> <span id="preview-obat-exp">-</span></p>
                 </div>
             </div>
 
