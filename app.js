@@ -1712,8 +1712,24 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
     currentObatPageSize = pageSize;
     const searchEl = document.getElementById('master-obat-search');
     const q = searchEl ? searchEl.value.trim() : '';
+
+    if (!supabaseClient) {
+        checkSupabaseConfig();
+    }
+
+    const tbody = document.getElementById('master-obat-table-body');
+    const mobileList = document.getElementById('master-obat-mobile-list');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted); font-weight:600;">⏳ Memuat data master obat...</td></tr>';
+    if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">⏳ Memuat data...</div>';
+
     try {
-        if (!supabaseClient) return;
+        if (!supabaseClient) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">Database belum terkonfigurasi. Silakan periksa pengaturan database.</td></tr>';
+            return;
+        }
+
         let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
         if (q) {
             query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
@@ -1723,100 +1739,110 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
         const to = from + pageSize - 1;
         
         const { data, count, error } = await query.order('nama_obat').range(from, to);
-        const tbody = document.getElementById('master-obat-table-body');
-        const mobileList = document.getElementById('master-obat-mobile-list');
         
-        if (!tbody) return;
         tbody.innerHTML = '';
         if (mobileList) mobileList.innerHTML = '';
-        
-        if (!error && data) {
-            data.forEach(o => {
-                const encId = encodeURIComponent(o.id_obat || '');
 
-                const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
-                const jualNum = parseFloat(o.harga_l1_s1 || 0);
-                const diffNom = jualNum - beliNum;
-                let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">Rp 0 (0%)</span>';
-
-                if (beliNum > 0 || jualNum > 0) {
-                    const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
-                    const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
-                    const nomStr = formatMoney(diffNom);
-                    
-                    if (diffNom > 0) {
-                        marginBadge = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+Rp ${nomStr} (+${mStr}%)</span>`;
-                    } else if (diffNom < 0) {
-                        marginBadge = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">-Rp ${formatMoney(Math.abs(diffNom))} (${mStr}%)</span>`;
-                    } else {
-                        marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">Rp 0 (0%)</span>`;
-                    }
-                }
-
-                const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
-                const rawExpStr = String(o.tanggal_kadaluarsa || o.expired_date || o.exp_date || '-');
-                const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
-
-                // Desktop row
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${o.id_obat}</strong></td>
-                    <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${o.nama_obat}</a></td>
-                    <td>${o.kategori || '-'}</td>
-                    <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${o.jenis_item || 'NON KONSI'}</span></td>
-                    <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
-                    <td>${o.satuan_1 || 'Pcs'}</td>
-                    <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
-                    <td>${marginBadge}</td>
-                    <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
-                    <td>${expBadge}</td>
-                    <td>
-                        <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${encId}', event)">Detail</button>
-                        <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${encId}', event)">Edit</button>
-                        <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-
-                // Mobile card
-                if (mobileList) {
-                    const card = document.createElement('div');
-                    card.className = 'price-card-mobile';
-                    
-                    const stockNum = parseFloat(o.stok_unit_kecil || 0);
-                    const stockMin = parseFloat(o.stok_minimal || 5);
-                    const stockBadgeStyle = stockNum <= stockMin 
-                        ? 'background-color:#fee2e2; color:#ef4444;' 
-                        : 'background-color:#ecfdf5; color:#10b981;';
-                        
-                    card.innerHTML = `
-                        <div class="price-card-header">
-                            <div style="flex:1;" onclick="previewObat('${encId}', event)">
-                                <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
-                                <div class="price-card-sub">ID: ${o.id_obat} • ED: ${cleanExpStr} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
-                            </div>
-                            <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
-                            <div style="font-size:12px; color:var(--text-muted);">
-                                Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
-                            </div>
-                            <div style="display:flex; gap:6px;">
-                                <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${encId}', event)">Detail</button>
-                                <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${encId}', event)">Edit</button>
-                                <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
-                            </div>
-                        </div>
-                    `;
-                    mobileList.appendChild(card);
-                }
-            });
-
-            const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
-            renderPaginationControls('master-obat-pagination', page, totalPages, pageSize, 'loadMasterObat');
+        if (error) {
+            console.error('Error fetching master_obat:', error);
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">Gagal mengambil data obat: ${error.message}</td></tr>`;
+            return;
         }
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data obat yang ditemukan.</td></tr>';
+            if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data obat.</div>';
+            return;
+        }
+
+        data.forEach(o => {
+            const encId = encodeURIComponent(o.id_obat || '');
+
+            const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
+            const jualNum = parseFloat(o.harga_l1_s1 || 0);
+            const diffNom = jualNum - beliNum;
+            let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">Rp 0 (0%)</span>';
+
+            if (beliNum > 0 || jualNum > 0) {
+                const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
+                const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
+                const nomStr = formatMoney(diffNom);
+                
+                if (diffNom > 0) {
+                    marginBadge = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+Rp ${nomStr} (+${mStr}%)</span>`;
+                } else if (diffNom < 0) {
+                    marginBadge = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">-Rp ${formatMoney(Math.abs(diffNom))} (${mStr}%)</span>`;
+                } else {
+                    marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">Rp 0 (0%)</span>`;
+                }
+            }
+
+            const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
+            const rawExpStr = String(o.tanggal_kadaluarsa || o.expired_date || o.exp_date || '-');
+            const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
+
+            // Desktop row
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${o.id_obat}</strong></td>
+                <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${o.nama_obat}</a></td>
+                <td>${o.kategori || '-'}</td>
+                <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${o.jenis_item || 'NON KONSI'}</span></td>
+                <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
+                <td>${o.satuan_1 || 'Pcs'}</td>
+                <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
+                <td>${marginBadge}</td>
+                <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
+                <td>${expBadge}</td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${encId}', event)">Detail</button>
+                    <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${encId}', event)">Edit</button>
+                    <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // Mobile card
+            if (mobileList) {
+                const card = document.createElement('div');
+                card.className = 'price-card-mobile';
+                
+                const stockNum = parseFloat(o.stok_unit_kecil || 0);
+                const stockMin = parseFloat(o.stok_minimal || 5);
+                const stockBadgeStyle = stockNum <= stockMin 
+                    ? 'background-color:#fee2e2; color:#ef4444;' 
+                    : 'background-color:#ecfdf5; color:#10b981;';
+                    
+                card.innerHTML = `
+                    <div class="price-card-header">
+                        <div style="flex:1;" onclick="previewObat('${encId}', event)">
+                            <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
+                            <div class="price-card-sub">ID: ${o.id_obat} • ED: ${cleanExpStr} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
+                        </div>
+                        <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                        <div style="font-size:12px; color:var(--text-muted);">
+                            Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${encId}', event)">Detail</button>
+                            <button class="btn btn-primary" style="padding: 6px 10px; font-size: 11px;" onclick="editObat('${encId}', event)">Edit</button>
+                            <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px;" onclick="deleteObat('${encId}', event)">Hapus</button>
+                        </div>
+                    </div>
+                `;
+                mobileList.appendChild(card);
+            }
+        });
+
+        const totalPages = Math.ceil((count !== null && count !== undefined ? count : data.length) / pageSize);
+        renderPaginationControls('master-obat-pagination', page, totalPages, pageSize, 'loadMasterObat');
     } catch (e) {
         console.error('Error loading Master Obat:', e);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">Terjadi kesalahan sistem: ${e.message}</td></tr>`;
+        }
     }
 }
 
