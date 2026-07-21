@@ -1710,7 +1710,8 @@ function getExpBadge(expDateStr) {
 async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
     currentObatPage = page;
     currentObatPageSize = pageSize;
-    const q = document.getElementById('master-obat-search').value.trim();
+    const searchEl = document.getElementById('master-obat-search');
+    const q = searchEl ? searchEl.value.trim() : '';
     try {
         if (!supabaseClient) return;
         let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
@@ -1725,6 +1726,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
         const tbody = document.getElementById('master-obat-table-body');
         const mobileList = document.getElementById('master-obat-mobile-list');
         
+        if (!tbody) return;
         tbody.innerHTML = '';
         if (mobileList) mobileList.innerHTML = '';
         
@@ -1752,6 +1754,8 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 }
 
                 const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
+                const rawExpStr = String(o.tanggal_kadaluarsa || o.expired_date || o.exp_date || '-');
+                const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
 
                 // Desktop row
                 const tr = document.createElement('tr');
@@ -1789,7 +1793,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         <div class="price-card-header">
                             <div style="flex:1;" onclick="previewObat('${encId}', event)">
                                 <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
-                                <div class="price-card-sub">ID: ${o.id_obat} • ED: ${(o.tanggal_kadaluarsa || o.expired_date || '-').substring(0,10)} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
+                                <div class="price-card-sub">ID: ${o.id_obat} • ED: ${cleanExpStr} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
                             </div>
                             <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
                         </div>
