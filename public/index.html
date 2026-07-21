@@ -526,6 +526,8 @@
                                         <th>Stok</th>
                                         <th>Satuan Kecil</th>
                                         <th>Harga Beli</th>
+                                        <th>Margin (%)</th>
+                                        <th>Harga Jual L1</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -1519,8 +1521,16 @@
                         <input type="number" id="add-obat-stok" class="form-control" value="0">
                     </div>
                     <div class="form-group">
-                        <label>Harga L1 Satuan 1</label>
-                        <input type="number" id="add-obat-l1s1" class="form-control" value="0" required>
+                        <label>Harga Beli Satuan 1</label>
+                        <input type="number" id="add-obat-beli1" class="form-control" value="0" oninput="calcAddMargin()">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Jual L1 Satuan 1</label>
+                        <input type="number" id="add-obat-l1s1" class="form-control" value="0" oninput="calcAddMargin()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Margin Keuntungan (%)</label>
+                        <input type="number" step="0.1" id="add-obat-margin" class="form-control" value="0" placeholder="Contoh: 20" oninput="calcAddPriceFromMargin()">
                     </div>
                     <div class="form-group">
                         <label>Harga L1 Satuan 2</label>
@@ -1584,11 +1594,15 @@
                     </div>
                     <div class="form-group">
                         <label>Harga Beli Satuan 1</label>
-                        <input type="number" id="edit-obat-beli1" class="form-control" value="0">
+                        <input type="number" id="edit-obat-beli1" class="form-control" value="0" oninput="calcEditMargin()">
                     </div>
                     <div class="form-group">
                         <label>Harga Jual L1 Satuan 1</label>
-                        <input type="number" id="edit-obat-l1s1" class="form-control" value="0" required>
+                        <input type="number" id="edit-obat-l1s1" class="form-control" value="0" oninput="calcEditMargin()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Margin Keuntungan (%)</label>
+                        <input type="number" step="0.1" id="edit-obat-margin" class="form-control" value="0" placeholder="Contoh: 20" oninput="calcEditPriceFromMargin()">
                     </div>
                     <div class="form-group">
                         <label>Harga Jual L1 Satuan 2</label>
@@ -1627,6 +1641,7 @@
                     <p style="margin-bottom: 8px;"><strong>Stok Gudang:</strong> <span id="preview-obat-stok-gudang">-</span></p>
                     <p style="margin-bottom: 8px;"><strong>Stok Minimal:</strong> <span id="preview-obat-stok-min">-</span></p>
                     <p style="margin-bottom: 8px;"><strong>Jenis Item:</strong> <span id="preview-obat-jenis">-</span></p>
+                    <p style="margin-bottom: 8px;"><strong>Margin Keuntungan:</strong> <span id="preview-obat-margin">-</span></p>
                 </div>
             </div>
 

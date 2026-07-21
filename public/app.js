@@ -1713,6 +1713,22 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             data.forEach(o => {
                 const encId = encodeURIComponent(o.id_obat || '');
 
+                const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
+                const jualNum = parseFloat(o.harga_l1_s1 || 0);
+                let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">0%</span>';
+
+                if (beliNum > 0) {
+                    const mVal = ((jualNum - beliNum) / beliNum) * 100;
+                    const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
+                    if (mVal > 0) {
+                        marginBadge = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+${mStr}%</span>`;
+                    } else if (mVal < 0) {
+                        marginBadge = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">${mStr}%</span>`;
+                    } else {
+                        marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">0%</span>`;
+                    }
+                }
+
                 // Desktop row
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -1723,6 +1739,8 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
                     <td>${o.satuan_1 || 'Pcs'}</td>
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
+                    <td>${marginBadge}</td>
+                    <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
                     <td>
                         <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="previewObat('${encId}', event)">Detail</button>
                         <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;" onclick="editObat('${encId}', event)">Edit</button>
@@ -1752,7 +1770,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         </div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                             <div style="font-size:12px; color:var(--text-muted);">
-                                Satuan: <strong>${o.satuan_1 || 'Pcs'}</strong> • Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong>
+                                Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
                             </div>
                             <div style="display:flex; gap:6px;">
                                 <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 11px;" onclick="previewObat('${encId}', event)">Detail</button>
@@ -1773,8 +1791,53 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
     }
 }
 
+function calcAddMargin() {
+    const beli = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
+    const jual = parseFloat(document.getElementById('add-obat-l1s1')?.value || 0);
+    const marginEl = document.getElementById('add-obat-margin');
+    if (!marginEl) return;
+    if (beli > 0 && jual >= 0) {
+        const margin = ((jual - beli) / beli) * 100;
+        marginEl.value = margin % 1 === 0 ? margin.toString() : margin.toFixed(1);
+    } else {
+        marginEl.value = '0';
+    }
+}
+
+function calcAddPriceFromMargin() {
+    const beli = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
+    const margin = parseFloat(document.getElementById('add-obat-margin')?.value || 0);
+    const jualEl = document.getElementById('add-obat-l1s1');
+    if (!jualEl || beli <= 0) return;
+    const jual = Math.round(beli * (1 + margin / 100));
+    jualEl.value = jual.toString();
+}
+
+function calcEditMargin() {
+    const beli = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
+    const jual = parseFloat(document.getElementById('edit-obat-l1s1')?.value || 0);
+    const marginEl = document.getElementById('edit-obat-margin');
+    if (!marginEl) return;
+    if (beli > 0 && jual >= 0) {
+        const margin = ((jual - beli) / beli) * 100;
+        marginEl.value = margin % 1 === 0 ? margin.toString() : margin.toFixed(1);
+    } else {
+        marginEl.value = '0';
+    }
+}
+
+function calcEditPriceFromMargin() {
+    const beli = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
+    const margin = parseFloat(document.getElementById('edit-obat-margin')?.value || 0);
+    const jualEl = document.getElementById('edit-obat-l1s1');
+    if (!jualEl || beli <= 0) return;
+    const jual = Math.round(beli * (1 + margin / 100));
+    jualEl.value = jual.toString();
+}
+
 function showAddObatModal() {
     document.getElementById('modal-add-obat').classList.remove('hidden');
+    calcAddMargin();
 }
 
 async function submitAddObat(e) {
@@ -1800,7 +1863,7 @@ async function submitAddObat(e) {
             satuan_2: document.getElementById('add-obat-sat2').value || '',
             isi_2_ke_1: document.getElementById('add-obat-isi2').value || '0',
             stok_unit_kecil: document.getElementById('add-obat-stok').value || '0',
-            harga_beli_sat_1: document.getElementById('add-obat-l1s1').value || '0',
+            harga_beli_sat_1: document.getElementById('add-obat-beli1')?.value || '0',
             harga_beli_sat_2: document.getElementById('add-obat-l1s2').value || '0',
             harga_l1_s1: document.getElementById('add-obat-l1s1').value || '0',
             harga_l1_s2: document.getElementById('add-obat-l1s2').value || '0'
@@ -1877,6 +1940,7 @@ async function editObat(encodedId, e) {
         document.getElementById('edit-obat-l1s1').value = item.harga_l1_s1 || '0';
         document.getElementById('edit-obat-l1s2').value = item.harga_l1_s2 || '0';
         document.getElementById('edit-obat-l1s3').value = item.harga_l1_s3 || '0';
+        calcEditMargin();
 
         document.getElementById('modal-edit-obat').classList.remove('hidden');
     } catch (err) {
@@ -1938,6 +2002,7 @@ async function previewObat(encodedId, e) {
     document.getElementById('preview-obat-stok-gudang').textContent = '...';
     document.getElementById('preview-obat-stok-min').textContent = '...';
     document.getElementById('preview-obat-jenis').textContent = '...';
+    if (document.getElementById('preview-obat-margin')) document.getElementById('preview-obat-margin').textContent = '...';
     document.getElementById('preview-obat-prices-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:var(--text-muted);">Memuat rincian harga...</td></tr>';
     
     modal.classList.remove('hidden');
@@ -1963,6 +2028,19 @@ async function previewObat(encodedId, e) {
         document.getElementById('preview-obat-stok-gudang').textContent = `${item.stok_gudang || 0} ${item.label_satuan_kecil || 'Pcs'}`;
         document.getElementById('preview-obat-stok-min').textContent = `${item.stok_minimal || 0} ${item.label_satuan_kecil || 'Pcs'}`;
         document.getElementById('preview-obat-jenis').textContent = item.jenis_item || '-';
+
+        const pBeli = parseFloat(item.harga_beli_sat_1 || 0);
+        const pJual = parseFloat(item.harga_l1_s1 || 0);
+        const marginEl = document.getElementById('preview-obat-margin');
+        if (marginEl) {
+            if (pBeli > 0) {
+                const mVal = ((pJual - pBeli) / pBeli) * 100;
+                const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
+                marginEl.innerHTML = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+${mStr}%</span>`;
+            } else {
+                marginEl.textContent = '0%';
+            }
+        }
 
         const tbody = document.getElementById('preview-obat-prices-body');
         tbody.innerHTML = '';
