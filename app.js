@@ -1866,16 +1866,18 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 <td>${marginBadge}</td>
                 <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
                 <td>${expBadge}</td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 6px 9px; font-size: 12px; margin-right: 4px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    </button>
-                    <button class="btn btn-primary" style="padding: 6px 9px; font-size: 12px; margin-right: 4px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    </button>
-                    <button class="btn btn-danger" style="padding: 6px 9px; font-size: 12px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    </button>
+                <td style="white-space: nowrap; text-align: center;">
+                    <div style="display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap;">
+                        <button class="btn btn-secondary" style="padding: 6px 8px; font-size: 12px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                        <button class="btn btn-primary" style="padding: 6px 8px; font-size: 12px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="btn btn-danger" style="padding: 6px 8px; font-size: 12px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(tr);
