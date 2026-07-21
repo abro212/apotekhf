@@ -1715,17 +1715,20 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
 
                 const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
                 const jualNum = parseFloat(o.harga_l1_s1 || 0);
-                let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">0%</span>';
+                const diffNom = jualNum - beliNum;
+                let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b;">Rp 0 (0%)</span>';
 
-                if (beliNum > 0) {
-                    const mVal = ((jualNum - beliNum) / beliNum) * 100;
+                if (beliNum > 0 || jualNum > 0) {
+                    const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
                     const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
-                    if (mVal > 0) {
-                        marginBadge = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+${mStr}%</span>`;
-                    } else if (mVal < 0) {
-                        marginBadge = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">${mStr}%</span>`;
+                    const nomStr = formatMoney(diffNom);
+                    
+                    if (diffNom > 0) {
+                        marginBadge = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+Rp ${nomStr} (+${mStr}%)</span>`;
+                    } else if (diffNom < 0) {
+                        marginBadge = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">-Rp ${formatMoney(Math.abs(diffNom))} (${mStr}%)</span>`;
                     } else {
-                        marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">0%</span>`;
+                        marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">Rp 0 (0%)</span>`;
                     }
                 }
 
@@ -1795,10 +1798,15 @@ function calcAddMargin() {
     const beli = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
     const jual = parseFloat(document.getElementById('add-obat-l1s1')?.value || 0);
     const marginEl = document.getElementById('add-obat-margin');
+    const marginNomEl = document.getElementById('add-obat-margin-nom');
+    
+    const diff = jual - beli;
+    if (marginNomEl) marginNomEl.value = diff.toString();
+    
     if (!marginEl) return;
     if (beli > 0 && jual >= 0) {
-        const margin = ((jual - beli) / beli) * 100;
-        marginEl.value = margin % 1 === 0 ? margin.toString() : margin.toFixed(1);
+        const marginPct = ((jual - beli) / beli) * 100;
+        marginEl.value = marginPct % 1 === 0 ? marginPct.toString() : marginPct.toFixed(1);
     } else {
         marginEl.value = '0';
     }
@@ -1806,21 +1814,49 @@ function calcAddMargin() {
 
 function calcAddPriceFromMargin() {
     const beli = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
-    const margin = parseFloat(document.getElementById('add-obat-margin')?.value || 0);
+    const marginPct = parseFloat(document.getElementById('add-obat-margin')?.value || 0);
     const jualEl = document.getElementById('add-obat-l1s1');
+    const marginNomEl = document.getElementById('add-obat-margin-nom');
     if (!jualEl || beli <= 0) return;
-    const jual = Math.round(beli * (1 + margin / 100));
+    
+    const jual = Math.round(beli * (1 + marginPct / 100));
     jualEl.value = jual.toString();
+    if (marginNomEl) marginNomEl.value = (jual - beli).toString();
+}
+
+function calcAddPriceFromMarginNominal() {
+    const beli = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
+    const marginNom = parseFloat(document.getElementById('add-obat-margin-nom')?.value || 0);
+    const jualEl = document.getElementById('add-obat-l1s1');
+    const marginEl = document.getElementById('add-obat-margin');
+    if (!jualEl) return;
+    
+    const jual = Math.round(beli + marginNom);
+    jualEl.value = jual.toString();
+    
+    if (marginEl) {
+        if (beli > 0) {
+            const marginPct = (marginNom / beli) * 100;
+            marginEl.value = marginPct % 1 === 0 ? marginPct.toString() : marginPct.toFixed(1);
+        } else {
+            marginEl.value = '0';
+        }
+    }
 }
 
 function calcEditMargin() {
     const beli = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
     const jual = parseFloat(document.getElementById('edit-obat-l1s1')?.value || 0);
     const marginEl = document.getElementById('edit-obat-margin');
+    const marginNomEl = document.getElementById('edit-obat-margin-nom');
+    
+    const diff = jual - beli;
+    if (marginNomEl) marginNomEl.value = diff.toString();
+    
     if (!marginEl) return;
     if (beli > 0 && jual >= 0) {
-        const margin = ((jual - beli) / beli) * 100;
-        marginEl.value = margin % 1 === 0 ? margin.toString() : margin.toFixed(1);
+        const marginPct = ((jual - beli) / beli) * 100;
+        marginEl.value = marginPct % 1 === 0 ? marginPct.toString() : marginPct.toFixed(1);
     } else {
         marginEl.value = '0';
     }
@@ -1828,11 +1864,34 @@ function calcEditMargin() {
 
 function calcEditPriceFromMargin() {
     const beli = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
-    const margin = parseFloat(document.getElementById('edit-obat-margin')?.value || 0);
+    const marginPct = parseFloat(document.getElementById('edit-obat-margin')?.value || 0);
     const jualEl = document.getElementById('edit-obat-l1s1');
+    const marginNomEl = document.getElementById('edit-obat-margin-nom');
     if (!jualEl || beli <= 0) return;
-    const jual = Math.round(beli * (1 + margin / 100));
+    
+    const jual = Math.round(beli * (1 + marginPct / 100));
     jualEl.value = jual.toString();
+    if (marginNomEl) marginNomEl.value = (jual - beli).toString();
+}
+
+function calcEditPriceFromMarginNominal() {
+    const beli = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
+    const marginNom = parseFloat(document.getElementById('edit-obat-margin-nom')?.value || 0);
+    const jualEl = document.getElementById('edit-obat-l1s1');
+    const marginEl = document.getElementById('edit-obat-margin');
+    if (!jualEl) return;
+    
+    const jual = Math.round(beli + marginNom);
+    jualEl.value = jual.toString();
+    
+    if (marginEl) {
+        if (beli > 0) {
+            const marginPct = (marginNom / beli) * 100;
+            marginEl.value = marginPct % 1 === 0 ? marginPct.toString() : marginPct.toFixed(1);
+        } else {
+            marginEl.value = '0';
+        }
+    }
 }
 
 function showAddObatModal() {
@@ -2031,14 +2090,22 @@ async function previewObat(encodedId, e) {
 
         const pBeli = parseFloat(item.harga_beli_sat_1 || 0);
         const pJual = parseFloat(item.harga_l1_s1 || 0);
+        const pDiff = pJual - pBeli;
         const marginEl = document.getElementById('preview-obat-margin');
         if (marginEl) {
-            if (pBeli > 0) {
-                const mVal = ((pJual - pBeli) / pBeli) * 100;
+            if (pBeli > 0 || pJual > 0) {
+                const mVal = pBeli > 0 ? ((pJual - pBeli) / pBeli) * 100 : 0;
                 const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
-                marginEl.innerHTML = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+${mStr}%</span>`;
+                const pNomStr = formatMoney(pDiff);
+                if (pDiff > 0) {
+                    marginEl.innerHTML = `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">+Rp ${pNomStr} (+${mStr}%)</span>`;
+                } else if (pDiff < 0) {
+                    marginEl.innerHTML = `<span class="badge" style="background:#fef2f2; color:#ef4444; font-weight:700;">-Rp ${formatMoney(Math.abs(pDiff))} (${mStr}%)</span>`;
+                } else {
+                    marginEl.textContent = 'Rp 0 (0%)';
+                }
             } else {
-                marginEl.textContent = '0%';
+                marginEl.textContent = 'Rp 0 (0%)';
             }
         }
 

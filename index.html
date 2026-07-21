@@ -1529,6 +1529,10 @@
                         <input type="number" id="add-obat-l1s1" class="form-control" value="0" oninput="calcAddMargin()" required>
                     </div>
                     <div class="form-group">
+                        <label>Margin Nominal (Rp)</label>
+                        <input type="number" id="add-obat-margin-nom" class="form-control" value="0" placeholder="Contoh: 5000" oninput="calcAddPriceFromMarginNominal()">
+                    </div>
+                    <div class="form-group">
                         <label>Margin Keuntungan (%)</label>
                         <input type="number" step="0.1" id="add-obat-margin" class="form-control" value="0" placeholder="Contoh: 20" oninput="calcAddPriceFromMargin()">
                     </div>
@@ -1599,6 +1603,10 @@
                     <div class="form-group">
                         <label>Harga Jual L1 Satuan 1</label>
                         <input type="number" id="edit-obat-l1s1" class="form-control" value="0" oninput="calcEditMargin()" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Margin Nominal (Rp)</label>
+                        <input type="number" id="edit-obat-margin-nom" class="form-control" value="0" placeholder="Contoh: 5000" oninput="calcEditPriceFromMarginNominal()">
                     </div>
                     <div class="form-group">
                         <label>Margin Keuntungan (%)</label>
