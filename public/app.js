@@ -1685,8 +1685,27 @@ function renderPaginationControls(containerId, currentPage, totalPages, pageSize
 // --------------------------------------------------------------------------
 // 4. MASTER OBAT (PAGINATED)
 // --------------------------------------------------------------------------
-let currentObatPage = 1;
-let currentObatPageSize = 10;
+function getExpBadge(expDateStr) {
+    if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b;">-</span>';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expDate = new Date(expDateStr);
+    if (isNaN(expDate.getTime())) return `<span class="badge" style="background:#f1f5f9; color:#64748b;">${expDateStr}</span>`;
+    
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    const formattedDate = expDate.toLocaleDateString('id-ID', options);
+
+    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return `<span class="badge" style="background:#fee2e2; color:#ef4444; font-weight:700;" title="Kadaluarsa">⚠️ ${formattedDate} (ED)</span>`;
+    } else if (diffDays <= 90) {
+        return `<span class="badge" style="background:#fef3c7; color:#d97706; font-weight:700;" title="Mendekati Kadaluarsa">⏳ ${formattedDate} (${diffDays} hr)</span>`;
+    } else {
+        return `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">📅 ${formattedDate}</span>`;
+    }
+}
 
 async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
     currentObatPage = page;
@@ -1731,28 +1750,6 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700;">Rp 0 (0%)</span>`;
                     }
                 }
-
-function getExpBadge(expDateStr) {
-    if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b;">-</span>';
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const expDate = new Date(expDateStr);
-    if (isNaN(expDate.getTime())) return `<span class="badge" style="background:#f1f5f9; color:#64748b;">${expDateStr}</span>`;
-    
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    const formattedDate = expDate.toLocaleDateString('id-ID', options);
-
-    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) {
-        return `<span class="badge" style="background:#fee2e2; color:#ef4444; font-weight:700;" title="Kadaluarsa">⚠️ ${formattedDate} (ED)</span>`;
-    } else if (diffDays <= 90) {
-        return `<span class="badge" style="background:#fef3c7; color:#d97706; font-weight:700;" title="Mendekati Kadaluarsa">⏳ ${formattedDate} (${diffDays} hr)</span>`;
-    } else {
-        return `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700;">📅 ${formattedDate}</span>`;
-    }
-}
 
                 const expBadge = getExpBadge(o.tanggal_kadaluarsa || o.expired_date || o.exp_date);
 
