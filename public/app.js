@@ -1707,16 +1707,19 @@ function getLocalObatEd(idObat) {
     if (!idObat) return null;
     try {
         let mapStr = localStorage.getItem('apotek_obat_ed_map');
-        if (!mapStr) {
-            const seedMap = {
-                'HF00001': '2027-12-31',
-                'HF00002': '2026-08-15',
-                'HF00003': '2026-06-10'
-            };
-            localStorage.setItem('apotek_obat_ed_map', JSON.stringify(seedMap));
-            mapStr = JSON.stringify(seedMap);
+        let map = {};
+        if (mapStr) {
+            try { map = JSON.parse(mapStr); } catch (e) {}
         }
-        const map = JSON.parse(mapStr || '{}');
+        
+        // Force seed demo entries if not explicitly set
+        if (!map['HF00001']) map['HF00001'] = '2027-12-31';
+        if (!map['HF00002']) map['HF00002'] = '2026-08-15';
+        if (!map['HF00003']) map['HF00003'] = '2026-06-10';
+        if (!map['HF00004']) map['HF00004'] = '2028-05-20';
+        if (!map['HF00005']) map['HF00005'] = '2026-08-01';
+
+        localStorage.setItem('apotek_obat_ed_map', JSON.stringify(map));
         return map[idObat] || null;
     } catch (e) {
         return null;
