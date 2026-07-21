@@ -932,9 +932,9 @@ async function renderDashboardCharts() {
             } else {
                 // Fallback if no detail_jual records yet
                 const { data: topObatData } = await supabaseClient
-                    .from('master_obat')
-                    .select('id_obat, nama_obat, stok_unit_kecil, label_satuan_kecil')
-                    .order('stok_unit_kecil', { ascending: false })
+                    .from('view_stok_realtime')
+                    .select('id_obat, nama_obat, stok_realtime, stok_unit_kecil, label_satuan_kecil')
+                    .order('stok_realtime', { ascending: false })
                     .limit(5);
 
                 if (topObatData && topObatData.length > 0) {
@@ -942,16 +942,17 @@ async function renderDashboardCharts() {
                     topObatData.forEach((item, idx) => {
                         const row = document.createElement('div');
                         row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; background: var(--bg-main); border-radius: 8px; border: 1px solid var(--border-color);';
+                        const displayStok = item.stok_realtime !== null && item.stok_realtime !== undefined ? item.stok_realtime : (item.stok_unit_kecil || 0);
                         row.innerHTML = `
                             <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1; padding-right:6px;">
                                 <span style="font-size:15px; flex-shrink:0;">${medals[idx] || '🎖️'}</span>
                                 <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                                    <strong style="color:var(--text-main); font-size:12px;">${item.nama_obat}</strong>
+                                    <strong style="color:var(--text-main); font-size:12px;">${escapeHtml(item.nama_obat)}</strong>
                                     <div style="font-size:10.5px; color:var(--text-muted);">ID: ${item.id_obat}</div>
                                 </div>
                             </div>
                             <span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; font-size:10.5px; flex-shrink:0;">
-                                ${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}
+                                ${displayStok} ${item.label_satuan_kecil || 'Pcs'}
                             </span>
                         `;
                         topListElem.appendChild(row);
@@ -1063,15 +1064,18 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
     const q = document.getElementById('cek-harga-search').value.trim();
     try {
         if (!supabaseClient) return;
-        let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+        let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
         if (q) {
-            query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%,kategori.ilike.%${q}%`);
+            const cleanQ = q.replace(/[%_,()]/g, '');
+            if (cleanQ) {
+                query = query.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%,kategori.ilike.%${cleanQ}%`);
+            }
         }
         
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
 
-        const { data, count, error } = await query.order('nama_obat').range(from, to);
+        const { data, count, error } = await query.order('nama_obat', { ascending: true }).range(from, to);
         const tbody = document.getElementById('cek-harga-table-body');
         const mobileList = document.getElementById('cek-harga-mobile-list');
         
@@ -1085,17 +1089,19 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
                 renderPaginationControls('cek-harga-pagination', 1, 1, pageSize, 'searchHarga');
             } else {
                 data.forEach(o => {
+                    const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
+
                     // Desktop table row
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>${o.id_obat}</strong></td>
-                        <td>${o.nama_obat}</td>
-                        <td>${o.kategori || '-'}</td>
-                        <td>${o.rak_tempat || '-'}</td>
-                        <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
-                        <td>Rp ${formatMoney(o.harga_l1_s1)} / ${o.satuan_1 || 'Pcs'}</td>
-                        <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${o.satuan_2}` : '-'}</td>
-                        <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${o.satuan_3}` : '-'}</td>
+                        <td>${escapeHtml(o.nama_obat)}</td>
+                        <td>${escapeHtml(o.kategori || '-')}</td>
+                        <td>${escapeHtml(o.rak || '-')}</td>
+                        <td><strong>${displayStok}</strong> ${escapeHtml(o.label_satuan_kecil || 'Pcs')}</td>
+                        <td>Rp ${formatMoney(o.harga_l1_s1)} / ${escapeHtml(o.satuan_1 || 'Pcs')}</td>
+                        <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${escapeHtml(o.satuan_2)}` : '-'}</td>
+                        <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${escapeHtml(o.satuan_3)}` : '-'}</td>
                     `;
                     tbody.appendChild(tr);
 
@@ -1785,7 +1791,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             return;
         }
 
-        let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+        let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
         if (q) {
             const cleanQ = q.replace(/[%_,()]/g, '');
             if (cleanQ) {
@@ -1820,6 +1826,8 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             const safeJenis = escapeHtml(o.jenis_item || 'NON KONSI');
             const safeSat1 = escapeHtml(o.satuan_1 || 'Pcs');
             const safeLabelKecil = escapeHtml(o.label_satuan_kecil || 'Pcs');
+            
+            const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
 
             const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
             const jualNum = parseFloat(o.harga_l1_s1 || 0);
@@ -1840,7 +1848,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 }
             }
 
-            const expDateVal = o.tanggal_kadaluarsa || o.expired_date || o.exp_date || getLocalObatEd(o.id_obat);
+            const expDateVal = o.expired_date || o.tanggal_kadaluarsa || o.exp_date || getLocalObatEd(o.id_obat);
             const expBadge = getExpBadge(expDateVal);
             const rawExpStr = String(expDateVal || '-');
             const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
@@ -1852,7 +1860,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${safeName}</a></td>
                 <td>${safeKat}</td>
                 <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${safeJenis}</span></td>
-                <td>${o.stok_unit_kecil || 0} ${safeLabelKecil}</td>
+                <td><strong>${displayStok}</strong> ${safeLabelKecil}</td>
                 <td>${safeSat1}</td>
                 <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                 <td>${marginBadge}</td>
@@ -1871,7 +1879,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 const card = document.createElement('div');
                 card.className = 'price-card-mobile';
                 
-                const stockNum = parseFloat(o.stok_unit_kecil || 0);
+                const stockNum = parseFloat(displayStok);
                 const stockMin = parseFloat(o.stok_minimal || 5);
                 const stockBadgeStyle = stockNum <= stockMin 
                     ? 'background-color:#fee2e2; color:#ef4444;' 
@@ -2197,7 +2205,7 @@ async function previewObat(encodedId, e) {
 
     try {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).limit(1);
+        const { data, error } = await supabaseClient.from('view_stok_realtime').select('*').eq('id_obat', id).limit(1);
         if (error) throw error;
         if (!data || data.length === 0) {
             alert('Data obat tidak ditemukan.');
@@ -2206,13 +2214,14 @@ async function previewObat(encodedId, e) {
         }
 
         const item = data[0];
+        const displayStok = item.stok_realtime !== null && item.stok_realtime !== undefined ? item.stok_realtime : (item.stok_unit_kecil || 0);
 
         document.getElementById('preview-obat-title').textContent = item.nama_obat || 'Detail Obat';
         document.getElementById('preview-obat-id').textContent = item.id_obat || '-';
         document.getElementById('preview-obat-kategori').textContent = item.kategori || '-';
         document.getElementById('preview-obat-rak').textContent = item.rak || '-';
         document.getElementById('preview-obat-supplier').textContent = item.supplier || '-';
-        document.getElementById('preview-obat-stok').textContent = `${item.stok_unit_kecil || 0} ${item.label_satuan_kecil || 'Pcs'}`;
+        document.getElementById('preview-obat-stok').textContent = `${displayStok} ${item.label_satuan_kecil || 'Pcs'}`;
         document.getElementById('preview-obat-stok-gudang').textContent = `${item.stok_gudang || 0} ${item.label_satuan_kecil || 'Pcs'}`;
         document.getElementById('preview-obat-stok-min').textContent = `${item.stok_minimal || 0} ${item.label_satuan_kecil || 'Pcs'}`;
         document.getElementById('preview-obat-jenis').textContent = item.jenis_item || '-';
