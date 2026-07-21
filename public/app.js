@@ -23,16 +23,24 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
 });
 
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Setup navigation and event listeners
 function setupEventListeners() {
     // Desktop Sidebar Navigation items
     document.querySelectorAll('.sidebar .nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            if (currentUser) {
-                const targetView = link.getAttribute('data-target');
-                if (targetView) switchView(targetView);
-            }
+            const targetView = link.getAttribute('data-target');
+            if (targetView) switchView(targetView);
         });
     });
 
@@ -1732,13 +1740,16 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
 
         let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
         if (q) {
-            query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
+            const cleanQ = q.replace(/[%_,()]/g, '');
+            if (cleanQ) {
+                query = query.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
+            }
         }
         
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
         
-        const { data, count, error } = await query.order('nama_obat').range(from, to);
+        const { data, count, error } = await query.order('nama_obat', { ascending: true }).range(from, to);
         
         tbody.innerHTML = '';
         if (mobileList) mobileList.innerHTML = '';
@@ -1757,6 +1768,11 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
 
         data.forEach(o => {
             const encId = encodeURIComponent(o.id_obat || '');
+            const safeName = escapeHtml(o.nama_obat || '');
+            const safeKat = escapeHtml(o.kategori || '-');
+            const safeJenis = escapeHtml(o.jenis_item || 'NON KONSI');
+            const safeSat1 = escapeHtml(o.satuan_1 || 'Pcs');
+            const safeLabelKecil = escapeHtml(o.label_satuan_kecil || 'Pcs');
 
             const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
             const jualNum = parseFloat(o.harga_l1_s1 || 0);
@@ -1784,12 +1800,12 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             // Desktop row
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${o.id_obat}</strong></td>
-                <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${o.nama_obat}</a></td>
-                <td>${o.kategori || '-'}</td>
-                <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${o.jenis_item || 'NON KONSI'}</span></td>
-                <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
-                <td>${o.satuan_1 || 'Pcs'}</td>
+                <td><strong>${o.id_obat || ''}</strong></td>
+                <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${safeName}</a></td>
+                <td>${safeKat}</td>
+                <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${safeJenis}</span></td>
+                <td>${o.stok_unit_kecil || 0} ${safeLabelKecil}</td>
+                <td>${safeSat1}</td>
                 <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                 <td>${marginBadge}</td>
                 <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
@@ -1816,10 +1832,10 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 card.innerHTML = `
                     <div class="price-card-header">
                         <div style="flex:1;" onclick="previewObat('${encId}', event)">
-                            <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
-                            <div class="price-card-sub">ID: ${o.id_obat} • ED: ${cleanExpStr} • Jenis: ${o.jenis_item || 'NON KONSI'}</div>
+                            <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${safeName}</div>
+                            <div class="price-card-sub">ID: ${o.id_obat || ''} • ED: ${cleanExpStr} • Jenis: ${safeJenis}</div>
                         </div>
-                        <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
+                        <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${safeLabelKecil}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                         <div style="font-size:12px; color:var(--text-muted);">
