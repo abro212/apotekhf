@@ -528,9 +528,14 @@ async function loadDashboard() {
         // Fetch low stock items count from view
         const { count: lowStockCountVal } = await supabaseClient.from('view_low_stock').select('*', { count: 'exact', head: true });
 
-        document.getElementById('dash-kpi-sales').textContent = `Rp ${formatMoney(salesTodaySum)}`;
-        document.getElementById('dash-kpi-tx').textContent = `${countTodayVal} Transaksi`;
-        document.getElementById('dash-kpi-lowstock').textContent = `${lowStockCountVal || 0} Item`;
+        const salesEl = document.getElementById('dash-kpi-sales');
+        if (salesEl) salesEl.textContent = `Rp ${formatMoney(salesTodaySum)}`;
+        
+        const txEl = document.getElementById('dash-kpi-tx');
+        if (txEl) txEl.textContent = `${countTodayVal} Transaksi`;
+
+        const lowEl = document.getElementById('dash-kpi-lowstock');
+        if (lowEl) lowEl.textContent = `${lowStockCountVal || 0} Item`;
     } catch (e) {
         console.error('Error fetching KPI summary:', e);
     }
@@ -539,8 +544,9 @@ async function loadDashboard() {
     try {
         const { data: lowStockData } = await supabaseClient.from('view_low_stock').select('*').limit(10);
         const lowstockList = document.getElementById('dash-lowstock-list');
-        lowstockList.innerHTML = '';
-        if (lowStockData && lowStockData.length > 0) {
+        if (lowstockList) {
+            lowstockList.innerHTML = '';
+            if (lowStockData && lowStockData.length > 0) {
             lowStockData.forEach(o => {
                 const item = document.createElement('div');
                 item.style.padding = '8px 12px';
@@ -557,6 +563,7 @@ async function loadDashboard() {
             });
         } else {
             lowstockList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 10px;">Semua stok aman!</div>';
+        }
         }
     } catch (e) {
         console.error('Error fetching low stock warning list:', e);
@@ -1693,6 +1700,9 @@ function renderPaginationControls(containerId, currentPage, totalPages, pageSize
 // --------------------------------------------------------------------------
 // 4. MASTER OBAT (PAGINATED)
 // --------------------------------------------------------------------------
+let currentObatPage = 1;
+let currentObatPageSize = 10;
+
 function getExpBadge(expDateStr) {
     if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b;">-</span>';
     
