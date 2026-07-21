@@ -1719,6 +1719,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                     <td><strong>${o.id_obat}</strong></td>
                     <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${o.nama_obat}</a></td>
                     <td>${o.kategori || '-'}</td>
+                    <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${o.jenis_item || 'NON KONSI'}</span></td>
                     <td>${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}</td>
                     <td>${o.satuan_1 || 'Pcs'}</td>
                     <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
@@ -1745,7 +1746,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         <div class="price-card-header">
                             <div style="flex:1;" onclick="previewObat('${encId}', event)">
                                 <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${o.nama_obat}</div>
-                                <div class="price-card-sub">ID: ${o.id_obat} • Kategori: ${o.kategori || '-'} • Rak: ${o.rak || '-'}</div>
+                                <div class="price-card-sub">ID: ${o.id_obat} • Jenis: ${o.jenis_item || 'NON KONSI'} • Kategori: ${o.kategori || '-'}</div>
                             </div>
                             <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
                         </div>
@@ -1793,6 +1794,7 @@ async function submitAddObat(e) {
             id_obat: nextId,
             nama_obat: document.getElementById('add-obat-nama').value,
             kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
+            jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
             satuan_1: document.getElementById('add-obat-sat1').value,
             label_satuan_kecil: document.getElementById('add-obat-sat1').value,
             satuan_2: document.getElementById('add-obat-sat2').value || '',
@@ -1852,6 +1854,19 @@ async function editObat(encodedId, e) {
         document.getElementById('edit-obat-id').value = item.id_obat;
         document.getElementById('edit-obat-nama').value = item.nama_obat || '';
         document.getElementById('edit-obat-kategori').value = item.kategori || '';
+
+        const rawJenis = String(item.jenis_item || 'NON KONSI').toUpperCase().trim();
+        const selJenis = document.getElementById('edit-obat-jenis');
+        if (selJenis) {
+            if (rawJenis.includes('JASA')) {
+                selJenis.value = 'JASA';
+            } else if (rawJenis.includes('KONSI') && !rawJenis.includes('NON')) {
+                selJenis.value = 'KONSI';
+            } else {
+                selJenis.value = 'NON KONSI';
+            }
+        }
+
         document.getElementById('edit-obat-rak').value = item.rak || '';
         document.getElementById('edit-obat-stokmin').value = item.stok_minimal || '5';
         document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
@@ -1877,6 +1892,7 @@ async function submitEditObat(e) {
     const updatedObat = {
         nama_obat: document.getElementById('edit-obat-nama').value,
         kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
+        jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
         rak: document.getElementById('edit-obat-rak').value || '',
         stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
         stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',

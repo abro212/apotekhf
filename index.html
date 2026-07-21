@@ -522,6 +522,7 @@
                                         <th>ID Obat</th>
                                         <th>Nama Obat</th>
                                         <th>Kategori</th>
+                                        <th>Jenis Item</th>
                                         <th>Stok</th>
                                         <th>Satuan Kecil</th>
                                         <th>Harga Beli</th>
@@ -1494,6 +1495,14 @@
                         <input type="text" id="add-obat-kategori" class="form-control" placeholder="OBAT / VITAMIN / ALKES">
                     </div>
                     <div class="form-group">
+                        <label>Jenis Item</label>
+                        <select id="add-obat-jenis" class="form-control">
+                            <option value="NON KONSI" selected>NON KONSI</option>
+                            <option value="KONSI">KONSI</option>
+                            <option value="JASA">JASA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label>Satuan 1 (Kecil)</label>
                         <input type="text" id="add-obat-sat1" class="form-control" placeholder="Pcs / Strip / Tablet" required>
                     </div>
@@ -1540,6 +1549,14 @@
                     <div class="form-group">
                         <label>Kategori</label>
                         <input type="text" id="edit-obat-kategori" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis Item</label>
+                        <select id="edit-obat-jenis" class="form-control">
+                            <option value="NON KONSI">NON KONSI</option>
+                            <option value="KONSI">KONSI</option>
+                            <option value="JASA">JASA</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>Rak Tempat (Lokasi)</label>
