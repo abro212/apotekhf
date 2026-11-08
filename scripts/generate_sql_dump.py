@@ -13,11 +13,20 @@ def generate_dump():
     sq_conn = sqlite3.connect(sqlite_path)
     sq_cursor = sq_conn.cursor()
     
+    # Exclude raw archive staging tables to prevent duplicating 120k rows in SQL dump
+    exclude_staging = {
+        'laporan_master_jual', 'laporan_master_transaksi', 'laporan_master_retur', 
+        'rekap_dashboard', 'arsip_faktur_beli', 'arsip_log_beli', 'arsip_retur_jual',
+        'arsip_transaksi_kas', 'arsip_pelanggan', 'arsip_operasional_kas', 
+        'arsip_pembayaran_konsi', 'arsip_pelunasan_hutang', 'arsip_detail_pelunasan_hutang',
+        'arsip_log_pelunasan_jual', 'header_extract'
+    }
+    
     # Get all tables
     sq_cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-    tables = [r[0] for r in sq_cursor.fetchall()]
+    tables = [r[0] for r in sq_cursor.fetchall() if r[0] not in exclude_staging]
     
-    print(f"Menghasilkan SQL dump untuk {len(tables)} tabel...")
+    print(f"Menghasilkan SQL dump untuk {len(tables)} tabel operasional (lengkap dengan data arsip terpadu)...")
     
     with open(dump_path, 'w', encoding='utf-8') as f:
         # Disable foreign keys temporarily and wrap in transaction
@@ -124,6 +133,21 @@ def generate_dump():
         f.write("LEFT JOIN retur_jual_stock rjs ON m.id_obat = rjs.id_obat\n")
         f.write("LEFT JOIN retur_beli_stock rbs ON m.id_obat = rbs.id_obat\n")
         f.write("LEFT JOIN latest_ed ed ON m.id_obat = ed.id_obat;\n\n")
+
+        # Indexes for real-time query performance (<5ms)
+        f.write("-- INDEXES\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_detail_jual_id_obat ON detail_jual(id_obat);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_detail_jual_id_jual ON detail_jual(id_jual);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_detail_jual_tanggal ON detail_jual(tanggal);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_transaksi_jual_id_jual ON transaksi_jual(id_jual);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_transaksi_jual_tanggal ON transaksi_jual(tanggal);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_log_beli_id_obat ON log_beli(id_obat);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_log_beli_id_faktur ON log_beli(id_faktur);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_log_beli_tgl_masuk ON log_beli(tanggal_masuk);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_faktur_beli_id_faktur ON faktur_beli(id_faktur);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_master_obat_id_obat ON master_obat(id_obat);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_transaksi_kas_nama_kas ON transaksi_kas(nama_kas);\n")
+        f.write("CREATE INDEX IF NOT EXISTS idx_transaksi_kas_waktu ON transaksi_kas(waktu);\n\n")
 
         # Grant access to anon & authenticated roles for Supabase PostgREST
         for table in tables:
