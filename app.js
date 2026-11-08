@@ -1268,6 +1268,12 @@ let currentPOSPage = 1;
 let currentPOSPageSize = 10;
 let currentPOSCatFilter = '';
 
+function getEffectiveStock(o) {
+    if (!o) return 0;
+    const s = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil !== null && o.stok_unit_kecil !== undefined ? o.stok_unit_kecil : 0);
+    return parseFloat(s || 0);
+}
+
 async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSize, catFilter = currentPOSCatFilter) {
  currentPOSPage = page;
  currentPOSPageSize = pageSize;
@@ -1280,16 +1286,34 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
  const from = (page - 1) * pageSize;
  const to = from + pageSize - 1;
 
- let query = supabaseClient.from('master_obat').select('*', { count: 'exact' });
- if (q) {
- query = query.or(`id_obat.ilike.%${q}%,nama_obat.ilike.%${q}%`);
- }
+ let data = null;
+ let count = 0;
+ let error = null;
 
+ if (supabaseClient) {
+ try {
+ const cleanQ = q.replace(/[%_,()]/g, '');
+ let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
+ if (cleanQ) {
+ query = query.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
+ }
  if (catFilter) {
  query = query.eq('kategori', catFilter);
  }
-
- let { data, count, error } = await query.order('nama_obat').range(from, to);
+ let res = await query.order('nama_obat', { ascending: true }).range(from, to);
+ if (res.error) {
+ let altQuery = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+ if (cleanQ) altQuery = altQuery.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
+ if (catFilter) altQuery = altQuery.eq('kategori', catFilter);
+ res = await altQuery.order('nama_obat', { ascending: true }).range(from, to);
+ }
+ data = res.data;
+ count = res.count;
+ error = res.error;
+ } catch (err) {
+ error = err;
+ }
+ }
  
  const results = document.getElementById('pos-search-results');
  
@@ -1324,7 +1348,7 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
 
  data.forEach(o => {
  const price = getPriceForLevel(o, 'Satuan 1', activeCustomer ? activeCustomer.level_harga : 'Level 1');
- const stok = parseFloat(o.stok_unit_kecil || 0);
+ const stok = getEffectiveStock(o);
  const isOutOfStock = stok <= 0;
 
  const stokBadge = isOutOfStock 
@@ -1383,7 +1407,7 @@ function clearCart() {
 }
 
 function addToCart(o) {
- const stok = parseFloat(o.stok_unit_kecil || 0);
+ const stok = getEffectiveStock(o);
  if (stok <= 0) {
  alert(`Stok obat "${o.nama_obat}" sedang kosong! Tidak dapat ditambahkan.`);
  return;
@@ -1421,7 +1445,7 @@ function changeCartQty(id, qty) {
  if (val <= 0) {
  removeCartItem(id);
  } else {
- const stok = parseFloat(item.obat.stok_unit_kecil || 0);
+ const stok = getEffectiveStock(item.obat);
  const totalSmallestNeeded = val * item.konversi;
  if (totalSmallestNeeded > stok) {
  const maxInUnit = Math.floor(stok / item.konversi);
@@ -1442,7 +1466,7 @@ function stepCartQty(id, delta) {
  if (newQty <= 0) {
  removeCartItem(id);
  } else {
- const stok = parseFloat(item.obat.stok_unit_kecil || 0);
+ const stok = getEffectiveStock(item.obat);
  const totalSmallestNeeded = newQty * item.konversi;
  if (totalSmallestNeeded > stok) {
  const maxInUnit = Math.floor(stok / item.konversi);
@@ -1474,7 +1498,7 @@ function changeCartUnit(id, selectEl) {
  newKonversi = parseFloat(o.isi_3_ke_2 || 1) * parseFloat(o.isi_2_ke_1 || 1);
  }
 
- const stok = parseFloat(o.stok_unit_kecil || 0);
+ const stok = getEffectiveStock(o);
  if (item.jumlah * newKonversi > stok) {
  alert(`Stok tidak mencukupi untuk memilih ${newSatuanNama}!`);
  updateCartUI();
@@ -1691,7 +1715,7 @@ async function posCheckout() {
  });
 
  // Calculate new stock
- const currentStock = parseFloat(o.stok_unit_kecil || 0);
+ const currentStock = getEffectiveStock(o);
  const newStock = currentStock - qtyInSmallestUnit;
  
  stockUpdates.push({
@@ -3219,7 +3243,7 @@ async function submitStokOpname() {
  
  const o = JSON.parse(select.value);
  const physicalStock = parseFloat(physical);
- const currentStock = parseFloat(o.stok_unit_kecil || 0);
+ const currentStock = getEffectiveStock(o);
  const difference = physicalStock - currentStock;
  
  try {
