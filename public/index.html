@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=20261109_02">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -407,15 +407,17 @@
                 <!-- 2. VIEW: CEK HARGA -->
                 <section id="view-cek-harga" class="hidden">
                     <div class="view-card">
-                        <div class="form-group" style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
-                            <input type="text" id="cek-harga-search" class="form-control" style="flex: 1; min-width: 170px;" placeholder="Ketik nama obat, kategori, atau ID obat..." oninput="searchHarga()">
-                            <div style="display: flex; gap: 6px;">
-                                <button type="button" class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('cek-harga-search', searchHarga)" title="Scan Barcode / QR Kamera HP">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
-                                    <span>Scan</span>
-                                </button>
-                                <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px; font-weight: 700;" onclick="searchHarga()">Cari</button>
+                        <!-- Search Input & Camera Scan (Unified 1-Line Flex) -->
+                        <div style="display: flex; gap: 6px; margin-bottom: 14px;">
+                            <div style="position: relative; flex: 1;">
+                                <input type="text" id="cek-harga-search" class="form-control" style="width: 100%; height: 38px; padding-left: 36px; font-size: 12.5px; border-radius: 8px;" placeholder="Ketik nama obat, kategori, atau ID..." oninput="searchHarga()" autocomplete="off">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
+                            <button type="button" class="btn btn-secondary" style="height: 38px; padding: 0 12px; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; flex-shrink: 0;" onclick="openCameraScanner('cek-harga-search', searchHarga)" title="Scan Barcode / QR Kamera HP">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+                                <span>Scan</span>
+                            </button>
+                            <button type="button" class="btn btn-primary" style="height: 38px; padding: 0 16px; font-size: 12px; font-weight: 700; border-radius: 8px;" onclick="searchHarga()">Cari</button>
                         </div>
                         <div class="table-container desktop-only-table">
                             <table class="data-table">
@@ -2550,7 +2552,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20261109_02"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
