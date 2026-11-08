@@ -1,0 +1,986 @@
+// =========================================================================
+// 1. BLOK UPDATE PENJUALAN OBAT (FEFO, PARETO, SARAN ORDER) - VERSI ANTI ZOMBIE
+// =========================================================================
+function updatePenjualanObat() {
+  var ssKasir = SpreadsheetApp.getActiveSpreadsheet();
+  var idFileArsip = "1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"; 
+  var ssArsip = SpreadsheetApp.openById(idFileArsip);
+
+  var sheetMasterObat = ssKasir.getSheetByName("Master_Obat");
+  var sheetDetailKasir = ssKasir.getSheetByName("Detail_Jual");
+  var sheetDetailArsip = ssArsip.getSheetByName("Laporan_Master_Jual");
+  var sheetPareto = ssKasir.getSheetByName("Pengaturan_Pareto"); 
+  var sheetLogBeli = ssKasir.getSheetByName("Log_Beli"); 
+
+  if (!sheetMasterObat || !sheetDetailKasir || !sheetDetailArsip || !sheetLogBeli) return;
+
+  var bFast30 = 18, bMed30 = 5, bFast90 = 21, bMed90 = 6;
+  var bOmzetA = 300000, bOmzetB = 100000;
+  if (sheetPareto) {
+    var dataPareto = sheetPareto.getRange("A1:G2").getValues();
+    bFast30 = parseFloat(dataPareto[1][1]) || 18;
+    bMed30 = parseFloat(dataPareto[1][2]) || 5;
+    bFast90 = parseFloat(dataPareto[1][3]) || 21;
+    bMed90 = parseFloat(dataPareto[1][4]) || 6;
+    bOmzetA = parseFloat(dataPareto[1][5]) || 300000;
+    bOmzetB = parseFloat(dataPareto[1][6]) || 100000;
+  }
+
+  var dataObat = sheetMasterObat.getDataRange().getValues();
+  var dataKasir = sheetDetailKasir.getDataRange().getValues();
+  var dataArsip = sheetDetailArsip.getDataRange().getValues();
+  var dataBeli = sheetLogBeli.getDataRange().getValues(); 
+
+  var tglSekarang = new Date();
+  var tgl30Hari = new Date(); tgl30Hari.setDate(tglSekarang.getDate() - 30); tgl30Hari.setHours(0,0,0,0);
+  var tgl90Hari = new Date(); tgl90Hari.setDate(tglSekarang.getDate() - 90); tgl90Hari.setHours(0,0,0,0);
+
+  var hBeli = dataBeli[0];
+  var idxObatBeli = hBeli.indexOf("ID Obat");
+  var idxEDBeli = hBeli.indexOf("Expired Date");
+  var idxStatusBeli = hBeli.indexOf("Status_Batch");
+  var idxQtyBeli = hBeli.indexOf("Konversi Masuk"); 
+  if (idxQtyBeli === -1) idxQtyBeli = hBeli.indexOf("Qty"); 
+  
+  var batchMap = {}; 
+  var updateStatusBatch = new Array(dataBeli.length - 1); 
+
+  // ================= PERBAIKAN LOGIKA BATCH ZOMBIE DI SINI =================
+  if (idxObatBeli !== -1 && idxEDBeli !== -1 && idxQtyBeli !== -1 && idxStatusBeli !== -1) {
+    for (var b = 1; b < dataBeli.length; b++) {
+      var idObatBeli = (dataBeli[b][idxObatBeli] || "").toString().trim();
+      var tglED = helper_bacaTanggal(dataBeli[b][idxEDBeli]);
+      var qtyMasuk = parseFloat(dataBeli[b][idxQtyBeli]) || 0;
+      
+      if (idObatBeli) {
+        if (qtyMasuk > 0) {
+          // Hanya hitung batch yang fisiknya memang ada masuk (> 0)
+          if (!batchMap[idObatBeli]) batchMap[idObatBeli] = [];
+          batchMap[idObatBeli].push({ rowIdx: b, edTime: tglED.getTime(), edDate: tglED, qty: qtyMasuk, newStatus: "Habis" });
+        } else {
+          // Jika qty 0 (Stok Opname Kosong/Retur Beli), langsung vonis "Habis" agar tidak jadi Zombie
+          updateStatusBatch[b - 1] = ["Habis"];
+        }
+      }
+    }
+  }
+  // =========================================================================
+
+  var hKasir = dataKasir[0];
+  var idxObatKasir = hKasir.indexOf("ID Obat");
+  var idxTglKasir = hKasir.indexOf("Tanggal");
+  var idxQtyKasir = hKasir.indexOf("Konversi Keluar"); 
+  var idxIDDetailKasir = hKasir.indexOf("ID Detail"); 
+
+  var hArsip = dataArsip[0];
+  var idxObatArsip = hArsip.indexOf("ID Obat");
+  var idxTglArsip = hArsip.indexOf("Tanggal");
+  var idxQtyArsip = hArsip.indexOf("Konversi Keluar"); 
+  var idxIDDetailArsip = hArsip.indexOf("ID Detail"); 
+
+  if(idxObatKasir === -1 || idxQtyKasir === -1 || idxObatArsip === -1) return;
+
+  var idAktifSet = new Set();
+  if (idxIDDetailKasir !== -1) {
+    for (var i = 1; i < dataKasir.length; i++) {
+      var idDet = (dataKasir[i][idxIDDetailKasir] || "").toString().trim();
+      if(idDet) idAktifSet.add(idDet);
+    }
+  }
+
+  var rekap30 = {}; var rekap90 = {}; var rekapArsipPascaOpname = {}; 
+  var headerObat = dataObat[0];
+  var idxIDObat = headerObat.indexOf("ID Obat");
+  var idxTglOpname = headerObat.indexOf("Tanggal Opname Terakhir");
+  
+  var kamusOpname = {};
+  if (idxIDObat !== -1 && idxTglOpname !== -1) {
+    for (var i = 1; i < dataObat.length; i++) {
+      var id = (dataObat[i][idxIDObat] || "").toString().trim();
+      var tglOpname = helper_bacaTanggal(dataObat[i][idxTglOpname]);
+      if (id) kamusOpname[id] = tglOpname;
+    }
+  }
+
+  function sedotData(data, idxObat, idxTgl, idxQty, isArsip, idxIDDetail) {
+    for (var i = 1; i < data.length; i++) {
+      var idObat = (data[i][idxObat] || "").toString().trim();
+      var tgl = helper_bacaTanggal(data[i][idxTgl]); 
+      var qty = parseFloat(data[i][idxQty]) || 0;
+      var idDetail = (idxIDDetail !== -1) ? (data[i][idxIDDetail] || "").toString().trim() : "";
+
+      if (idObat) {
+        if (isArsip && idAktifSet.has(idDetail)) continue; 
+
+        if (tgl.getTime() >= tgl90Hari.getTime()) {
+          rekap90[idObat] = (rekap90[idObat] || 0) + qty; 
+          if (tgl.getTime() >= tgl30Hari.getTime()) rekap30[idObat] = (rekap30[idObat] || 0) + qty; 
+        }
+        
+        if (isArsip && kamusOpname[idObat]) {
+          if (tgl.getTime() >= kamusOpname[idObat].getTime()) {
+            rekapArsipPascaOpname[idObat] = (rekapArsipPascaOpname[idObat] || 0) + qty;
+          }
+        }
+      }
+    }
+  }
+
+  sedotData(dataKasir, idxObatKasir, idxTglKasir, idxQtyKasir, false, idxIDDetailKasir); 
+  sedotData(dataArsip, idxObatArsip, idxTglArsip, idxQtyArsip, true, idxIDDetailArsip);  
+
+  var idxTerjual30 = headerObat.indexOf("Terjual_30_Hari");
+  var idxTerjual90 = headerObat.indexOf("Terjual_90_Hari");
+  var idxArsipJual = headerObat.indexOf("Arsip_Jual_Pasca_Opname"); 
+  var idxHargaBeli = headerObat.indexOf("Harga Beli Sat 1");
+  var idxStokTersedia = headerObat.indexOf("Stok_Tersedia");
+  var idxStokMin = headerObat.indexOf("Stok Minimal");
+  var idxEDTerdekat = headerObat.indexOf("ED_Terdekat"); 
+  var idxSat1 = headerObat.indexOf("Satuan 1");
+  var idxSat2 = headerObat.indexOf("Satuan 2");
+  var idxSat3 = headerObat.indexOf("Satuan 3");
+  var idxIsi21 = headerObat.indexOf("Isi 2 ke 1");
+  var idxIsi32 = headerObat.indexOf("Isi 3 ke 2");
+  var idxTotalOmzet90 = headerObat.indexOf("Total_Omzet_90");
+  var idxKelasABC = headerObat.indexOf("Kelas_ABC");
+  var idxMoving30 = headerObat.indexOf("Kategori_Moving_30");
+  var idxMoving90 = headerObat.indexOf("Kategori_Moving_90");
+  var idxSaranOrder = headerObat.indexOf("Saran_Order");
+  var idxJenisItem = headerObat.indexOf("JENIS ITEM");
+  var idxMasukKonsi = headerObat.indexOf("Total Masuk Konsi");
+  var idxReturKonsi = headerObat.indexOf("Total Retur Konsi");
+  var idxQtyTerbayar = headerObat.indexOf("Total Qty Terbayar");
+  var idxTagihan = headerObat.indexOf("Tagihan Berjalan (Qty)");
+  var idxNominalTagihan = headerObat.indexOf("Nominal Tagihan Berjalan"); 
+  var idxHargaL1S1 = headerObat.indexOf("Harga L1 S1");
+  var idxHargaL1S2 = headerObat.indexOf("Harga L1 S2");
+  var idxHargaL1S3 = headerObat.indexOf("Harga L1 S3");
+  var idxHargaDisplay = headerObat.indexOf("Harga Level 1_Display");
+
+  if(idxIDObat === -1 || idxTerjual30 === -1 || idxTerjual90 === -1) return;
+
+  var update30 = [], update90 = [], updateArsip = [];
+  var updateOmzet90 = [], updateKelasABC = [], updateMoving30 = [], updateMoving90 = [], updateSaranOrder = [];
+  var updateTagihan = [], updateNominalTagihan = [], updateHargaDisplay = [];
+  var updateEDData = []; 
+
+  for (var i = 1; i < dataObat.length; i++) {
+    var id = (dataObat[i][idxIDObat] || "").toString().trim();
+    var t30 = rekap30[id] || 0;
+    var t90 = rekap90[id] || 0;
+    var aJual = rekapArsipPascaOpname[id] || 0;
+    var sTersedia = (idxStokTersedia !== -1) ? (parseFloat(dataObat[i][idxStokTersedia]) || 0) : 0;
+
+    var edTarget = "";
+    if (batchMap[id]) {
+      var batches = batchMap[id];
+      batches.sort(function(a, b) { return b.edTime - a.edTime; });
+      var sisaButuh = sTersedia;
+      for (var b = 0; b < batches.length; b++) {
+        var batch = batches[b];
+        if (sisaButuh > 0) {
+          batch.newStatus = "Aktif";
+          edTarget = batch.edDate; 
+          sisaButuh -= batch.qty;
+        } else {
+          batch.newStatus = "Habis";
+        }
+        updateStatusBatch[batch.rowIdx - 1] = [batch.newStatus]; 
+      }
+    }
+    updateEDData.push([edTarget]);
+    update30.push([t30]); update90.push([t90]); updateArsip.push([aJual]);
+
+    var hargaBeli = (idxHargaBeli !== -1) ? (parseFloat(dataObat[i][idxHargaBeli]) || 0) : 0;
+    var omzet90 = t90 * hargaBeli;
+    updateOmzet90.push([omzet90]);
+
+    var kelasABC = "Belum Ada Penjualan";
+    if (omzet90 >= bOmzetA) kelasABC = "⭐ KELAS A (Sangat Penting)";
+    else if (omzet90 >= bOmzetB) kelasABC = "💠 KELAS B (Penting)";
+    else if (omzet90 > 0) kelasABC = "🧊 KELAS C (Receh)";
+    updateKelasABC.push([kelasABC]);
+
+    var move30 = "4. 💤 Tidak Laku Bulan Ini";
+    if (t30 >= bFast30) move30 = "1. 🔥 Fast (30 Hari)";
+    else if (t30 >= bMed30) move30 = "2. ⭐ Medium (30 Hari)";
+    else if (t30 > 0) move30 = "3. 🐢 Slow (30 Hari)";
+    updateMoving30.push([move30]);
+
+    var move90 = "4. 💤 Dead Stock";
+    if (t90 >= bFast90) move90 = "1. 🔥 Fast (90 Hari)";
+    else if (t90 >= bMed90) move90 = "2. ⭐ Medium (90 Hari)";
+    else if (t90 > 0) move90 = "3. 🐢 Slow (90 Hari)";
+    updateMoving90.push([move90]);
+
+    var saranOrder = "0";
+    if (idxStokMin !== -1) {
+      var sMin = parseFloat(dataObat[i][idxStokMin]) || 0;
+      if (sTersedia <= sMin) {
+        var butuh = (sMin * 2) - sTersedia;
+        var s1 = (idxSat1 !== -1) ? dataObat[i][idxSat1] : "";
+        var s2 = (idxSat2 !== -1) ? dataObat[i][idxSat2] : "";
+        var s3 = (idxSat3 !== -1) ? dataObat[i][idxSat3] : "";
+        var i21 = (idxIsi21 !== -1) ? (parseFloat(dataObat[i][idxIsi21]) || 1) : 1;
+        var i32 = (idxIsi32 !== -1) ? (parseFloat(dataObat[i][idxIsi32]) || 1) : 1;
+        saranOrder = (butuh + " " + s1) + " atau " + (Math.ceil(butuh / i21) + " " + s2) + " atau " + (Math.ceil(butuh / (i21 * i32)) + " " + s3);
+      }
+    }
+    updateSaranOrder.push([saranOrder]);
+
+    var tagihan = 0;
+    if (idxJenisItem !== -1 && idxTagihan !== -1) {
+      var jenis = (dataObat[i][idxJenisItem] || "").toString().trim().toUpperCase();
+      if (jenis === "KONSINYASI") {
+        var mKonsi = (idxMasukKonsi !== -1) ? parseFloat(dataObat[i][idxMasukKonsi]) || 0 : 0;
+        var rKonsi = (idxReturKonsi !== -1) ? parseFloat(dataObat[i][idxReturKonsi]) || 0 : 0;
+        var qTerbayar = (idxQtyTerbayar !== -1) ? parseFloat(dataObat[i][idxQtyTerbayar]) || 0 : 0;
+        tagihan = (mKonsi - rKonsi) - sTersedia - qTerbayar;
+      }
+    }
+    updateTagihan.push([tagihan]);
+    updateNominalTagihan.push([tagihan * hargaBeli]);
+
+    var hargaDisplay = "";
+    if (idxHargaDisplay !== -1) {
+      var arrDisp = [];
+      var txtS1 = (idxSat1 !== -1) ? (dataObat[i][idxSat1] || "").toString().trim() : "";
+      var txtH1 = (idxHargaL1S1 !== -1) ? (dataObat[i][idxHargaL1S1] || "").toString().trim() : "";
+      if (txtS1 && txtH1) arrDisp.push(txtS1 + " : Rp" + txtH1);
+
+      var txtS2 = (idxSat2 !== -1) ? (dataObat[i][idxSat2] || "").toString().trim() : "";
+      var txtH2 = (idxHargaL1S2 !== -1) ? (dataObat[i][idxHargaL1S2] || "").toString().trim() : "";
+      if (txtS2 && txtH2) arrDisp.push(txtS2 + " : Rp" + txtH2);
+
+      var txtS3 = (idxSat3 !== -1) ? (dataObat[i][idxSat3] || "").toString().trim() : "";
+      var txtH3 = (idxHargaL1S3 !== -1) ? (dataObat[i][idxHargaL1S3] || "").toString().trim() : "";
+      if (txtS3 && txtH3) arrDisp.push(txtS3 + " : Rp" + txtH3);
+
+      hargaDisplay = arrDisp.join(" | ");
+    }
+    updateHargaDisplay.push([hargaDisplay]);
+  }
+
+  sheetMasterObat.getRange(2, idxTerjual30 + 1, update30.length, 1).setValues(update30);
+  sheetMasterObat.getRange(2, idxTerjual90 + 1, update90.length, 1).setValues(update90);
+  if (idxArsipJual !== -1) sheetMasterObat.getRange(2, idxArsipJual + 1, updateArsip.length, 1).setValues(updateArsip);
+  
+  if (idxTotalOmzet90 !== -1) sheetMasterObat.getRange(2, idxTotalOmzet90 + 1, updateOmzet90.length, 1).setValues(updateOmzet90);
+  if (idxKelasABC !== -1) sheetMasterObat.getRange(2, idxKelasABC + 1, updateKelasABC.length, 1).setValues(updateKelasABC);
+  if (idxMoving30 !== -1) sheetMasterObat.getRange(2, idxMoving30 + 1, updateMoving30.length, 1).setValues(updateMoving30);
+  if (idxMoving90 !== -1) sheetMasterObat.getRange(2, idxMoving90 + 1, updateMoving90.length, 1).setValues(updateMoving90);
+  if (idxSaranOrder !== -1) sheetMasterObat.getRange(2, idxSaranOrder + 1, updateSaranOrder.length, 1).setValues(updateSaranOrder);
+
+  if (idxTagihan !== -1) sheetMasterObat.getRange(2, idxTagihan + 1, updateTagihan.length, 1).setValues(updateTagihan);
+  if (idxNominalTagihan !== -1) sheetMasterObat.getRange(2, idxNominalTagihan + 1, updateNominalTagihan.length, 1).setValues(updateNominalTagihan);
+  if (idxHargaDisplay !== -1) sheetMasterObat.getRange(2, idxHargaDisplay + 1, updateHargaDisplay.length, 1).setValues(updateHargaDisplay);
+  if (idxEDTerdekat !== -1) sheetMasterObat.getRange(2, idxEDTerdekat + 1, updateEDData.length, 1).setValues(updateEDData); 
+
+  if (idxStatusBeli !== -1) {
+    for (var k = 0; k < updateStatusBatch.length; k++) {
+      if (!updateStatusBatch[k]) updateStatusBatch[k] = [""]; 
+    }
+    sheetLogBeli.getRange(2, idxStatusBeli + 1, updateStatusBatch.length, 1).setValues(updateStatusBatch);
+  }
+}
+
+// =========================================================================
+// 2. HELPER FUNCTIONS (FUNGSI BANTUAN UNTUK SEMUA SINKRONISASI)
+// =========================================================================
+function helper_bacaTanggal(tgl) {
+  if (!tgl) return new Date(0);
+  if (tgl instanceof Date) return tgl; 
+  var s = tgl.toString().trim();
+  var parts = s.split(/[\s\/:\-]/); 
+  if (parts.length >= 3) {
+    var d = parseInt(parts[0], 10);
+    var m = parseInt(parts[1], 10) - 1; 
+    var y = parseInt(parts[2], 10);
+    if (y < 100) y += 2000;
+    var hr = parts.length > 3 ? parseInt(parts[3], 10) : 0;
+    var min = parts.length > 4 ? parseInt(parts[4], 10) : 0;
+    var sec = parts.length > 5 ? parseInt(parts[5], 10) : 0;
+    if(d <= 31 && m >= 0 && m <= 11) return new Date(y, m, d, hr, min, sec);
+  }
+  return new Date(tgl);
+}
+
+function helper_arsipTabel(ssKasir, ssMaster, batasTanggal, namaSheetAktif, namaSheetArsip, namaKolomID, namaKolomTgl) {
+  var sheetKasir = ssKasir.getSheetByName(namaSheetAktif);
+  var sheetMaster = ssMaster.getSheetByName(namaSheetArsip);
+  if (!sheetKasir || !sheetMaster) return;
+
+  var dataKasir = sheetKasir.getDataRange().getValues();
+  if (dataKasir.length <= 1) return; 
+  var headers = dataKasir[0];
+
+  var idxID = headers.indexOf(namaKolomID);
+  var idxTanggal = headers.indexOf(namaKolomTgl);
+  if (idxID === -1 || idxTanggal === -1) return;
+
+  var idMasterSet = new Set();
+  var barisAkhirMaster = sheetMaster.getLastRow();
+  
+  if (barisAkhirMaster > 0) {
+    var headerMaster = sheetMaster.getRange(1, 1, 1, sheetMaster.getLastColumn()).getValues()[0];
+    var idxIDMaster = headerMaster.indexOf(namaKolomID);
+    if (idxIDMaster !== -1 && barisAkhirMaster > 1) {
+      var dataIDMaster = sheetMaster.getRange(2, idxIDMaster + 1, barisAkhirMaster - 1, 1).getValues();
+      for (var i = 0; i < dataIDMaster.length; i++) {
+        idMasterSet.add((dataIDMaster[i][0] || "").toString().trim());
+      }
+    }
+  }
+
+  var barisBaru = [];
+  var kasirTersisa = [];
+  kasirTersisa.push(headers); 
+
+  for (var i = 1; i < dataKasir.length; i++) {
+    var barisData = dataKasir[i];
+    var idTransaksi = (barisData[idxID] || "").toString().trim();
+    if (idTransaksi && !idMasterSet.has(idTransaksi)) barisBaru.push(barisData);
+
+    var tglTransaksi = helper_bacaTanggal(barisData[idxTanggal]); 
+    if (tglTransaksi >= batasTanggal) kasirTersisa.push(barisData); 
+  }
+
+  if (barisBaru.length > 0) sheetMaster.getRange(barisAkhirMaster + 1, 1, barisBaru.length, barisBaru[0].length).setValues(barisBaru);
+  if (kasirTersisa.length < dataKasir.length) {
+    sheetKasir.clearContents();
+    sheetKasir.getRange(1, 1, kasirTersisa.length, kasirTersisa[0].length).setValues(kasirTersisa);
+  }
+}
+
+// [REVISI - ANTI TIMEOUT & ANTI COLUMN MISMATCH] helper_arsipMenabung
+function helper_arsipMenabung(ssKasir, ssMaster, namaTab, namaKolomID) {
+  var sheetAktif = ssKasir.getSheetByName(namaTab);
+  var sheetArsip = ssMaster.getSheetByName(namaTab);
+  if (!sheetAktif || !sheetArsip) return;
+
+  var dataAktif = sheetAktif.getDataRange().getValues();
+  if (dataAktif.length <= 1) return;
+
+  var headerAktif = dataAktif[0];
+  var idxID = headerAktif.indexOf(namaKolomID);
+  if (idxID === -1) idxID = 0; 
+
+  var barisAkhirArsip = sheetArsip.getLastRow();
+  
+  if (barisAkhirArsip === 0) {
+    sheetArsip.getRange(1, 1, 1, headerAktif.length).setValues([headerAktif]);
+    barisAkhirArsip = 1;
+  }
+
+  // 1. Tarik seluruh data arsip ke dalam memori
+  var dataArsip = sheetArsip.getDataRange().getValues();
+  var headerArsip = dataArsip[0];
+  var idxIDArsip = headerArsip.indexOf(namaKolomID);
+  if (idxIDArsip === -1) idxIDArsip = 0;
+
+  // VARIABEL KUNCI: Ambil patokan kolom dari Arsip (misal 26 kolom)
+  var jumlahKolomArsip = headerArsip.length;
+
+  // 2. Buat pemetaan index untuk kecepatan kilat
+  var arsipMap = {};
+  for (var i = 1; i < dataArsip.length; i++) {
+    var id = (dataArsip[i][idxIDArsip] || "").toString().trim();
+    if (id) arsipMap[id] = i; 
+  }
+
+  var barisBaru = [];
+  var adaUpdateLama = false;
+
+  // 3. Proses pembandingan di dalam memori
+  for (var i = 1; i < dataAktif.length; i++) {
+    var barisData = dataAktif[i];
+    var idTrx = (barisData[idxID] || "").toString().trim();
+    
+    if (idTrx) {
+      // PENYESUAIAN PANJANG KOLOM (Menyamakan 14/16 kolom Kasir menjadi 26 kolom Arsip)
+      var barisDataDisesuaikan = [];
+      for (var k = 0; k < jumlahKolomArsip; k++) {
+        if (k < barisData.length) {
+          barisDataDisesuaikan.push(barisData[k]);
+        } else {
+          barisDataDisesuaikan.push(""); // Mengisi string kosong jika Arsip lebih panjang
+        }
+      }
+
+      if (arsipMap.hasOwnProperty(idTrx)) {
+        var indexMemori = arsipMap[idTrx];
+        var dataLamaStr = JSON.stringify(dataArsip[indexMemori]);
+        var dataBaruStr = JSON.stringify(barisDataDisesuaikan);
+        if (dataLamaStr !== dataBaruStr) {
+           dataArsip[indexMemori] = barisDataDisesuaikan; 
+           adaUpdateLama = true;
+        }
+      } else {
+        barisBaru.push(barisDataDisesuaikan);
+      }
+    }
+  }
+
+  // 4. BULK UPDATE & BULK INSERT (Menggunakan jumlahKolomArsip agar tidak ada mismatch)
+  if (adaUpdateLama) {
+    sheetArsip.getRange(1, 1, dataArsip.length, jumlahKolomArsip).setValues(dataArsip);
+  }
+  
+  if (barisBaru.length > 0) {
+    var lastRowAman = adaUpdateLama ? dataArsip.length : barisAkhirArsip; 
+    sheetArsip.getRange(lastRowAman + 1, 1, barisBaru.length, jumlahKolomArsip).setValues(barisBaru);
+  }
+}
+
+function helper_otomatisasiAset(ssKasir) {
+  var sheetTrx = ssKasir.getSheetByName("TRANSAKSI_KAS");
+  var sheetAset = ssKasir.getSheetByName("Operasional Kas");
+  if (!sheetTrx || !sheetAset) return;
+
+  var dataTrx = sheetTrx.getDataRange().getValues();
+  var dataAset = sheetAset.getDataRange().getValues();
+  
+  var hTrx = dataTrx[0], hAset = dataAset[0];
+  var idxIdKas = hTrx.indexOf("ID_Trx"), idxTanggal = hTrx.indexOf("Waktu"), idxKategori = hTrx.indexOf("Kategori");
+  var idxUangKeluar = hTrx.indexOf("Uang_Keluar"), idxKeterangan = hTrx.indexOf("Keterangan"), idxUmurBulan = hTrx.indexOf("Umur_Bulan"); 
+  var idxAsetIdKas = hAset.indexOf("ID Kas"); 
+  
+  if (idxIdKas === -1 || idxKategori === -1 || idxUangKeluar === -1 || idxAsetIdKas === -1) return;
+
+  var asetSet = new Set();
+  for (var i = 1; i < dataAset.length; i++) asetSet.add((dataAset[i][idxAsetIdKas] || "").toString().trim());
+
+  var barisAsetBaru = [];
+  for (var i = 1; i < dataTrx.length; i++) {
+    var barisTrx = dataTrx[i];
+    var idKas = (barisTrx[idxIdKas] || "").toString().trim(), kategori = (barisTrx[idxKategori] || "").toString().trim();
+    var nominal = parseFloat(barisTrx[idxUangKeluar]) || 0;
+    
+    var butuhMasukAset = (kategori === "Pembelian Aset (Sistem Akrual)" || kategori === "Gaji & Tunjangan");
+    if (butuhMasukAset && nominal > 0 && !asetSet.has(idKas)) {
+      
+      // --- PERBAIKAN BUG TANGGAL (ANTI ERROR GETFULLYEAR) ---
+      var valTanggal = barisTrx[idxTanggal];
+      var tglRaw = valTanggal ? helper_bacaTanggal(valTanggal) : new Date();
+      if (isNaN(tglRaw.getTime())) tglRaw = new Date(); // Jika format berantakan, kembalikan ke tanggal hari ini
+      var tanggalTrx = new Date(tglRaw.getFullYear(), tglRaw.getMonth(), tglRaw.getDate()); 
+      // ------------------------------------------------------
+      
+      var ketTrx = (idxKeterangan !== -1) ? barisTrx[idxKeterangan] : "Data Akrual Baru";
+      
+      var durasiOtomatis = 1; 
+      if (kategori === "Pembelian Aset (Sistem Akrual)") {
+         var umurInput = (idxUmurBulan !== -1) ? parseInt(barisTrx[idxUmurBulan]) : NaN;
+         durasiOtomatis = (!isNaN(umurInput) && umurInput > 0) ? umurInput : 36;
+      } else if (kategori === "Gaji & Tunjangan") durasiOtomatis = 1;  
+      
+      var barisBaru = new Array(hAset.length).fill("");
+      barisBaru[0] = idKas; barisBaru[1] = tanggalTrx; barisBaru[2] = "KELUAR"; barisBaru[3] = kategori;          
+      barisBaru[4] = durasiOtomatis; barisBaru[5] = nominal; barisBaru[6] = ketTrx;            
+      barisAsetBaru.push(barisBaru);
+    }
+  }
+  if (barisAsetBaru.length > 0) {
+    // Penambah baris otomatis untuk menghindari error baris penuh
+    var lastRow = sheetAset.getLastRow();
+    var butuhBaris = lastRow + barisAsetBaru.length;
+    var maxBaris = sheetAset.getMaxRows();
+    if (butuhBaris > maxBaris) {
+       sheetAset.insertRowsAfter(maxBaris, (butuhBaris - maxBaris) + 10);
+    }
+    sheetAset.getRange(lastRow + 1, 1, barisAsetBaru.length, barisAsetBaru[0].length).setValues(barisAsetBaru);
+  }
+}
+
+// =========================================================================
+// 3. SINKRONISASI PENJUALAN
+// =========================================================================
+function sinkronisasiKasir_Penjualan() {
+  var ssKasir = SpreadsheetApp.getActiveSpreadsheet();
+  var idFileMaster = "1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"; 
+  var ssMaster;
+  try { ssMaster = SpreadsheetApp.openById(idFileMaster); } catch(e) { return; }
+
+  var batasHari = 40;
+  var batasTanggal = new Date();
+  batasTanggal.setDate(batasTanggal.getDate() - batasHari);
+  batasTanggal.setHours(0, 0, 0, 0);
+
+  helper_otomatisasiAset(ssKasir);
+  helper_arsipTabel(ssKasir, ssMaster, batasTanggal, "Transaksi_Jual", "Laporan_Master_Transaksi", "ID Jual", "Tanggal"); 
+  helper_arsipTabel(ssKasir, ssMaster, batasTanggal, "Detail_Jual", "Laporan_Master_Jual", "ID Detail", "Tanggal");
+  
+  // [REVISI - BACKUP RETUR] Menggunakan helper_arsipMenabung agar data murni disalin tanpa dihapus
+  helper_arsipMenabung(ssKasir, ssMaster, "Retur_Jual", "ID Retur");
+  
+  helper_arsipMenabung(ssKasir, ssMaster, "TRANSAKSI_KAS", "ID_Trx");
+  helper_arsipMenabung(ssKasir, ssMaster, "Operasional Kas", "ID Kas");
+  helper_arsipMenabung(ssKasir, ssMaster, "Log_Pelunasan_Jual", "ID Pelunasan");
+}
+
+// =========================================================================
+// 4. SINKRONISASI PEMBELIAN
+// =========================================================================
+function sinkronisasiKasir_Pembelian() {
+  var ssKasir = SpreadsheetApp.getActiveSpreadsheet();
+  var idFileMaster = "1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"; 
+  var ssMaster;
+  try { ssMaster = SpreadsheetApp.openById(idFileMaster); } catch(e) { return; }
+
+  // Fungsi-fungsi di bawah ini sekarang dijamin sangat cepat dan anti-timeout
+  // berkat Bulk Update di helper_arsipMenabung
+  helper_arsipMenabung(ssKasir, ssMaster, "Faktur_Beli", "ID Faktur"); 
+  helper_arsipMenabung(ssKasir, ssMaster, "Log_Beli", "ID Detail");
+  helper_arsipMenabung(ssKasir, ssMaster, "Pelunasan_Hutang", "ID Pelunasan");
+  helper_arsipMenabung(ssKasir, ssMaster, "Detail_Pelunasan_Hutang", "ID Detail");
+  helper_arsipMenabung(ssKasir, ssMaster, "Pembayaran_Konsi", "ID Bayar Konsi");
+}
+
+// =========================================================================
+// 5. UPDATE HISTORI BELI TEKS (ANTI-TIMEOUT, MEMBACA DARI BAWAH)
+// =========================================================================
+function updateTeksHistoriBeli() {
+  var ssAktif = SpreadsheetApp.getActiveSpreadsheet();
+  var ssArsip;
+  try { ssArsip = SpreadsheetApp.openById("1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"); } catch(e) { return; }
+  
+  var sheetMaster = ssAktif.getSheetByName("Master_Obat");
+  var sheetLogBeliAktif = ssAktif.getSheetByName("Log_Beli");
+  var sheetLogBeliArsip = ssArsip.getSheetByName("Log_Beli"); 
+  var sheetSupplier = ssAktif.getSheetByName("Supplier"); 
+  
+  if (!sheetMaster || !sheetLogBeliAktif) return;
+
+  var dataSupplier = sheetSupplier ? sheetSupplier.getDataRange().getValues() : [];
+  var supplierMap = {};
+  if (dataSupplier.length > 1) {
+    var hSup = dataSupplier[0], idxIdSup = hSup.indexOf("ID Supplier"), idxNamaSup = hSup.indexOf("Nama Supplier");
+    if (idxIdSup !== -1 && idxNamaSup !== -1) {
+      for (var s = 1; s < dataSupplier.length; s++) {
+        var idS = (dataSupplier[s][idxIdSup] || "").toString().trim();
+        if (idS) supplierMap[idS] = (dataSupplier[s][idxNamaSup] || "").toString().trim();
+      }
+    }
+  }
+  
+  var dataMaster = sheetMaster.getDataRange().getValues();
+  var dataBeliAktif = sheetLogBeliAktif.getDataRange().getValues();
+  var dataBeliArsip = sheetLogBeliArsip ? sheetLogBeliArsip.getDataRange().getValues() : [];
+  
+  var historiMap = {}; 
+  var hitungRiwayat = {}; 
+  var idBeliSet = new Set(); 
+
+  function prosesDariBawah(data) {
+    if (!data || data.length <= 1) return;
+    var header = data[0];
+    var idxIDBeli = header.indexOf("ID Beli");
+    if (idxIDBeli === -1) idxIDBeli = header.indexOf("ID Detail"); 
+    var idxObat = header.indexOf("ID Obat"), idxTgl = header.indexOf("Tanggal Masuk"), idxSupplier = header.indexOf("Supplier");
+    var idxHarga = header.indexOf("Harga Netto"), idxQty = header.indexOf("Jumlah Masuk"), idxJenis = header.indexOf("JENIS TRANSAKSI");
+    
+    if (idxObat === -1 || idxTgl === -1 || idxIDBeli === -1) return;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      var idObat = (data[i][idxObat] || "").toString().trim();
+      var idBeli = (data[i][idxIDBeli] || "").toString().trim();
+      var jenis = (data[i][idxJenis] || "").toString().trim().toUpperCase();
+      
+      if (!idObat || jenis !== "PEMBELIAN" || !idBeli) continue;
+      if (idBeliSet.has(idBeli)) continue; 
+      
+      hitungRiwayat[idObat] = hitungRiwayat[idObat] || 0;
+      if (hitungRiwayat[idObat] >= 5) continue; 
+
+      var rawSupplier = (data[i][idxSupplier] || "").toString().trim();
+      var namaSupplier = supplierMap[rawSupplier] || rawSupplier || "-"; 
+      var tglValid = helper_bacaTanggal(data[i][idxTgl]);
+      var tglStr = Utilities.formatDate(tglValid, Session.getScriptTimeZone(), "dd/MMM/yyyy");
+      var hargaStr = (parseFloat(data[i][idxHarga]) || 0).toLocaleString('id-ID');
+      var qtyVal = parseFloat(data[i][idxQty]) || 0;
+
+      var barisTeks = "🗓️ " + tglStr + " | Rp " + hargaStr + " | Qty: " + qtyVal + " | " + namaSupplier;
+      if (!historiMap[idObat]) historiMap[idObat] = [];
+      historiMap[idObat].push(barisTeks);
+      idBeliSet.add(idBeli);
+      hitungRiwayat[idObat]++;
+    }
+  }
+  
+  prosesDariBawah(dataBeliAktif); 
+  prosesDariBawah(dataBeliArsip); 
+  
+  var headerMaster = dataMaster[0];
+  var idxIDMaster = headerMaster.indexOf("ID Obat");
+  var idxHistoriTeks = headerMaster.indexOf("Histori Pembelian Teks");
+  if (idxIDMaster === -1 || idxHistoriTeks === -1) return;
+  
+  var updateHistori = [];
+  for (var i = 1; i < dataMaster.length; i++) {
+    var idObat = (dataMaster[i][idxIDMaster] || "").toString().trim();
+    var teksOutput = "Belum ada riwayat pembelian.";
+    if (historiMap[idObat] && historiMap[idObat].length > 0) teksOutput = historiMap[idObat].join("\n");
+    updateHistori.push([teksOutput]);
+  }
+  sheetMaster.getRange(2, idxHistoriTeks + 1, updateHistori.length, 1).setValues(updateHistori);
+}
+
+// =========================================================================
+// 6. KARTU STOK SUPER 
+// =========================================================================
+function tarikKartuStokSuper() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetKartu = ss.getSheetByName("KARTU_STOK");
+  var namaDicari = sheetKartu.getRange("C2").getValue();
+  if (!namaDicari) { SpreadsheetApp.getUi().alert("Pilih Nama Obat di sel C2!"); return; }
+
+  var idArsip = "1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"; 
+  var ssArsip;
+  try { ssArsip = SpreadsheetApp.openById(idArsip); } 
+  catch(e) { SpreadsheetApp.getUi().alert("Gagal buka file Arsip."); return; }
+
+  var sMaster = ss.getSheetByName("Master_Obat"); 
+  var sKasir = ss.getSheetByName("Detail_Jual");
+  var sArsip = ssArsip.getSheetByName("Laporan_Master_Jual");
+  var sBeli = ss.getSheetByName("Log_Beli");
+  var sRetur = ss.getSheetByName("Retur_Jual");
+
+  var keranjang = []; 
+  var idDicari = "";
+  var stokAwal = 0;
+  var batasTanggal = new Date(0); 
+
+  function cariIndex(headerArray, namaKolom) {
+    var target = namaKolom.toString().replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    for(var i = 0; i < headerArray.length; i++) {
+      if(!headerArray[i]) continue;
+      var asal = headerArray[i].toString().replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+      if(asal === target) return i;
+    }
+    return -1;
+  }
+
+  function bacaTanggalInternal(tgl) {
+    if (!tgl) return new Date(0);
+    if (tgl instanceof Date) return tgl; 
+    var s = tgl.toString().trim();
+    var parts = s.split(/[\s\/:\-]/); 
+    if (parts.length >= 3) {
+      var d = parseInt(parts[0], 10);
+      var m = parseInt(parts[1], 10) - 1; 
+      var y = parseInt(parts[2], 10);
+      if (y < 100) y += 2000;
+      var hr = parts.length > 3 ? parseInt(parts[3], 10) : 0;
+      var min = parts.length > 4 ? parseInt(parts[4], 10) : 0;
+      var sec = parts.length > 5 ? parseInt(parts[5], 10) : 0;
+      if(d <= 31 && m >= 0 && m <= 11) return new Date(y, m, d, hr, min, sec);
+    }
+    return new Date(tgl);
+  }
+
+  if(sMaster) {
+    var dataMaster = sMaster.getDataRange().getValues();
+    var hMaster = dataMaster[0];
+    var idxID = cariIndex(hMaster, "ID Obat");
+    var idxNama = cariIndex(hMaster, "Nama Obat"); 
+    var idxStokDasar = cariIndex(hMaster, "Stok Dasar Opname"); 
+    var idxTglOpname = cariIndex(hMaster, "Tanggal Opname Terakhir");
+    
+    if(idxID !== -1 && idxNama !== -1) {
+      for(var m = 1; m < dataMaster.length; m++) {
+        if(dataMaster[m][idxNama].toString().trim() === namaDicari.toString().trim()) {
+           idDicari = dataMaster[m][idxID].toString().trim();
+           if(idxStokDasar !== -1) stokAwal = parseFloat(dataMaster[m][idxStokDasar]) || 0;
+           if(idxTglOpname !== -1 && dataMaster[m][idxTglOpname]) batasTanggal = bacaTanggalInternal(dataMaster[m][idxTglOpname]); 
+           break;
+        }
+      }
+    }
+  }
+
+  if(!idDicari) return;
+
+  function cekTanggalValid(tglTransaksi) {
+    return bacaTanggalInternal(tglTransaksi).getTime() >= batasTanggal.getTime(); 
+  }
+
+  var kamusDetail = {};
+  function buatKamus(sheet) {
+    if(!sheet) return;
+    var d = sheet.getDataRange().getValues();
+    var h = d[0];
+    var iDet = cariIndex(h, "ID Detail");
+    var iOb = cariIndex(h, "ID Obat");
+    if(iDet === -1 || iOb === -1) return;
+    for(var i=1; i<d.length; i++) {
+      var key = (d[i][iDet] || "").toString().trim();
+      var val = (d[i][iOb] || "").toString().trim();
+      if(key) kamusDetail[key] = val; 
+    }
+  }
+  buatKamus(sKasir);
+  buatKamus(sArsip);
+
+  var idDetailTercatat = new Set();
+  
+  function sedotJual(sheet, namaSumber) {
+    if(!sheet) return;
+    var data = sheet.getDataRange().getValues();
+    var h = data[0];
+    var iTgl = cariIndex(h, "Tanggal");
+    var iID = cariIndex(h, "ID Obat");
+    var iQty = cariIndex(h, "Konversi Keluar"); 
+    var iIDDetail = cariIndex(h, "ID Detail"); 
+    
+    if(iTgl===-1 || iID===-1 || iQty===-1 || iIDDetail===-1) return;
+    
+    for (var i = 1; i < data.length; i++) {
+      var idDet = (data[i][iIDDetail] || "").toString().trim();
+      if ((data[i][iID] || "").toString().trim() === idDicari && cekTanggalValid(data[i][iTgl])) {
+        var q = parseFloat(data[i][iQty]) || 0;
+        if(q > 0 && idDet && !idDetailTercatat.has(idDet)) {
+          idDetailTercatat.add(idDet);
+          keranjang.push([bacaTanggalInternal(data[i][iTgl]), "Penjualan (" + namaSumber + ")", 0, q]);
+        }
+      }
+    }
+  }
+
+  function sedotBeli() {
+    if(!sBeli) return;
+    var data = sBeli.getDataRange().getValues();
+    var h = data[0];
+    var iTgl = cariIndex(h, "Tanggal Masuk");
+    var iID = cariIndex(h, "ID Obat");
+    var iQty = cariIndex(h, "Konversi Masuk");
+    var iJenis = cariIndex(h, "JENIS TRANSAKSI"); 
+    if(iTgl===-1 || iID===-1 || iQty===-1 || iJenis===-1) return;
+    for (var i = 1; i < data.length; i++) {
+      if ((data[i][iID] || "").toString().trim() === idDicari && cekTanggalValid(data[i][iTgl])) {
+        var q = parseFloat(data[i][iQty]) || 0;
+        var jenis = (data[i][iJenis] || "").toString().toUpperCase().trim();
+        if (q !== 0 && jenis !== "STOK OPNAME") {
+           if (jenis.indexOf("RETUR") !== -1) keranjang.push([bacaTanggalInternal(data[i][iTgl]), "Retur ke Supplier (" + jenis + ")", 0, Math.abs(q)]);
+           else if (jenis === "KONSINYASI MASUK") keranjang.push([bacaTanggalInternal(data[i][iTgl]), "Terima Titipan", Math.abs(q), 0]);
+           else if (q > 0) keranjang.push([bacaTanggalInternal(data[i][iTgl]), "Pembelian / Faktur", q, 0]);
+        }
+      }
+    }
+  }
+
+  function sedotRetur() {
+    if(!sRetur) return;
+    var data = sRetur.getDataRange().getValues();
+    var h = data[0];
+    var iTgl = cariIndex(h, "Tanggal Retur");
+    var iIDDetailDiRetur = cariIndex(h, "ID Obat"); 
+    var iQty = cariIndex(h, "Konversi Retur");
+    var iJum = cariIndex(h, "Jumlah Retur"); 
+    
+    if(iTgl===-1) return; 
+
+    for (var i = 1; i < data.length; i++) {
+      var isMatch = false;
+      if (iIDDetailDiRetur !== -1) {
+        var idDetail = (data[i][iIDDetailDiRetur] || "").toString().trim();
+        var idObatAsli = kamusDetail[idDetail]; 
+        if (idObatAsli === idDicari) isMatch = true;
+      }
+      if (isMatch && cekTanggalValid(data[i][iTgl])) {
+        var q = 0;
+        if (iQty !== -1) q = parseFloat(data[i][iQty]);
+        if (isNaN(q) || q === 0) {
+           if (iJum !== -1) q = parseFloat(data[i][iJum]) || 0;
+        }
+        if(q > 0) keranjang.push([bacaTanggalInternal(data[i][iTgl]), "Retur dari Pasien", q, 0]); 
+      }
+    }
+  }
+
+  sedotJual(sKasir, "Aktif");
+  sedotJual(sArsip, "Arsip");
+  sedotBeli();
+  sedotRetur();
+
+  var barisAkhir = sheetKartu.getLastRow();
+  if(barisAkhir > 6) { sheetKartu.getRange(7, 1, barisAkhir - 6, 5).clearContent(); }
+  keranjang.sort(function(a, b) { return a[0].getTime() - b[0].getTime(); });
+
+  var hasilAkhir = [];
+  var sisaStok = stokAwal; 
+  var tglAwalFormat = (batasTanggal.getTime() > 0) ? Utilities.formatDate(batasTanggal, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") : "-";
+  hasilAkhir.push([tglAwalFormat, "SALDO OPNAME TERAKHIR", stokAwal, 0, stokAwal]);
+
+  for (var i = 0; i < keranjang.length; i++) {
+    sisaStok = sisaStok + keranjang[i][2] - keranjang[i][3];
+    var tglFormat = Utilities.formatDate(keranjang[i][0], Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    hasilAkhir.push([tglFormat, keranjang[i][1], keranjang[i][2], keranjang[i][3], sisaStok]);
+  }
+
+  if(hasilAkhir.length > 0) sheetKartu.getRange(7, 1, hasilAkhir.length, 5).setValues(hasilAkhir);
+}
+
+// =========================================================================
+// 7. CETAK DASBOR LOOKER (ANTI-TIMEOUT, POTONG BARIS BAWAH)
+// =========================================================================
+function jalankanCetakDasborCepat() {
+  var ssMaster;
+  try { ssMaster = SpreadsheetApp.openById("1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y"); } catch(e) { return; }
+  
+  var sheetJual = ssMaster.getSheetByName("Laporan_Master_Jual");
+  
+  // [REVISI] Nama sheet disamakan menjadi "Retur_Jual"
+  var sheetRetur = ssMaster.getSheetByName("Retur_Jual"); 
+  
+  var sheetRekap = ssMaster.getSheetByName("Rekap_Dashboard");
+  if (!sheetJual || !sheetRetur || !sheetRekap) return;
+
+  var tglSekarang = new Date();
+  var batasHari = new Date(tglSekarang.getFullYear(), tglSekarang.getMonth(), tglSekarang.getDate() - 3);
+  batasHari.setHours(0,0,0,0);
+
+  var uniqueSet = new Set();
+  var hasilArray = [];
+
+  function ekstrakCepatTerpotong(sheetAktif, idxTgl, idxUser, idxObat, idxPlg) {
+    var lastRow = sheetAktif.getLastRow();
+    if (lastRow <= 1) return;
+    
+    var rowFetch = Math.min(lastRow - 1, 5000); 
+    var startRow = lastRow - rowFetch + 1;
+    var data = sheetAktif.getRange(startRow, 1, rowFetch, sheetAktif.getLastColumn()).getValues();
+
+    for (var i = 0; i < data.length; i++) {
+      var tglValid = helper_bacaTanggal(data[i][idxTgl]);
+      if (tglValid.getTime() < batasHari.getTime()) continue; 
+      
+      var tglMurni = new Date(tglValid.getFullYear(), tglValid.getMonth(), tglValid.getDate());
+      var timeKey = tglMurni.getTime();
+      var usr = (data[i][idxUser] || "").toString().trim();
+      var obt = (data[i][idxObat] || "").toString().trim();
+      var plg = (data[i][idxPlg] || "").toString().trim();
+      var key = timeKey + "|" + usr + "|" + obt + "|" + plg;
+      
+      if (!uniqueSet.has(key)) {
+        uniqueSet.add(key);
+        hasilArray.push([tglMurni, usr, obt, plg]);
+      }
+    }
+  }
+
+  ekstrakCepatTerpotong(sheetJual, 10, 11, 3, 17);
+  ekstrakCepatTerpotong(sheetRetur, 10, 9, 13, 12);
+
+  var barisAkhirLama = sheetRekap.getLastRow();
+  var cutRow = -1;
+  
+  if (barisAkhirLama > 1) {
+    var tglData = sheetRekap.getRange(2, 1, barisAkhirLama - 1, 1).getValues();
+    for (var i = 0; i < tglData.length; i++) {
+      var tRaw = tglData[i][0];
+      if (tRaw) {
+        var tValid = helper_bacaTanggal(tRaw);
+        if (tValid.getTime() >= batasHari.getTime()) {
+          cutRow = i + 2; 
+          break;
+        }
+      }
+    }
+    if (cutRow !== -1) {
+       sheetRekap.getRange(cutRow, 1, barisAkhirLama - cutRow + 1, 4).clearContent();
+    } else {
+       cutRow = barisAkhirLama + 1;
+    }
+  } else {
+    cutRow = 2;
+  }
+
+  if (hasilArray.length === 0) return;
+  hasilArray.sort(function(a, b) { return a[0].getTime() - b[0].getTime(); });
+  sheetRekap.getRange(cutRow, 1, hasilArray.length, 4).setValues(hasilArray);
+}
+
+// =========================================================================
+// 8. SISTEM TUTUP BUKU & TRIGGER
+// =========================================================================
+function tutupBukuKasirOtomatis() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetMaster = ss.getSheetByName("MASTER_KAS"), sheetTrx = ss.getSheetByName("TRANSAKSI_KAS"), sheetMutasi = ss.getSheetByName("FORM_MUTASI");
+  if(!sheetMaster || !sheetTrx || !sheetMutasi) return; 
+
+  var dataMaster = sheetMaster.getDataRange().getValues();
+  var kasBalances = {}; 
+  for(var i=1; i<dataMaster.length; i++) {
+    var idKas = (dataMaster[i][0] || "").toString().trim();
+    if(idKas) kasBalances[idKas] = 0;
+  }
+
+  var dataTrx = sheetTrx.getDataRange().getValues(), hTrx = dataTrx[0];
+  var idxKasTrx = hTrx.indexOf("Nama_Kas"), idxMasuk = hTrx.indexOf("Uang_Masuk"), idxKeluar = hTrx.indexOf("Uang_Keluar");
+  if(dataTrx.length > 1) {
+    for(var i=1; i<dataTrx.length; i++) {
+      var id = (dataTrx[i][idxKasTrx] || "").toString().trim();
+      if(kasBalances.hasOwnProperty(id)) {
+         kasBalances[id] += (parseFloat(dataTrx[i][idxMasuk]) || 0);
+         kasBalances[id] -= (parseFloat(dataTrx[i][idxKeluar]) || 0);
+      }
+    }
+  }
+
+  // --- BAGIAN INI DINONAKTIFKAN KARENA MUTASI SUDAH MASUK VIA DOUBLE-ENTRY BOT APPSHEET ---
+  /*
+  var dataMutasi = sheetMutasi.getDataRange().getValues(), hMut = dataMutasi[0];
+  var idxDari = hMut.indexOf("Dari_Kas"), idxKe = hMut.indexOf("Ke_Kas"), idxNominal = hMut.indexOf("Nominal");
+  if(dataMutasi.length > 1) {
+    for(var i=1; i<dataMutasi.length; i++) {
+      var dari = (dataMutasi[i][idxDari] || "").toString().trim(), ke = (dataMutasi[i][idxKe] || "").toString().trim();
+      var nom = parseFloat(dataMutasi[i][idxNominal]) || 0;
+      if(kasBalances.hasOwnProperty(dari)) kasBalances[dari] -= nom;
+      if(kasBalances.hasOwnProperty(ke)) kasBalances[ke] += nom;
+    }
+  }
+  */
+
+  if(dataTrx.length > 1) sheetTrx.getRange(2, 1, dataTrx.length-1, hTrx.length).clearContent();
+  
+  // -- PENTING: PENGHAPUSAN DATA MUTASI LAMA TETAP DIPERTAHANKAN AGAR SPREADSHEET BERSIH --
+  var dataMutasi = sheetMutasi.getDataRange().getValues(), hMut = dataMutasi[0];
+  if(dataMutasi.length > 1) sheetMutasi.getRange(2, 1, dataMutasi.length-1, hMut.length).clearContent();
+
+  var barisBaru = [];
+  var tglSekarang = new Date();
+  var idPrefix = "CUTOFF-" + tglSekarang.getTime().toString().substring(5);
+  var no = 1;
+  for(var idKas in kasBalances) {
+     var saldo = kasBalances[idKas];
+     var baris = new Array(hTrx.length).fill("");
+     baris[0] = idPrefix + "-" + no; baris[1] = tglSekarang; baris[2] = idKas; baris[3] = "Mutasi Kas";                   
+     baris[4] = "Saldo Awal (Cut-Off Sistem)"; baris[5] = saldo > 0 ? saldo : 0; baris[6] = saldo < 0 ? Math.abs(saldo) : 0; baris[7] = "Auto-Bot";                     
+     barisBaru.push(baris);
+     no++;
+  }
+  if(barisBaru.length > 0) sheetTrx.getRange(2, 1, barisBaru.length, barisBaru[0].length).setValues(barisBaru);
+}
+
+function pasangTriggerOtomatis() {
+  var ss = SpreadsheetApp.getActive();
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) if (triggers[i].getHandlerFunction() === "cekPerintahTutupBuku") ScriptApp.deleteTrigger(triggers[i]);
+  ScriptApp.newTrigger("cekPerintahTutupBuku").forSpreadsheet(ss).onChange().create();
+}
+
+function cekPerintahTutupBuku(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("MASTER_KAS");
+  if(!sheet) return;
+  var data = sheet.getDataRange().getValues();
+  var triggerColIdx = data[0].indexOf("Trigger_CutOff");
+  if (triggerColIdx === -1) return;
+  var perluTutup = false;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][triggerColIdx] === "TUTUP") {
+      perluTutup = true;
+      sheet.getRange(i + 1, triggerColIdx + 1).setValue("");
+    }
+  }
+  if (perluTutup) tutupBukuKasirOtomatis();
+}

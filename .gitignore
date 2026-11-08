@@ -5,6 +5,7 @@ node_modules/
 
 # Local data & databases (contains sensitive business operations)
 /data/apotek.db
+/data/*.db
 /data/*.xlsx
 /data/*.xls
 /data/*.csv

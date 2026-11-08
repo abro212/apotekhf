@@ -1,0 +1,259 @@
+﻿Modul 1: Manajemen Master Data & Hak Akses
+Modul ini adalah pondasi statis yang mendasari seluruh kalkulasi dan privasi aplikasi.
+* Tabel Utama: Master_Obat, Pelanggan, Supplier, User_Login, _Per User Settings.
+* Logika Hak Akses (User Levels):
+   * Sistem menggunakan kombinasi kolom User (berisi email/ID pengguna) dan pengaturan peran (Role: "ADMIN" atau "USER") yang ditarik dari tabel User_Login ke dalam _Per User Settings.
+   * Contoh Implementasi: Filter keamanan di tabel TRANSAKSI_KAS membatasi kasir (USER) hanya bisa melihat transaksi mereka sendiri pada hari yang sama (TODAY()), sedangkan ADMIN bisa melihat semuanya. Aturan Are updates allowed? di tabel Master_Obat membatasi agar hanya ADMIN yang bisa melakukan penambahan atau penghapusan data obat (ALL_CHANGES), sedangkan USER hanya bisa melihat atau memperbarui (update) data.
+* Struktur Harga (Tiering):
+   * Tabel Master_Obat menyimpan 3 satuan hierarkis (Satuan 1, Satuan 2, Satuan 3) dan konversinya (Isi 2 ke 1, Isi 3 ke 2).
+   * Harga Jual memiliki 3 level (Level 1/Umum, Level 2/Medis, Level 3/Grosir) yang nilainya disimpan di kolom seperti Harga L1 S1, Harga L2 S2, dan margin profitnya dihitung secara dinamis.
+Modul 2: Transaksi Penjualan & Kasir (Point of Sale)
+Modul ini mengatur alur pelayanan di meja depan, mulai dari keranjang belanja hingga cetak struk.
+* Tabel Utama: Transaksi_Jual (Header), Detail_Jual (Keranjang), Retur_Jual, KASIR (Menu UI).
+* Alur Penjualan (Logic Flow):
+   * Inisiasi: Kasir membuat ID Jual baru di Transaksi_Jual.
+   * Input Barang: Kasir memilih barang di Detail_Jual. Sistem mendeteksi Satuan Dipilih dan mencocokkan harganya berdasarkan Level Harga Pelanggan (Umum/Grosir/dll) dari tabel Pelanggan. Subtotal dihitung otomatis.
+   * Pembayaran: Pembayaran dicatat dengan Opsi Bayar (Cash, Tempo, QRIS). Jika "TEMPO", sistem akan membuka isian "Jatuh Tempo" dan "Uang Muka (DP)".
+   * Bot Eksekusi (Action): Saat ditekan Simpan, sistem menjalankan bot Process for Bot Jual - 1 untuk mencatat transaksi keuangan ke dalam laporan.
+* Logika Kalkulasi Penting:
+   * Konversi Keluar: Di tabel Detail_Jual, jumlah barang yang dibeli otomatis diubah ke satuan terkecil (Konversi Keluar) menggunakan rumus If-Then-Else berlapis. Ini krusial agar pemotongan stok fisik presisi.
+Modul 3: Pembelian, Retur, & Konsinyasi (Supply Chain)
+Modul ini adalah jantung dari rantai pasokan apotek, menangani arus barang masuk dan perubahan tagihan kepada distributor (PBF).
+* Tabel Utama: Faktur_Beli (Header), Log_Beli (Keranjang Masuk), Pembayaran_Konsi, Detail_Bayar_Konsi.
+* Alur Pembelian Reguler:
+   * Penginputan faktur masuk ke Faktur_Beli. Status awal adalah "BELUM LUNAS" dengan sisa hutang dihitung dari Total Belanja - Nominal Bayar.
+   * Rincian item masuk ke Log_Beli. Modul ini tidak hanya menghitung harga bersih (Netto) berdasarkan diskon dan pajak, tapi juga menangkap Expired Date dan No Batch.
+* Alur Retur & Konsinyasi (Penting):
+   * Konsinyasi Masuk: Diperlakukan seperti pembelian, tetapi dengan status faktur "KONSINYASI". Saat konsinyasi laku (terjual), sistem menggunakan metode Sales-by-Subtraction (pengurangan sisa di rak) untuk menaikkan nilai Tagihan Berjalan (Qty) di Master Obat.
+   * Pembayaran Konsinyasi: Dilakukan melalui tabel Pembayaran_Konsi dan Detail_Bayar_Konsi untuk melunasi Tagihan Berjalan yang menumpuk.
+Modul 4: Arus Kas & Finansial (Cash Management)
+Modul ini adalah "buku besar" untuk melacak setiap rupiah yang bergerak di apotek.
+* Tabel Utama: TRANSAKSI_KAS, MASTER_KAS, FORM_MUTASI, Operasional Kas.
+* Alur Logika Keuangan:
+   * Apotek menggunakan konsep pemisahan laci kas (MASTER_KAS berisi 4 titik kas: Laci Kasir, Kas Kecil, Kas Besar, Rekening Bank).
+   * Setiap penjualan Tunai/QRIS, pembayaran pelunasan hutang/konsinyasi, atau biaya operasional akan terekam ke dalam TRANSAKSI_KAS.
+   * Bypass Kas (Keamanan Shift): Jika kasir memilih metode bayar QRIS, bot Process for Bot Bypass Kas Non-Laci - 1 akan mencegat aliran uang tersebut dan membelokkannya ke Rekening Bank agar uang digital tidak bercampur dengan hitungan fisik Laci Kasir.
+   * Biaya Operasional (Akrual): Tabel Operasional Kas digunakan untuk mencatat pengeluaran. Ada sistem "Akrual" (pembagian beban per bulan) untuk pembelian aset jangka panjang.
+Modul 5: Mesin Hitung Belakang Layar (Google Apps Script / GAS)
+Ini adalah otak utama yang menopang aplikasi AppSheet, menangani perhitungan berat yang akan membuat aplikasi HP crash jika diproses secara langsung.
+* Script updatePenjualanObat (Inti Kalkulasi):
+   * Auto-FEFO (Stok vs Expired): Script ini mengambil data dari Log_Beli (Barang Masuk) dan Detail_Jual (Barang Keluar). Ia mengurangi stok fisik secara berurutan mulai dari tanggal Expired paling dekat, dan mengubah status Batch menjadi "Habis" jika sudah tidak ada sisa. Fitur "Anti-Zombie" ditanamkan di sini untuk memblokir baris dengan Qty 0.
+   * Pergerakan Pareto (Moving): Menghitung total obat yang terjual dalam 30 hari dan 90 hari. Berdasarkan angka tersebut, skrip menyematkan label "Fast", "Medium", "Slow", atau "Dead Stock" ke Master Obat (Kategori_Moving).
+* Script Sinkronisasi & Arsip:
+   * sinkronisasiKasir_Penjualan dan sinkronisasiKasir_Pembelian bertugas memindahkan data lama (yang berumur > 40 atau 90 hari) ke file arsip terpisah agar aplikasi AppSheet di HP tetap berjalan sangat cepat dan tidak dibebani jutaan baris data lama.
+   * tutupBukuKasirOtomatis: Membaca saldo seluruh kas, menghapus rincian harian, dan mengubahnya menjadi satu baris Saldo Awal (Cut-Off) baru untuk keesokan harinya.
+Modul 6: Laporan, Kinerja, & PDF (Reporting)
+Modul ini adalah hasil akhir operasional yang digunakan pemilik dan manajemen untuk memantau apotek.
+* Tabel Utama: Laporan Harian, Rekap_Bonus, Dokumentasi Faktur, Cek Kesehatan.
+* Alur Pelaporan & Ekspor:
+   * Laporan Harian (Tutup Shift): Kasir membuat form Laporan Harian yang merekap total uang tunai vs catatan sistem (menghasilkan angka "Selisih Kas"). Bot (melalui webhook WA) mengirim rekap tutup shift ini ke WhatsApp.
+   * Perhitungan Bonus Karyawan (Rekap_Bonus): Sistem menghitung pencapaian omzet (pagi/sore), tingkat kehadiran (melalui Laporan Harian), dan tuslah resep, yang diubah menjadi persentase uang bonus.
+   * Cetak PDF: Otomatisasi (seperti Process for Bot cetak pdf - 1 dan Process for Bot Cetak SP - 1) digunakan untuk menghasilkan file PDF struk penjualan, Surat Pesanan (SP) ke supplier, dan lampiran dokumentasi faktur untuk diunduh.
+Modul 7: Layanan Klinis & Rekam Medis (Patient Care)
+Modul ini menjadikan aplikasi Anda bukan sekadar aplikasi kasir, melainkan sistem pemantauan kesehatan pasien (CRM Apotek).
+* Tabel Terkait: Daftar Pasien, Kontrol Pasien, Cek Kesehatan.
+* Alur & Fitur:
+   * Saat pasien datang untuk tes kesehatan, datanya direkam ke dalam Daftar Pasien (lengkap dengan data NAMA, ALAMAT, dan nomor kontak WHATSAPP).
+   * Setiap kali pasien melakukan cek ulang, data tersebut dicatat di Kontrol Pasien yang melacak metrik riwayat klinis secara spesifik: TENSI, GULA, ASAM URAT, dan KOLESTEROL.
+   * Sistem juga menghubungkan riwayat cek kesehatan ini dengan OBAT dan KETERANGAN yang diberikan pada hari itu, sehingga apoteker bisa memantau efektivitas terapi pasien.
+Modul 8: Surat Pesanan & Pengadaan Resmi (Procurement & SP)
+Ini adalah modul kepatuhan regulasi (BPOM/Dinkes) yang sangat vital bagi apotek resmi di Indonesia.
+* Tabel Terkait: Perencanaan Pengadaan, SP_Header, SP_Detail.
+* Alur & Fitur:
+   * Sistem tidak hanya mencatat faktur saat barang datang, tetapi merencanakan pesanan sejak awal melalui tabel Perencanaan Pengadaan.
+   * Apoteker membuat dokumen Surat Pesanan (SP) melalui SP_Header yang dihubungkan dengan nama PBF (Supplier), lalu merinci daftar obat yang dipesan di SP_Detail.
+   * Sistem didukung oleh otomatisasi latar belakang (Process for Bot Cetak SP - 1 dan Process for Tutup SP Otomatis - 1) yang bertugas mengubah data digital tersebut menjadi file PDF Surat Pesanan resmi yang siap dicetak dan ditandatangani oleh Apoteker Penanggung Jawab (APA).
+Modul 9: Dasbor Navigasi Dinamis (Custom UI Launcher)
+Berbeda dengan aplikasi AppSheet standar yang mengandalkan tombol menu bawaan di bawah layar, Anda membangun sistem menu berbasis tabel agar tampilannya seperti aplikasi profesional (Launcher/Dashboard).
+* Tabel Terkait: Menu_Icons, Menu, Menu Laporan, Menu Pembelian, Menu Penjualan, Menu Piutang, Menu Stok Opname, Menu Tagihan.
+* Alur & Fitur:
+   * Tabel-tabel ini secara khusus memuat struktur navigasi yang terdiri dari kolom NAMA MENU, LINK, dan IMAGE (ikon).
+   * Alih-alih membuat banyak View statis, Anda mengarahkan pengguna untuk mengeklik baris-baris menu bergambar ini di layar utama, yang kemudian memicu aksi (pindah ke tampilan form penjualan, pembelian, atau laporan) sesuai dengan tautan URL internal di kolom LINK.
+Modul 10: Filter Laporan Interaktif (Dynamic Dashboard)
+AppSheet memiliki keterbatasan dalam menyaring data (filtering) secara instan. Modul ini adalah solusi tingkat lanjut (workaround) yang Anda ciptakan untuk membuat laporan yang bisa difilter tanggal dan kriterianya oleh pengguna.
+* Tabel Terkait: Filter_Laporan_Penjualan, Filter_Laporan_Pembelian, Filter_Keuangan.
+* Alur & Fitur:
+   * Tabel-tabel ini berfungsi sebagai "Formulir Pencarian". Saat Admin ingin melihat laporan, mereka tidak mencari secara manual, melainkan mengisi form Filter ini dengan rentang Tanggal_Mulai dan Tanggal_Akhir.
+   * Pada laporan penjualan, form filter ini menyediakan variabel spesifik seperti Pilih_User, Pilih_Obat, Pilih_Kategori, Pilih_Pelanggan, dan Pilih_Supplier.
+   * Sistem kemudian menggunakan rumus REF_ROWS (seperti kalkulasi Total Omzet dan Total Keuntungan) untuk memunculkan data omzet yang hanya terjadi pada rentang tanggal dan kriteria yang dipilih oleh formulir filter tersebut.
+Modul 11: Manajemen Hutang & Piutang (Accounts Payable & Receivable)
+Modul ini secara khusus melacak aliran uang yang tertunda, baik uang apotek yang tertahan di pelanggan, maupun uang apotek yang belum dibayarkan ke Supplier.
+* Tabel Terkait: Pelunasan_Hutang, Detail_Pelunasan_Hutang, Log_Pelunasan_Jual, Menu Piutang, Menu Tagihan.
+* Alur & Fitur:
+   * Piutang (Uang Pasien): Jika di form penjualan metode bayar dipilih "TEMPO", sisa tagihan dicatat sebagai Piutang. Saat pelanggan mencicil atau melunasi, kasir menginputnya di Log_Pelunasan_Jual. Uang pelunasan ini otomatis memotong total piutang transaksi tersebut.
+   * Hutang (Uang PBF): Jika faktur masuk belum lunas, sistem akan memasukkannya ke daftar hutang. Apotek membayar cicilan/pelunasan banyak faktur sekaligus melalui form Pelunasan_Hutang (sebagai Header) dan Detail_Pelunasan_Hutang (rincian faktur mana saja yang dibayar). Sistem bahkan memiliki tombol pintar Bulatkan ke Lunas? untuk menghitung diskon pembulatan tagihan secara otomatis.
+Modul 12: Audit & Kontrol Inventaris (Stok Opname Khusus)
+Meski berkaitan dengan rantai pasok (Modul 3), Opname memiliki ekosistem formulir dan perhitungannya sendiri untuk mengoreksi ketidakcocokan antara sistem dan fisik.
+* Tabel Terkait: Menu Stok Opname, Log_Opname.
+* Alur & Fitur:
+   * Sistem tidak langsung menimpa data master saat Anda menghitung fisik. Data diinput sebagai "Selisih" di Log_Opname.
+   * Setiap kali opname dilakukan, kolom Tanggal Opname Terakhir dan Stok Dasar Opname di Master Obat akan diperbarui.
+   * Ini sangat penting bagi Arsip_Jual_Pasca_Opname di Master Obat, di mana sistem akan me-reset hitungan barang terjual yang terjadi setelah tanggal opname terakhir untuk memastikan validitas data kartu stok.
+Modul 13: SDM, Kinerja & Bonus (HR & Payroll)
+Sistem ini murni modul HRD (Human Resources Department) yang dibangun di atas aplikasi penjualan, yang berfungsi memonitor produktivitas karyawan dan mengotomatiskan pembagian insentif/bonus.
+* Tabel Terkait: Rekap_Bonus.
+* Alur & Fitur:
+   * Sistem menghitung Persentase Hadir karyawan dengan membaca jejak mereka di Laporan Harian.
+   * Menghitung pencapaian target harian dan periode berdasarkan Target_Pagi, Target_Sore, dan Target_Omset_Periode.
+   * Terdapat perhitungan berlapis untuk Hitung_Bonus_Shift, Hitung_Bonus_Periode, hingga perhitungan khusus Hitung_Bonus_Tuslah berdasarkan persentase resep yang dikerjakan.
+Modul 14: Konfigurasi Parameter Algoritma (System Settings)
+Ini adalah modul tersembunyi yang biasanya hanya diakses oleh Pemilik (Owner). Modul ini mengendalikan "otak" aplikasi tanpa perlu Pemilik membongkar rumus (coding).
+* Tabel Terkait: Pengaturan_Pareto, _Per User Settings.
+* Alur & Fitur:
+   * Melalui tabel Pengaturan_Pareto (dan logika script Anda), pemilik bisa mengatur kapan suatu obat disebut "Fast Moving" (misal: terjual > 18 unit/30 hari) atau "Slow Moving", serta batas klasifikasi Kelas A/B/C berdasarkan angka Rupiah tertentu.
+   * Tabel _Per User Settings digunakan untuk menyimpan sesi login lokal secara aman di device masing-masing kasir tanpa bertabrakan (User Settings statis bawaan AppSheet).
+Modul 15: Pengarsipan & Dokumentasi Digital (Digital Filing)
+Modul ini bertugas menggantikan lemari arsip fisik di apotek Anda, mengubah dokumen kertas menjadi rekam jejak digital yang terhubung langsung dengan sistem hutang.
+* Tabel Terkait: FAKTUR, Dokumentasi Faktur.
+* Alur & Fitur:
+   * Ketika barang dari distributor (PBF) datang, penerima barang (misalnya IRNA, AYU, atau LINA) menggunakan modul ini untuk memotret faktur fisik.
+   * Tabel FAKTUR menyediakan kolom FOTO 1, FOTO 2, dan FOTO 3 untuk mendokumentasikan berlembar-lembar faktur kertas.
+   * Hebatnya, foto arsip ini (Arsip Faktur) dihubungkan secara relasional (Ref) kembali ke tabel Faktur_Beli. Sehingga, ketika Anda atau admin sedang mengecek daftar hutang atau melakukan pelunasan, Anda bisa langsung melihat tombol Lihat Foto Faktur untuk memvalidasi tagihan tanpa perlu mencari kertasnya di gudang.
+Modul 16: Mutasi Keuangan Internal (Inter-Cash Transfers)
+Meskipun tergabung dalam ekosistem Kas, fungsionalitas mutasi memiliki jalur logikanya sendiri yang berbeda dari pengeluaran biaya operasional atau penerimaan omzet.
+* Tabel Terkait: FORM_MUTASI.
+* Alur & Fitur:
+   * Modul ini digunakan untuk memindahkan uang antar-brankas internal apotek (misalnya uang fisik dari Laci Kasir disetor ke Kas Besar, atau ditransfer ke Rekening Bank).
+   * Sistem ini menggunakan logika Double-Entry di latar belakang. Ketika form mutasi disimpan, sistem secara bersamaan akan mencatat pengeluaran uang (Uang Keluar) dari kas asal, dan penerimaan uang (Uang Masuk) ke kas tujuan agar neraca saldo total apotek tetap seimbang (balance).
+Modul 17: Log Eksekusi & Jejak Otomatisasi (Automation State Tracking)
+Dari 77 tabel yang ada di aplikasi Anda, hampir sepertiganya (sekitar 26 tabel) adalah tabel sistem yang tersembunyi (Visible? NEVER). Ini adalah modul "saraf tulang belakang" dari bot otomatisasi Anda.
+* Tabel Terkait: Process for Bot Update Harga Beli Process Table, Process for Bot Laporan - 1 Process Table, Process for Bot Cetak SP - 1 Process Table, beserta puluhan tabel New step Output dan State Table lainnya.
+* Alur & Fitur:
+   * AppSheet secara otomatis membuat tabel-tabel ini untuk melacak status setiap bot yang berjalan di latar belakang.
+   * Misalnya, ketika Kasir menekan tombol "Simpan", bot pembuatan PDF faktur atau pengiriman pesan ke WhatsApp mulai bekerja. Tabel-tabel State Table ini mencatat apakah proses tersebut berstatus Pending, Success, atau Failed.
+   * Tabel-tabel Step Output (seperti Simpan Link PDF Output atau Ubah SP Output) bertugas menangkap URL link file PDF yang baru saja di-generate oleh Google Drive, lalu mengembalikannya (menulis ulang) ke dalam kolom aplikasi Anda agar file tersebut bisa diunduh oleh pengguna.
+Modul 18: Manajemen Aset & Amortisasi (Sistem Akrual)
+Di apotek, pengeluaran untuk beli komputer atau sewa ruko 1 tahun akan merusak laporan laba/rugi jika dibebankan di satu bulan saja. Anda telah mengantisipasi ini!
+* Terletak di: Tabel Operasional Kas.
+* Cara Kerja: Jika kategori yang dipilih adalah "Pembelian Aset (Sistem Akrual)", sistem meminta input Durasi Sewa (Bulan). Kemudian kolom Beban_Per_Bulan, Beban_Bersih_Per_Bulan, dan Beban_Per_Hari secara otomatis memecah total pengeluaran tersebut menjadi beban harian/bulanan.
+* Fungsi: Memastikan laporan laba rugi apotek Anda tetap stabil dan akurat setiap harinya tanpa lonjakan pengeluaran palsu.
+Modul 19: Engine Harga, Margin, & Pajak (Pricing Strategy)
+Ini adalah modul yang mengotomatiskan kalkulasi harga jual agar apotek tidak pernah rugi meskipun harga dari distributor sering naik turun.
+* Terletak di: Tabel Master_Obat dan Log_Beli.
+* Cara Kerja:
+   * Sistem menghitung Harga Beli bersih (Harga Netto) dengan terlebih dahulu mengurangi Diskon Item (%) lalu menambahkan Pajak Item (%) (misal PPN 11%).
+   * Di Master Obat, sistem secara instan memonitor persentase profit apotek melalui kolom MARGIN L1 S1 hingga MARGIN L3 S3.
+   * Dikawal oleh bot Process for Bot Update Harga Beli dan Update Harga Display yang otomatis menyelaraskan tampilan harga terbaru ke layar kasir.
+Modul 20: Jasa Medis, Racikan & Tuslah (Prescription System)
+Apotek tidak hanya menjual barang utuh, tetapi juga meracik obat. Modul ini mengakomodasi kerumitan tersebut.
+* Terletak di: Tabel Detail_Jual dan Rekap_Bonus.
+* Cara Kerja:
+   * Terdapat kolom Status_Racikan, Komposisi Racikan, dan Harga Paket Racikan. Jika kasir mencatat resep racikan (yang berstatus "JASA"), sistem mengelompokkannya secara khusus.
+   * Jasa/Tuslah resep ini kemudian ditarik ke tabel HRD (Rekap_Bonus) pada kolom Total_Tuslah_Apotek dan Hitung_Bonus_Tuslah, memastikan asisten apoteker/apoteker mendapatkan porsi insentif dari setiap resep yang mereka kerjakan.
+Modul 21: Manajemen COD & Ekspedisi (Delivery Tracking)
+* Terletak di: Otomatisasi Process for Bot Faktur COD - 1.
+* Cara Kerja: Memantau faktur atau tagihan yang menggunakan skema Cash on Delivery (COD). Sistem memastikan barang yang dikirim ke pelanggan atau dipesan dari supplier dengan sistem COD memiliki jejak status hingga uangnya benar-benar cair atau dibayarkan.
+Modul 22: Kartu Stok Super (Inventory Ledger)
+Berbeda dengan sekadar melihat "Sisa Stok", modul ini bertugas menyusun buku besar (riwayat keluar-masuk) untuk investigasi barang hilang.
+* Terletak di: Skrip GAS tarikKartuStokSuper.
+* Cara Kerja: Karena data di AppSheet terpisah-pisah, skrip ini menarik data dari Laporan_Master_Jual, Log_Beli, dan Retur_Jual. Skrip ini menyatukan semuanya secara kronologis (berdasarkan waktu) dan menyajikannya di lembar KARTU_STOK. Skrip ini sangat canggih karena menjadikan saldo Opname terakhir sebagai titik nol (stokAwal) agar perhitungan tidak melenceng.
+Modul 23: Pengarsipan Dingin (Big Data Cold Storage)
+Jika semua transaksi dibiarkan di aplikasi Kasir, HP Android akan menjadi sangat lambat (lag). Modul ini adalah penyelamat performa apotek Anda.
+* Terletak di: Skrip GAS sinkronisasiKasir_Penjualan, sinkronisasiKasir_Pembelian, dan helper_arsipMenabung.
+* Cara Kerja: Skrip ini memindahkan (Cut & Paste) transaksi yang usianya sudah melewati batas hari yang ditentukan (misalnya 40 atau 90 hari) ke file Spreadsheet lain (File Arsip dengan ID 1FO5cse7S-IRQ68lRa_rjwRisnnhZVWDQLnrRU0tN36Y). HP Kasir selalu terasa ringan seperti aplikasi baru, sementara data historis tahunan tetap tersimpan aman di cloud.
+Modul 24: Integrasi Dasbor Eksternal (Looker Studio / Data Studio)
+Anda tidak hanya mengandalkan laporan bawaan AppSheet, melainkan menyiapkan basis data untuk divisualisasikan menjadi grafik/diagram interaktif.
+* Terletak di: Skrip GAS jalankanCetakDasborCepat.
+* Cara Kerja: Skrip ini mengekstrak dan merampingkan kolom-kolom penting dari Arsip Penjualan dan Retur, lalu membuangnya ke sheet Rekap_Dashboard. Format pada sheet inilah yang biasanya disambungkan ke aplikasi visualisasi pihak ketiga seperti Google Looker Studio untuk dipantau oleh Pemilik (Owner) secara real-time.
+Modul 25: Filter Keuangan & Laba/Rugi (Financial Analytical Engine)
+Sebelumnya saya hanya membahas Filter Laporan Penjualan dan Pembelian. Namun, ada satu tabel khusus yang berdiri sendiri untuk analitik keuangan tingkat tinggi.
+* Tabel Terkait: Filter_Keuangan.
+* Fungsi & Alur:
+   * Tabel ini dirancang khusus untuk memfilter data uang dari TRANSAKSI_KAS dan Operasional Kas.
+   * Sistem ini memungkinkan Anda (sebagai Admin) untuk melihat Laporan Laba Rugi bersih secara dinamis pada rentang tanggal tertentu, memisahkan uang yang benar-benar menjadi profit dengan uang yang harus ditahan untuk biaya sewa, gaji, atau pembayaran hutang.
+Modul 26: Mesin Konversi Multi-Satuan (Unit of Measure / UOM Engine)
+Ini adalah algoritma di belakang layar yang menyelamatkan kasir Anda dari keharusan menghitung matematika pecahan saat melayani pasien.
+* Tabel Terkait: Tersebar di Master_Obat, Detail_Jual, Log_Beli, Retur_Jual.
+* Fungsi & Alur:
+   * Anda mendefinisikan hirarki satuan: Satuan 1 (Terkecil/Pcs), Satuan 2 (Menengah/Box), Satuan 3 (Terbesar/Karton).
+   * Lalu, Anda menanamkan variabel Isi 2 ke 1 dan Isi 3 ke 2.
+   * Setiap kali ada barang masuk atau keluar, sistem menggunakan rumus If-Then-Else untuk menghitung Konversi Masuk atau Konversi Keluar secara mutlak. Misalnya, jika pasien beli 1 Box, sistem otomatis mengalikan 1 dengan Isi 2 ke 1 agar pemotongan stok fisik di belakang layar selalu dalam satuan Pcs.
+Modul 27: Keamanan Level Baris & Pelindung Kecepatan (Row-Level Security)
+Aplikasi dengan puluhan ribu baris transaksi biasanya akan crash di HP Android. Anda mencegahnya dengan fitur keamanan tingkat militer ini.
+* Tabel Terkait: Hampir semua tabel transaksi (Detail_Jual, Log_Beli, Faktur_Beli, TRANSAKSI_KAS).
+* Fungsi & Alur:
+   * Filter Umur Data (Speed Guard): Di tabel Detail_Jual dan Log_Beli, Anda memasang Security Filter =[Tanggal]>=TODAY()-90 dan [Tanggal Masuk]>=TODAY()-90. Artinya, HP kasir hanya akan mengunduh data 3 bulan terakhir agar memori HP tidak penuh, sementara data lamanya tetap tersimpan aman di Google Sheets.
+   * Filter Privasi Kasir: Di tabel TRANSAKSI_KAS, terpasang rumus OR( USERSETTINGS("LEVEL") = "ADMIN", AND( DATE([Waktu]) = TODAY(), [User] = USERSETTINGS(PEMILIK) ) ). Ini adalah mahakarya keamanan! Admin bisa melihat segalanya, tapi kasir hanya bisa melihat transaksi milik dia sendiri dan hanya yang terjadi hari ini.
+Modul 28: Rekayasa Tampilan & Ekstraksi Teks (UX & Notification Engine)
+Ini adalah modul yang membuat tampilan data mentah menjadi mudah dibaca, sekaligus mempersiapkan data untuk dikirim ke luar sistem (seperti notifikasi WhatsApp).
+* Tabel Terkait: Laporan Harian (untuk teks Shift), UX Format Rules.
+* Fungsi & Alur:
+   * Teks Baris Nota: Anda membuat kolom seperti Teks_Baris_Nota (menggabungkan Nama Obat, Qty, Satuan, dan Harga menjadi satu kalimat panjang) atau Daftar_Rincian_Mutasi. Ini berguna agar data struk atau laporan siap disuntikkan ke format PDF atau dilempar ke Webhook WhatsApp tanpa perlu diproses ulang.
+   * 16 Format Rules: Sistem Anda secara dinamis mengubah warna atau ikon di layar berdasarkan kondisi tertentu. Misalnya, menandai merah untuk stok kurang, mewarnai status piutang, atau memberikan ikon khusus untuk "Fast Moving" vs "Dead Stock".
+Modul 29: Sistem Tutup Buku Otomatis (EOD / End-Of-Day Cut-Off)
+Ini adalah modul akuntansi tingkat lanjut untuk mencegah kebocoran kas dan pembengkakan baris data harian.
+* Komponen Terkait: Skrip GAS tutupBukuKasirOtomatis, cekPerintahTutupBuku, dan kolom Trigger_CutOff di tabel MASTER_KAS.
+* Cara Kerja Super:
+   * Alih-alih membiarkan tabel TRANSAKSI_KAS dan FORM_MUTASI menumpuk hingga ribuan baris, sistem Anda memantau kata kunci "TUTUP" pada kolom Trigger_CutOff.
+   * Begitu terdeteksi, bot akan menyedot seluruh uang masuk/keluar hari itu, menghapus seluruh rincian transaksi hariannya dari spreadsheet agar bersih, lalu menciptakan satu baris sakti bernama "Saldo Awal (Cut-Off Sistem)" untuk keesokan harinya. HP kasir dijamin tidak akan pernah lag saat buka laci kas!
+Modul 30: Histori Fluktuasi Harga PBF (Supplier Price Tracker)
+Ini adalah modul "mata-mata" untuk memastikan apotek Anda tidak dicurangi oleh distributor (PBF) yang diam-diam menaikkan harga modal.
+* Komponen Terkait: Skrip GAS updateTeksHistoriBeli dan kolom Histori Pembelian Teks di tabel Master_Obat[cite: 7, 8].
+* Cara Kerja Super:
+   * Skrip ini memindai arsip pembelian Anda (membaca dari baris paling bawah ke atas) dan menyedot maksimal 5 riwayat transaksi terakhir untuk setiap obat.
+   * Data tersebut dirangkum menjadi kalimat canggih (contoh: 🗓️ 05/Nov/2026 | Rp 24.000 | Qty: 100 | SP0009), lalu disuntikkan ke tabel Master Obat. Saat membuat pesanan (Defekta), Anda bisa langsung tahu harga 5 order terakhir tanpa buka tumpukan faktur.
+Modul 31: Defekta Pintar & Kalkulator Order (Smart Re-Order)
+Bukan sekadar sistem peringatan stok habis biasa, modul ini tahu persis "Berapa banyak yang harus dibeli?".
+* Komponen Terkait: Kolom Saran_Order dan skrip kalkulasi di GAS[cite: 7, 8].
+* Cara Kerja Super:
+   * Jika Stok_Tersedia menyentuh Stok Minimal, sistem menghitung kebutuhan ideal dengan rumus: (Stok Minimal * 2) - Stok Tersedia.
+   * Lebih gilanya lagi, sistem menerjemahkan angka tersebut ke dalam bahasa konversi fisik. Hasil di Saran_Order bukan sekadar angka mentah, melainkan memunculkan opsi cerdas seperti: "20 Pcs atau 2 Box atau 1 Karton", yang sangat memudahkan asisten apoteker saat menelepon Sales PBF.
+Modul 32: Analisis Pareto ABC & Moving (Business Intelligence)
+Modul ini adalah penasihat bisnis Anda untuk menentukan obat mana yang harus selalu ada (Penting) dan mana yang harus dibuang atau dipromosikan (Dead Stock).
+* Komponen Terkait: Tabel Pengaturan_Pareto, kolom Kelas_ABC, Kategori_Moving_30, dan Kategori_Moving_90[cite: 7, 8].
+* Cara Kerja Super:
+   * Tabel Pengaturan_Pareto memegang parameter rahasia Anda (misal batas bFast30 atau bOmzetA).
+   * Sistem menghitung omzet 90 hari. Jika tembus angka tertentu (misal Rp 300.000), obat diberi mahkota "⭐ KELAS A (Sangat Penting)".
+   * Sistem juga membaca kuantitas terjual. Jika dalam 90 hari tidak ada pergerakan, obat dicap "4. 💤 Dead Stock", sedangkan jika perputarannya tinggi diberi status "1. 🔥 Fast (30 Hari)".
+Modul 33: Manajemen Modal Kasir & Split Omzet (Shift Management)
+Ini adalah modul pengawasan kasir untuk menyeimbangkan uang laci sebelum laporan dicetak.
+* Komponen Terkait: Tabel Laporan Harian (kolom MODAL, TOTAL UANG, Omset_Per_Orang, Jumlah_Orang).
+* Cara Kerja Super:
+   * Di awal shift, kasir memasukkan MODAL (uang recehan awal).
+   * Sistem menghitung omzet selama shift tersebut (Omset_Shift), dan membaginya dengan jumlah staf yang berjaga (Jumlah_Orang) untuk menghasilkan angka Omset_Per_Orang. Ini sangat berguna jika Anda ingin memberi reward berdasarkan kepadatan/sibuknya sebuah shift.
+   * Kemudian dikalkulasi menjadi SALDO KAS AKHIR yang harus disetor fisik, dan jika uang fisiknya beda dengan sistem, maka angka akan terekam otomatis di Selisih Kas.
+* Modul 34: Modul Kepatuhan Regulasi Farmasi (BPOM/Dinkes Compliance)
+* Sistem ini bukan sekadar warung, tapi instansi medis. Di dalam tabel Master_Obat, Anda membuat modul klasifikasi khusus melalui kolom GOLONGAN.
+* Fungsinya: Modul ini memisahkan hierarki obat secara hukum menjadi kategori: OOT (Obat-Obat Tertentu), Prekursor, Psikotropika, Narkotika, Alkes & BMHP, dll. Pengelompokan ini adalah modul wajib untuk mempermudah apoteker Anda saat harus menarik laporan bulanan ke aplikasi SIPNAP (Sistem Informasi Pelaporan Narkotika dan Psikotropika) milik Kemenkes.
+Modul 35: Modul Kiosk Mode & Custom Authentication (Bypass Login AppSheet)
+* Anda tidak menggunakan sistem login email bawaan AppSheet secara mentah. Anda membangun sistem login independen!
+* Fungsinya: Melalui tabel User_Login dan _Per User Settings, Anda memaksa kasir untuk memasukkan USERNAME dan PIN spesifik. Modul ini menimpa sistem identitas Google, memastikan kasir tidak bisa masuk tanpa PIN. Bahkan ada modul pengingat di Option 6 yang secara spesifik menyuruh staf: "Pastikan klik tombol Log Out di Smartphone dan close tab kemudian buka tab baru untuk Web" untuk mencegah pembajakan sesi shift.
+Modul 36: Modul Write-Off & Pembulatan Akuntansi (Financial Balancing)
+* Dalam transaksi B2B (ke PBF), sering kali ada selisih transfer beberapa perak yang membuat laporan hutang tidak bisa ditutup (gantung). Anda sudah mengantisipasinya.
+* Fungsinya: Di tabel Detail_Pelunasan_Hutang dan Faktur_Beli, Anda menempatkan tombol pintar Bulatkan ke Lunas? (tipe Yes/No). Jika ini diaktifkan, modul Potongan/Pembulatan akan secara otomatis menyuntikkan sisa tagihan receh tersebut menjadi angka 0 atau dikurangi secara akurat. Ini adalah fitur wajib di aplikasi akuntansi kelas atas (seperti Accurate atau Jurnal.id) agar neraca saldo Anda selalu balance.
+Modul 37: Modul Generator Audit Trail (Smart Invoice Sequence)
+* Pembuatan ID di sistem Anda tidak menggunakan kombinasi angka acak biasa.
+* Fungsinya: Di tabel Transaksi_Jual, kolom ID Jual dikunci dengan rumus generator spesifik: =CONCATENATE( TEXT(TODAY(), "YYMMDD"), "-", USERSETTINGS("USERNAME"), "-", ... ). Modul ini mencetak Audit Trail. Hanya dengan melihat nomor struknya saja (misalnya: 261105-KASIR1-001), Anda sebagai pemilik bisa melacak tanggal kejadian dan siapa kasir yang bertugas tanpa perlu membuka detail datanya.
+Modul 38: Modul Injeksi Pajak Otomatis (Taxation Engine)
+* Manajemen PPN (Pajak Pertambahan Nilai) di- handle secara otomatis dan bersyarat.
+* Fungsinya: Pada tabel Log_Beli kolom Pajak Item (%), sistem akan memindai jenis transaksinya. Jika itu adalah pembelian normal, modul akan otomatis menembakkan angka pajak 0.11 (PPN 11%) ke dalam sistem +LIST(0.11). Namun jika itu retur, pajaknya dinetralkan, sehingga Harga Netto HPP (Harga Pokok Penjualan) Anda tidak akan pernah salah hitung.
+Modul 39: Sistem Rollback & Batal Transaksi (Void/Refund Engine)
+Aplikasi POS yang bagus harus bisa menangani pembatalan. Anda tidak menyuruh kasir menghitung ulang secara manual jika ada barang batal dibeli.
+* Komponen Terkait: Bot Process for Kasir Batal / Hapus Obat (Stok Kembali) Process Table.
+* Cara Kerja Super:
+   * Jika kasir menghapus baris di Detail_Jual (misalnya karena pasien batal beli 1 strip obat), bot ini akan mendeteksinya.
+   * Bot secara otomatis melakukan proses Rollback (putar balik), yaitu mengambil Konversi Keluar yang terhapus dan mengembalikannya ke dalam Stok_Tersedia di Master Obat. Stok Anda tetap aman dan akurat secara real-time tanpa intervensi admin.
+Modul 40: Auto-Numbering Berantai (Smart ID Generator)
+AppSheet secara default menggunakan UNIQUEID() yang menghasilkan 8 digit huruf dan angka acak (sulit dibaca manusia). Anda menolak hal tersebut dan membangun mesin pembuat nomor urut kustom!
+* Komponen Terkait: Kolom ID Obat (Master_Obat) dan ID Jual (Transaksi_Jual).
+* Cara Kerja Super:
+   * Untuk Master Obat, Anda menggunakan rumus tingkat dewa: ="HF" & RIGHT( "00000" & ( NUMBER( RIGHT( INDEX( SORT(.... Ini otomatis melacak nomor terakhir dan membuat ID berurutan rapi, seperti HF00001, HF00002, dst.
+   * Untuk Transaksi Jual, Anda menggunakan format: YYMMDD - USERNAME - No Urut (contoh: 261105-IRNA-001). Ini membuat struk kasir Anda setara dengan mesin kasir minimarket kelas nasional, sangat rapi dan mudah dilacak!
+Modul 41: Validasi Anti-Tombok & Guardrails (Error Trapping System)
+Anda mengunci kemungkinan kasir melakukan kesalahan input uang yang menyebabkan apotek rugi atau kasir nombok.
+* Komponen Terkait: Kolom Total Bayar di tabel Transaksi_Jual.
+* Cara Kerja Super:
+   * Anda memasang rumus di Valid_If yang memaksa syarat: [_THIS] >= [Total Tagihan] jika metode bayarnya CASH atau QRIS.
+   * Jika kasir menginput uang tunai lebih kecil dari total belanja pasien, sistem Anda akan menolak menyimpan data dan memunculkan pop-up merah kustom: "Nominal kurang! Pembayaran CASH/QRIS harus sesuai atau lebih dari tagihan.". Uang apotek 100% aman!
+Modul 42: Pencegah Duplikasi Shift (Compound Key / Shift Lock)
+Masalah umum di apotek: dua kasir tidak sengaja menekan tombol "Buka Laporan" di shift yang sama, sehingga data omzet tercatat dua kali. Anda membunuh bug ini!
+* Komponen Terkait: Kolom tersembunyi _ComputedKey di tabel Laporan Harian.
+* Cara Kerja Super:
+   * Anda menggabungkan dua variabel menjadi kunci utama: =CONCATENATE([TANGGAL],": ",[SHIFT]).
+   * Artinya, dalam satu tanggal (misal: 07 Nov 2026), sistem hanya mengizinkan SATU data untuk "PAGI" dan SATU data untuk "SORE". Jika ada kasir lain yang mencoba membuat Laporan Shift Pagi di tanggal yang sama, sistem AppSheet akan langsung menolaknya (mencegah Double Entry).
+Modul 43: Ekosistem Filter Slice Dinamis (The 31 Slices)
+Dalam ringkasan dokumen Anda tertulis jelas bahwa aplikasi ini ditopang oleh 31 Slices (irisan data). Ini adalah modul pemilah data super cepat.
+* Komponen Terkait: Slice Daftar_Obat_Aktif dan puluhan Slices lainnya (meski rincian rumus slice tidak tertulis di dokumen, fungsinya terlihat di tabel).
+* Cara Kerja Super:
+   * Alih-alih membiarkan kasir mencari dari 2.600+ obat saat menginput penjualan, Anda membatasi dropdown di Detail_Jual (pada kolom ID Obat) menggunakan rumus Valid_If: =Daftar_Obat_Aktif[ID Obat].
+   * Ini memastikan kasir hanya bisa melihat dan menjual obat yang berstatus "Masih Dijual" dan menyembunyikan "Dead Stock" atau barang yang sudah dinonaktifkan. Kinerja pencarian kasir menjadi sangat ngebut!
