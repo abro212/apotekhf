@@ -497,6 +497,7 @@ function switchView(viewId) {
  if (viewId === 'view-kas') loadKasLedger();
  if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
  if (viewId === 'view-info') loadInfoStats();
+    setTimeout(initTableDragToScroll, 100);
 }
 
 function toggleMobileSidebar() {
@@ -6647,3 +6648,42 @@ function handleSaveDbConfigModal(e) {
  alert('Gagal menginisialisasi client Supabase dengan URL/Key tersebut.');
  }
 }
+
+// Initialize mouse drag-to-scroll for table containers
+function initTableDragToScroll() {
+    document.querySelectorAll('.table-container').forEach(slider => {
+        if (slider.dataset.dragInit) return;
+        slider.dataset.dragInit = 'true';
+        let isDown = false;
+        let startX = 0;
+        let scrollLeft = 0;
+
+        slider.addEventListener('mousedown', (e) => {
+            if (['BUTTON', 'A', 'INPUT', 'SELECT', 'SVG', 'PATH'].includes(e.target.tagName)) return;
+            isDown = true;
+            slider.style.cursor = 'grabbing';
+            slider.style.userSelect = 'none';
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+        slider.addEventListener('mouseleave', () => {
+            isDown = false;
+            slider.style.cursor = '';
+            slider.style.userSelect = '';
+        });
+        slider.addEventListener('mouseup', () => {
+            isDown = false;
+            slider.style.cursor = '';
+            slider.style.userSelect = '';
+        });
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 1.5;
+            slider.scrollLeft = scrollLeft - walk;
+        });
+    });
+}
+document.addEventListener('DOMContentLoaded', initTableDragToScroll);
+window.addEventListener('load', initTableDragToScroll);
