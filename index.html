@@ -1563,8 +1563,19 @@
                         <input type="text" id="add-obat-nama" class="form-control" required placeholder="Contoh: Paracetamol 500mg">
                     </div>
                     <div class="form-group">
-                        <label>Kategori</label>
-                        <input type="text" id="add-obat-kategori" class="form-control" placeholder="OBAT / VITAMIN / ALKES">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin: 0;">Kategori</label>
+                            <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 4px; line-height: 1.2;" onclick="promptNewCategory('add')" title="Tambah Kategori Baru">+ Baru</button>
+                        </div>
+                        <select id="add-obat-kategori" class="form-control" onchange="onCategorySelectChange('add')">
+                            <option value="OBAT">OBAT</option>
+                            <option value="ALKES BMHP">ALKES BMHP</option>
+                            <option value="SALEP TM TT">SALEP TM TT</option>
+                            <option value="SYRUP">SYRUP</option>
+                            <option value="LAIN">LAIN</option>
+                            <option value="__NEW__">+ Tambah Kategori Baru...</option>
+                        </select>
+                        <input type="text" id="add-obat-kategori-custom" class="form-control" placeholder="Ketik nama kategori baru..." style="display: none; margin-top: 6px;" oninput="this.value = this.value.toUpperCase()">
                     </div>
                     <div class="form-group">
                         <label>Jenis Item</label>
@@ -1758,8 +1769,19 @@
                         <input type="text" id="edit-obat-nama" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label>Kategori</label>
-                        <input type="text" id="edit-obat-kategori" class="form-control">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label style="margin: 0;">Kategori</label>
+                            <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px; font-weight: 700; border-radius: 4px; line-height: 1.2;" onclick="promptNewCategory('edit')" title="Tambah Kategori Baru">+ Baru</button>
+                        </div>
+                        <select id="edit-obat-kategori" class="form-control" onchange="onCategorySelectChange('edit')">
+                            <option value="OBAT">OBAT</option>
+                            <option value="ALKES BMHP">ALKES BMHP</option>
+                            <option value="SALEP TM TT">SALEP TM TT</option>
+                            <option value="SYRUP">SYRUP</option>
+                            <option value="LAIN">LAIN</option>
+                            <option value="__NEW__">+ Tambah Kategori Baru...</option>
+                        </select>
+                        <input type="text" id="edit-obat-kategori-custom" class="form-control" placeholder="Ketik nama kategori baru..." style="display: none; margin-top: 6px;" oninput="this.value = this.value.toUpperCase()">
                     </div>
                     <div class="form-group">
                         <label>Jenis Item</label>

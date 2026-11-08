@@ -2043,6 +2043,7 @@ function getExpBadge(expDateStr) {
 }
 
 async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
+    loadMasterCategories();
  currentObatPage = page;
  currentObatPageSize = pageSize;
  const searchEl = document.getElementById('master-obat-search');
@@ -2542,7 +2543,97 @@ function calcAutoBuyPricesEdit() {
     updateAllMargins('edit');
 }
 
+// --------------------------------------------------------------------------
+// Master Obat: Dynamic Category Management
+// --------------------------------------------------------------------------
+let masterCategories = ['OBAT', 'ALKES BMHP', 'SALEP TM TT', 'SYRUP', 'LAIN'];
+
+async function loadMasterCategories() {
+    try {
+        if (supabaseClient) {
+            const { data } = await supabaseClient.from('master_obat').select('kategori');
+            if (data && data.length > 0) {
+                data.forEach(d => {
+                    const c = (d.kategori || '').trim().toUpperCase();
+                    if (c && !masterCategories.includes(c)) {
+                        masterCategories.push(c);
+                    }
+                });
+            }
+        }
+    } catch (e) {
+        console.warn('Error loading master categories:', e);
+    }
+    masterCategories.sort();
+    populateCategoryDropdown('add');
+    populateCategoryDropdown('edit');
+}
+
+function populateCategoryDropdown(prefix, selectedVal = '') {
+    const selectEl = document.getElementById(`${prefix}-obat-kategori`);
+    if (!selectEl) return;
+    const targetVal = (selectedVal || selectEl.value || 'OBAT').toUpperCase().trim();
+    
+    if (targetVal && targetVal !== '__NEW__' && !masterCategories.includes(targetVal)) {
+        masterCategories.push(targetVal);
+        masterCategories.sort();
+    }
+
+    let html = '';
+    masterCategories.forEach(cat => {
+        const isSel = (cat === targetVal) ? 'selected' : '';
+        html += `<option value="${escapeHtml(cat)}" ${isSel}>${escapeHtml(cat)}</option>`;
+    });
+    html += `<option value="__NEW__">+ Tambah Kategori Baru...</option>`;
+    selectEl.innerHTML = html;
+
+    onCategorySelectChange(prefix);
+}
+
+function onCategorySelectChange(prefix) {
+    const selectEl = document.getElementById(`${prefix}-obat-kategori`);
+    const customEl = document.getElementById(`${prefix}-obat-kategori-custom`);
+    if (!selectEl || !customEl) return;
+    if (selectEl.value === '__NEW__') {
+        customEl.style.display = 'block';
+        customEl.focus();
+    } else {
+        customEl.style.display = 'none';
+        customEl.value = '';
+    }
+}
+
+function promptNewCategory(prefix) {
+    const selectEl = document.getElementById(`${prefix}-obat-kategori`);
+    const customEl = document.getElementById(`${prefix}-obat-kategori-custom`);
+    if (selectEl) selectEl.value = '__NEW__';
+    if (customEl) {
+        customEl.style.display = 'block';
+        customEl.focus();
+    }
+}
+
+function getSelectedCategory(prefix) {
+    const selectEl = document.getElementById(`${prefix}-obat-kategori`);
+    const customEl = document.getElementById(`${prefix}-obat-kategori-custom`);
+    if (selectEl && selectEl.value === '__NEW__') {
+        const val = customEl ? customEl.value.trim().toUpperCase() : '';
+        if (val) {
+            if (!masterCategories.includes(val)) {
+                masterCategories.push(val);
+                masterCategories.sort();
+                populateCategoryDropdown('add', val);
+                populateCategoryDropdown('edit', val);
+            }
+            return val;
+        }
+        return 'OBAT';
+    }
+    return selectEl ? (selectEl.value || 'OBAT') : 'OBAT';
+}
+
 function showAddObatModal() {
+    populateCategoryDropdown('add', 'OBAT');
     document.getElementById('modal-add-obat').classList.remove('hidden');
     calcAddMargin();
     calcAutoBuyPricesAdd();
@@ -2570,7 +2661,7 @@ async function submitAddObat(e) {
         const newObat = {
             id_obat: nextId,
             nama_obat: document.getElementById('add-obat-nama').value,
-            kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
+            kategori: getSelectedCategory('add'),
             jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
             rak: document.getElementById('add-obat-rak')?.value || '',
             stok_minimal: parseFloat(document.getElementById('add-obat-stokmin')?.value || 5),
@@ -2645,7 +2736,7 @@ async function editObat(encodedId, e) {
 
         document.getElementById('edit-obat-id').value = item.id_obat;
         document.getElementById('edit-obat-nama').value = item.nama_obat || '';
-        document.getElementById('edit-obat-kategori').value = item.kategori || '';
+        populateCategoryDropdown('edit', (item.kategori || 'OBAT').toUpperCase());
 
         const rawJenis = String(item.jenis_item || 'NON KONSI').toUpperCase().trim();
         const selJenis = document.getElementById('edit-obat-jenis');
@@ -2712,7 +2803,7 @@ async function submitEditObat(e) {
 
     const updatedObat = {
         nama_obat: document.getElementById('edit-obat-nama').value,
-        kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
+        kategori: getSelectedCategory('edit'),
         jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
         rak: document.getElementById('edit-obat-rak').value || '',
         stok_minimal: parseFloat(document.getElementById('edit-obat-stokmin').value || 5),
