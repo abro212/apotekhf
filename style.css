@@ -731,17 +731,64 @@ body {
     box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
-/* KPI CARD STYLING */
+/* KPI CARD STYLING - DISTINCT CALIBRATED BACKGROUNDS (ANTISLOP) */
+.dashboard-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
 .kpi-card-sales {
-    border-left: 4px solid var(--primary-color);
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
+    border: 1px solid #bbf7d0 !important;
+    border-left: 4px solid #10b981 !important;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.08) !important;
+}
+.kpi-card-sales .kpi-label {
+    color: #047857 !important;
+}
+.kpi-card-sales .kpi-val {
+    color: #065f46 !important;
 }
 
 .kpi-card-tx {
-    border-left: 4px solid var(--accent-color);
+    background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%) !important;
+    border: 1px solid #bfdbfe !important;
+    border-left: 4px solid #3b82f6 !important;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.08) !important;
+}
+.kpi-card-tx .kpi-label {
+    color: #1d4ed8 !important;
+}
+.kpi-card-tx .kpi-val {
+    color: #1e3a8a !important;
 }
 
 .kpi-card-stock {
-    border-left: 4px solid #ef4444;
+    background: linear-gradient(135deg, #fff1f2 0%, #fff5f5 100%) !important;
+    border: 1px solid #fecdd3 !important;
+    border-left: 4px solid #f43f5e !important;
+    box-shadow: 0 1px 3px rgba(244, 63, 94, 0.08) !important;
+}
+.kpi-card-stock .kpi-label {
+    color: #be123c !important;
+}
+.kpi-card-stock .kpi-val {
+    color: #9f1239 !important;
+}
+
+.kpi-card-obat {
+    background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%) !important;
+    border: 1px solid #e9d5ff !important;
+    border-left: 4px solid #8b5cf6 !important;
+    box-shadow: 0 1px 3px rgba(139, 92, 246, 0.08) !important;
+}
+.kpi-card-obat .kpi-label {
+    color: #6d28d9 !important;
+}
+.kpi-card-obat .kpi-val {
+    color: #581c87 !important;
 }
 
 .kpi-label {

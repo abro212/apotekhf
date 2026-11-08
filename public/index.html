@@ -260,19 +260,39 @@
                 <!-- 1. DASHBOARD VIEW -->
                 <section id="view-dashboard" class="hidden">
                     <div class="view-title" style="justify-content: space-between; display: flex; align-items: center; margin-bottom: 20px;">
-                        <span>👋 Selamat Datang, <span id="dashboard-welcome-name">Staf</span>!</span>
+                        <span>Selamat Datang, <span id="dashboard-welcome-name">Staf</span>!</span>
                         <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);" id="dashboard-current-date">Minggu, 19 Juli 2026</span>
                     </div>
                     
-                    <!-- KPI Cards Row (2 Precision Cards) -->
-                    <div class="dashboard-kpi-row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
-                        <div class="view-card kpi-card-sales clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Klik untuk melihat Riwayat Penjualan">
-                            <h4 class="kpi-label">Penjualan Hari Ini</h4>
+                    <!-- KPI Cards Row (4 Distinctly Colored Precision Cards) -->
+                    <div class="dashboard-kpi-row">
+                        <div class="view-card kpi-card-sales clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Buka Riwayat Penjualan">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 class="kpi-label">Penjualan Hari Ini</h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            </div>
                             <h2 class="kpi-val" id="dash-kpi-sales">Rp 0</h2>
                         </div>
-                        <div class="view-card kpi-card-tx clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Klik untuk melihat Riwayat Penjualan">
-                            <h4 class="kpi-label">Transaksi Hari Ini</h4>
+                        <div class="view-card kpi-card-tx clickable-kpi" onclick="switchView('view-menu-penjualan')" title="Buka Riwayat Penjualan">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 class="kpi-label">Transaksi Hari Ini</h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                            </div>
                             <h2 class="kpi-val" id="dash-kpi-tx">0 Transaksi</h2>
+                        </div>
+                        <div class="view-card kpi-card-stock clickable-kpi" onclick="switchView('view-master-obat')" title="Buka Data Master Obat">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 class="kpi-label">Stok Kritis / Menipis</h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            </div>
+                            <h2 class="kpi-val" id="dash-kpi-lowstock">0 Item</h2>
+                        </div>
+                        <div class="view-card kpi-card-obat clickable-kpi" onclick="switchView('view-master-obat')" title="Buka Data Master Obat">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 class="kpi-label">Total Master Obat</h4>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16.5 9.4-9-5.19M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                            </div>
+                            <h2 class="kpi-val" id="dash-kpi-obat">-</h2>
                         </div>
                     </div>
 
@@ -284,17 +304,17 @@
                             <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color); display: flex; flex-direction: column; justify-content: space-between;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
                                     <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-dark); margin: 0; display: flex; align-items: center; gap: 8px;" id="dash-sales-trend-title">
-                                        📈 Tren Penjualan
+                                        Tren Penjualan
                                     </h3>
 
                                     <!-- Filter Controls -->
                                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                         <select id="dash-trend-period-select" class="form-control" style="width: auto; padding: 4px 10px; font-size: 12px; font-weight: 600;" onchange="onDashTrendPeriodChange()">
-                                            <option value="7D" selected>📅 7 Hari Terakhir</option>
-                                            <option value="30D">🗓️ 30 Hari Terakhir</option>
-                                            <option value="MONTHLY">📊 Per Bulan (Tahun Ini)</option>
-                                            <option value="YEARLY">📈 Per Tahun</option>
-                                            <option value="CUSTOM">📆 Custom Tanggal</option>
+                                            <option value="7D" selected>7 Hari Terakhir</option>
+                                            <option value="30D">30 Hari Terakhir</option>
+                                            <option value="MONTHLY">Per Bulan (Tahun Ini)</option>
+                                            <option value="YEARLY">Per Tahun</option>
+                                            <option value="CUSTOM">Kustom Tanggal</option>
                                         </select>
 
                                         <!-- Custom Date Range Inputs -->
@@ -314,10 +334,10 @@
                             <div class="view-card" style="padding: 20px; border-top: 3px solid #ef4444; display: flex; flex-direction: column;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                                     <h3 style="font-size: 14px; font-weight: 700; color: #b91c1c; display: flex; align-items: center; gap: 8px; margin: 0;">
-                                        ⚠️ Stok Obat Menipis
+                                        Stok Obat Menipis
                                     </h3>
                                     <span class="badge" style="background:#fef2f2; color:#ef4444; border: 1px solid #fecaca; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-master-obat')" title="Klik untuk mengelola Stok Master Obat">
-                                        Detail ➔
+                                        Detail &rarr;
                                     </span>
                                 </div>
                                 <div id="dash-lowstock-list" style="display: flex; flex-direction: column; gap: 10px; flex: 1; max-height: 210px; overflow-y: auto; font-size: 12.5px; padding-right: 2px;">
@@ -332,10 +352,10 @@
                             <div class="view-card" style="padding: 20px; border-top: 3px solid #f59e0b; display: flex; flex-direction: column; height: 100%; min-height: 310px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
                                     <h3 style="font-size: 14px; font-weight: 700; color: #b45309; margin: 0; display: flex; align-items: center; gap: 8px;">
-                                        ⏳ Piutang Pelanggan Terlama
+                                        Piutang Pelanggan Terlama
                                     </h3>
                                     <span class="badge" style="background:#fffbeb; color:#b45309; border: 1px solid #fde68a; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-menu-tagihan')" title="Klik untuk mengelola Piutang">
-                                        Lihat Semua ➔
+                                        Lihat Semua &rarr;
                                     </span>
                                 </div>
                                 <div id="dash-oldest-piutang-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; flex: 1; max-height: 230px; overflow-y: auto; padding-right: 2px;">
@@ -347,10 +367,10 @@
                             <div class="view-card" style="padding: 20px; border-top: 3px solid #10b981; display: flex; flex-direction: column; height: 100%; min-height: 310px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
                                     <h3 style="font-size: 14px; font-weight: 700; color: #047857; margin: 0; display: flex; align-items: center; gap: 8px;">
-                                        🏆 Top 5 Produk Obat Terlaris
+                                        Top 5 Produk Terlaris
                                     </h3>
                                     <span class="badge" style="background:#ecfdf5; color:#047857; border: 1px solid #a7f3d0; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-master-obat')" title="Klik untuk melihat Data Obat">
-                                        Obat ➔
+                                        Lihat Obat &rarr;
                                     </span>
                                 </div>
                                 <div id="dash-top-products-list" style="display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; flex: 1; max-height: 230px; overflow-y: auto; padding-right: 2px;">
@@ -362,10 +382,10 @@
                             <div class="view-card" style="padding: 20px; border-top: 3px solid var(--primary-color); display: flex; flex-direction: column; height: 100%; min-height: 310px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0;">
                                     <h3 style="font-size: 14px; font-weight: 700; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
-                                        🕒 Penjualan Terbaru
+                                        Penjualan Terbaru
                                     </h3>
                                     <span class="badge" style="background:#f0fdf4; color:var(--primary-color); border: 1px solid #bbf7d0; font-weight:700; font-size:11px; cursor:pointer;" onclick="switchView('view-menu-penjualan')" title="Klik untuk Riwayat Penjualan">
-                                        Riwayat ➔
+                                        Riwayat &rarr;
                                     </span>
                                 </div>
                                 <div id="dash-recent-sales" style="display: flex; flex-direction: column; gap: 10px; flex: 1; max-height: 230px; overflow-y: auto; font-size: 12.5px; padding-right: 2px;">
@@ -393,7 +413,7 @@
                     <div class="view-card">
                         <div class="form-group" style="display: flex; gap: 8px; margin-bottom: 16px;">
                             <input type="text" id="cek-harga-search" class="form-control" placeholder="Ketik nama obat, kategori, atau ID obat..." oninput="searchHarga()">
-                            <button type="button" class="btn btn-secondary" style="padding: 8px 14px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('cek-harga-search', searchHarga)" title="Scan Barcode / QR Kamera HP">📷 Scan</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 8px 14px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('cek-harga-search', searchHarga)" title="Scan Barcode / QR Kamera HP">Scan Barcode</button>
                             <button type="button" class="btn btn-primary" onclick="searchHarga()">Cari</button>
                         </div>
                         <div class="table-container desktop-only-table">
@@ -425,8 +445,8 @@
                 <section id="view-kasir" class="hidden">
                     <!-- Mobile Tab Bar for POS -->
                     <div class="pos-mobile-tabs" id="pos-mobile-tabs">
-                        <button class="pos-tab active" id="pos-tab-catalog" onclick="switchPOSTab('catalog')">🔍 Cari Obat</button>
-                        <button class="pos-tab" id="pos-tab-cart" onclick="switchPOSTab('cart')">🛒 Keranjang (<span id="pos-cart-count-badge">0</span>)</button>
+                        <button class="pos-tab active" id="pos-tab-catalog" onclick="switchPOSTab('catalog')">Katalog Obat</button>
+                        <button class="pos-tab" id="pos-tab-cart" onclick="switchPOSTab('cart')">Keranjang (<span id="pos-cart-count-badge">0</span>)</button>
                     </div>
 
                     <div class="pos-layout">
@@ -435,11 +455,11 @@
                             <!-- Top Bar: Customer & Camera Scan -->
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                    <label style="font-size: 13px; font-weight: 700; margin: 0; white-space: nowrap;">👤 Pelanggan:</label>
+                                    <label style="font-size: 13px; font-weight: 700; margin: 0; white-space: nowrap;">Pelanggan:</label>
                                     <select id="pos-customer-select" class="form-control" style="width: auto; min-width: 140px; padding: 4px 8px; font-size: 12px;" onchange="posChangeCustomer()"></select>
                                     <span id="pos-customer-level" class="badge badge-info" style="font-size: 11px;">Level 1</span>
                                 </div>
-                                <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">📷 Scan Kamera</button>
+                                <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">Scan Barcode Kamera</button>
                             </div>
 
                             <!-- Search Input -->
@@ -464,7 +484,7 @@
                         <!-- Right Side: Cart & Checkout -->
                         <div class="pos-cart pos-section-wrapper" id="pos-cart-container">
                             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
-                                <h3 class="desktop-only-title" style="margin: 0; font-size: 15px; font-weight: 700;">🛒 Keranjang Belanja</h3>
+                                <h3 class="desktop-only-title" style="margin: 0; font-size: 15px; font-weight: 700;">Keranjang Belanja</h3>
                                 <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="clearCart()">Kosongkan</button>
                             </div>
 
@@ -477,9 +497,9 @@
                                 <div class="total-row" style="margin-bottom: 8px;">
                                     <span style="font-size: 13px; font-weight: 600;">Metode Pembayaran:</span>
                                     <select id="pos-pay-method" class="form-control" style="width: 120px; height: 32px; padding: 4px 8px; font-size: 12px;" onchange="updatePosCartTotals()">
-                                        <option value="CASH" selected>💵 CASH</option>
-                                        <option value="TEMPO">⏳ TEMPO</option>
-                                        <option value="QRIS">📱 QRIS</option>
+                                        <option value="CASH" selected>CASH (Tunai)</option>
+                                        <option value="TEMPO">TEMPO (Piutang)</option>
+                                        <option value="QRIS">QRIS</option>
                                     </select>
                                 </div>
 
@@ -513,7 +533,7 @@
 
                                 <!-- 5. Tombol Selesaikan -->
                                 <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700;" onclick="posCheckout()">
-                                    💳 Selesaikan & Cetak Struk
+                                    Selesaikan & Cetak Struk
                                 </button>
                             </div>
                         </div>
@@ -525,7 +545,7 @@
                     <div class="view-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
                             <input type="text" id="master-obat-search" class="form-control" style="max-width: 400px;" placeholder="Cari berdasarkan nama atau ID..." oninput="loadMasterObat(1)">
-                            <button class="btn btn-primary" onclick="showAddObatModal()">✚ Tambah Obat</button>
+                            <button class="btn btn-primary" onclick="showAddObatModal()">Tambah Obat</button>
                         </div>
                         <div class="table-container desktop-only-table">
                             <table class="data-table">
@@ -559,12 +579,12 @@
                         <!-- Filter & Search Bar Riwayat Penjualan -->
                         <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
                             <div style="display: flex; gap: 8px; flex: 1; min-width: 280px;">
-                                <input type="text" id="penjualan-search-input" class="form-control" placeholder="🔍 Cari ID Jual / No. Nota, Staf Kasir, atau Pelanggan..." onkeyup="if(event.key==='Enter') searchRiwayatPenjualan()" style="font-size: 13px;">
+                                <input type="text" id="penjualan-search-input" class="form-control" placeholder="Cari ID Jual / No. Nota, Staf Kasir, atau Pelanggan..." onkeyup="if(event.key==='Enter') searchRiwayatPenjualan()" style="font-size: 13px;">
                                 <button class="btn btn-primary" onclick="searchRiwayatPenjualan()" style="padding: 8px 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap;">
-                                    <span>🔍</span> Cari
+                                    Cari
                                 </button>
                                 <button class="btn btn-secondary" onclick="resetRiwayatPenjualanSearch()" style="padding: 8px 12px; white-space: nowrap;">
-                                    🔄 Reset
+                                    Reset
                                 </button>
                             </div>
                             
@@ -573,9 +593,9 @@
                                 <label style="font-size: 12px; font-weight: 700; color: var(--text-muted); margin: 0; white-space: nowrap;">Metode Bayar:</label>
                                 <select id="penjualan-filter-metode" class="form-control" onchange="searchRiwayatPenjualan()" style="width: 120px; height: 36px; font-size: 12px;">
                                     <option value="">Semua Metode</option>
-                                    <option value="CASH">💵 CASH</option>
-                                    <option value="QRIS">📱 QRIS</option>
-                                    <option value="TEMPO">⏳ TEMPO</option>
+                                    <option value="CASH">CASH</option>
+                                    <option value="QRIS">QRIS</option>
+                                    <option value="TEMPO">TEMPO (Piutang)</option>
                                 </select>
                             </div>
                         </div>
@@ -609,7 +629,7 @@
                         <!-- Left Card: Form Informasi Faktur & Input Item -->
                         <div class="view-card" style="margin-bottom: 0;">
                             <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
-                                📦 Informasi Faktur Pembelian
+                                Informasi Faktur Pembelian
                             </h3>
                             
                             <div class="form-group">
@@ -634,7 +654,7 @@
                             <!-- Inner Box: Add Item Section -->
                             <div style="background-color: var(--bg-main); padding: 16px; border-radius: 10px; border: 1px dashed var(--border-color); margin-top: 15px;">
                                 <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
-                                    ✚ Tambah Item Obat
+                                    Tambah Item Obat
                                 </h4>
                                 
                                 <div class="form-group">
@@ -683,7 +703,7 @@
                         <div class="view-card" style="margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
                                 <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 15px; color: var(--text-main); display: flex; justify-content: space-between; align-items: center;">
-                                    <span>🛒 Rincian Barang Masuk</span>
+                                    <span>Rincian Barang Masuk</span>
                                     <span class="badge badge-info" id="purchase-item-count-badge">0 Item</span>
                                 </h3>
 
@@ -714,7 +734,7 @@
                                     <span style="font-size: 22px; font-weight: 800; color: var(--primary-color);" id="purchase-grand-total">Rp 0</span>
                                 </div>
                                 <button type="button" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700;" onclick="submitPurchaseInvoice()">
-                                    💾 Simpan Faktur & Restock Stok
+                                    Simpan Faktur & Restock
                                 </button>
                             </div>
                         </div>
@@ -781,10 +801,10 @@
                 <section id="view-cek-kesehatan" class="hidden">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                         <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                            <span>🩺</span> Layanan & Rekam Medis Kontrol Kesehatan
+                            Layanan & Rekam Medis Pemeriksaan
                         </h3>
                         <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-primary" onclick="showAddPasienModal()">✚ Daftar Pasien Baru</button>
+                            <button class="btn btn-primary" onclick="showAddPasienModal()">Daftar Pasien Baru</button>
                         </div>
                     </div>
 
@@ -792,12 +812,12 @@
                         <!-- Left Side: Form Checkup -->
                         <div class="view-card" style="margin-bottom: 0;">
                             <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
-                                <span>📝</span> Form Catatan Pemeriksaan Pasien
+                                Form Catatan Pemeriksaan Pasien
                             </h3>
 
                             <div class="form-group">
                                 <label style="font-weight: 700;">Pilih / Cari Pasien</label>
-                                <input type="text" id="checkup-pasien-search" class="form-control" placeholder="🔍 Cari Nama, Alamat, atau No. WA Pasien..." oninput="filterCheckupPasienDropdown()" style="margin-bottom: 6px; font-size: 13px;">
+                                <input type="text" id="checkup-pasien-search" class="form-control" placeholder="Cari Nama, Alamat, atau No. WA Pasien..." oninput="filterCheckupPasienDropdown()" style="margin-bottom: 6px; font-size: 13px;">
                                 <select id="checkup-pasien-select" class="form-control" onchange="checkupChangePasien()"></select>
                             </div>
 
@@ -834,7 +854,7 @@
                             </div>
 
                             <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700; margin-top: 10px;" onclick="submitCheckup()">
-                                💾 Simpan Rekam Kontrol Pasien
+                                Simpan Rekam Kontrol
                             </button>
                         </div>
 
@@ -843,7 +863,7 @@
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                                 <div>
                                     <h3 style="font-size: 15px; font-weight: 700; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
-                                        <span>📋</span> Riwayat Rekam Medis Pasien
+                                        Riwayat Rekam Medis Pasien
                                     </h3>
                                     <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
                                         Pasien: <strong id="checkup-patient-name-badge" style="color: var(--primary-color);">-</strong>
@@ -851,17 +871,17 @@
                                 </div>
                                 <div style="display: flex; gap: 6px;">
                                     <button class="btn btn-secondary" onclick="exportRekamMedisPDF()" style="padding: 6px 12px; font-size: 11.5px; font-weight: 700;" title="Export Kartu Rekam Medis ke PDF">
-                                        📄 Export PDF
+                                        Export PDF
                                     </button>
                                     <button class="btn btn-secondary" onclick="exportRekamMedisWord()" style="padding: 6px 12px; font-size: 11.5px; font-weight: 700;" title="Export Kartu Rekam Medis ke Word (DOC)">
-                                        📝 Export Word
+                                        Export Word
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Search Filter within Patient History -->
                             <div style="margin-bottom: 12px;">
-                                <input type="text" id="checkup-history-search" class="form-control" placeholder="🔍 Cari keluhan, obat, atau tanggal..." onkeyup="filterCheckupHistoryList()" style="font-size: 12px; height: 34px;">
+                                <input type="text" id="checkup-history-search" class="form-control" placeholder="Cari keluhan, obat, atau tanggal..." onkeyup="filterCheckupHistoryList()" style="font-size: 12px; height: 34px;">
                             </div>
 
                             <!-- History Container List -->
@@ -878,14 +898,14 @@
                         <div style="display: flex; flex-direction: column; gap: 14px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                                 <h3 style="font-size: 16px; font-weight: 800; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
-                                    <span>📊</span> Laporan Operasional & Keuangan
+                                    Laporan Operasional & Keuangan
                                 </h3>
                                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                     <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; display: flex; align-items: center; gap: 6px;" onclick="exportLaporanPDF()">
-                                        <span>📄</span> Export PDF
+                                        Export PDF
                                     </button>
                                     <button type="button" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700; background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border: none; display: flex; align-items: center; gap: 6px;" onclick="exportLaporanXLSX()">
-                                        <span>📊</span> Export XLSX (Excel)
+                                        Export Excel (XLSX)
                                     </button>
                                 </div>
                             </div>
@@ -894,13 +914,13 @@
                                 <div>
                                     <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px;">JENIS LAPORAN</label>
                                     <select id="laporan-type-select" class="form-control" onchange="loadLaporanData()">
-                                        <option value="penjualan" selected>🛒 Laporan Penjualan</option>
-                                        <option value="pembelian">📦 Laporan Pembelian & Restock</option>
-                                        <option value="piutang">💳 Laporan Piutang Pelanggan</option>
-                                        <option value="hutang">📑 Laporan Hutang Supplier</option>
-                                        <option value="kas">💵 Laporan Kas Operasional</option>
-                                        <option value="stok">💊 Laporan Stok & Valuasi Obat</option>
-                                        <option value="shift">📑 Laporan Shift Kasir</option>
+                                        <option value="penjualan" selected>Laporan Penjualan</option>
+                                        <option value="pembelian">Laporan Pembelian & Restock</option>
+                                        <option value="piutang">Laporan Piutang Pelanggan</option>
+                                        <option value="hutang">Laporan Hutang Supplier</option>
+                                        <option value="kas">Laporan Kas Operasional</option>
+                                        <option value="stok">Laporan Stok & Valuasi Obat</option>
+                                        <option value="shift">Laporan Shift Kasir</option>
                                     </select>
                                 </div>
                                 <div>
@@ -950,17 +970,17 @@
                     <!-- Summary Cards -->
                     <div class="report-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
                         <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid #16a34a;">
-                            <div style="font-size: 24px; margin-bottom: 2px;">📈</div>
+                            <div style="font-size: 11px; font-weight:700; color:#10b981; margin-bottom: 4px; text-transform:uppercase;">Pemasukan</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Total Kas Masuk (Pemasukan)</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: #16a34a; margin: 0;" id="kas-summary-masuk">Rp 0</h2>
                         </div>
                         <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid #dc2626;">
-                            <div style="font-size: 24px; margin-bottom: 2px;">📉</div>
+                            <div style="font-size: 11px; font-weight:700; color:#ef4444; margin-bottom: 4px; text-transform:uppercase;">Pengeluaran</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Total Kas Keluar (Pengeluaran)</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: #dc2626; margin: 0;" id="kas-summary-keluar">Rp 0</h2>
                         </div>
                         <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 16px 12px; border-top: 3px solid var(--primary-color);">
-                            <div style="font-size: 24px; margin-bottom: 2px;">⚖️</div>
+                            <div style="font-size: 11px; font-weight:700; color:#3b82f6; margin-bottom: 4px; text-transform:uppercase;">Saldo Berjalan</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; font-weight: 700; margin: 0 0 4px 0;">Saldo Kas Netto</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="kas-summary-saldo">Rp 0</h2>
                         </div>
@@ -969,17 +989,17 @@
                     <div class="view-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
                             <div style="display: flex; gap: 8px; flex: 1; min-width: 260px; flex-wrap: wrap;">
-                                <input type="text" id="kas-search-input" class="form-control" style="flex: 1; min-width: 180px;" placeholder="🔍 Cari kategori, keterangan, ID..." oninput="loadKasLedger(1)">
+                                <input type="text" id="kas-search-input" class="form-control" style="flex: 1; min-width: 180px;" placeholder=" Cari kategori, keterangan, ID..." oninput="loadKasLedger(1)">
                                 <select id="kas-filter-jenis" class="form-control" style="width: 135px;" onchange="loadKasLedger(1)">
                                     <option value="ALL">Semua Tipe</option>
-                                    <option value="MASUK">🟢 Masuk</option>
-                                    <option value="KELUAR">🔴 Keluar</option>
+                                    <option value="MASUK">Masuk</option>
+                                    <option value="KELUAR">Keluar</option>
                                 </select>
                             </div>
                             <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                                 <span class="badge badge-info" id="kas-count-badge" style="font-size: 12px; padding: 6px 12px;">0 Mutasi</span>
                                 <button class="btn btn-primary" style="font-weight: 700; padding: 8px 16px; display: flex; align-items: center; gap: 6px;" onclick="showAddKasModal()">
-                                    <span>✚</span> Mutasi Kas
+                                    Mutasi Kas
                                 </button>
                             </div>
                         </div>
@@ -1012,8 +1032,8 @@
                 <section id="view-menu-tagihan" class="hidden">
                     <!-- Tab Switcher for Tagihan -->
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                        <button type="button" class="btn btn-primary" id="tagihan-tab-piutang" onclick="switchTagihanTab('piutang')">💳 Piutang Pelanggan (Penjualan Tempo)</button>
-                        <button type="button" class="btn btn-secondary" id="tagihan-tab-hutang" onclick="switchTagihanTab('hutang')">📦 Hutang Supplier (Pembelian Tempo)</button>
+                        <button type="button" class="btn btn-primary" id="tagihan-tab-piutang" onclick="switchTagihanTab('piutang')">Piutang Pelanggan (Penjualan Tempo)</button>
+                        <button type="button" class="btn btn-secondary" id="tagihan-tab-hutang" onclick="switchTagihanTab('hutang')">Hutang Supplier (Pembelian Tempo)</button>
                     </div>
 
                     <!-- Summary Cards -->
@@ -1068,16 +1088,16 @@
                     <!-- Top Navigation & Tab Bar (Desktop & Mobile) -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                         <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                            <span>🤝</span> Manajemen Kemitraan (Supplier & Pelanggan)
+                            Manajemen Kemitraan (Supplier & Pelanggan)
                         </h3>
                         
                         <!-- Segmented Pill Tab Switcher -->
                         <div style="display: flex; background: var(--bg-main); padding: 4px; border-radius: 12px; border: 1px solid var(--border-color); gap: 4px;">
                             <button type="button" class="btn btn-primary" id="mitra-tab-supplier" style="padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;" onclick="switchMitraTab('supplier')">
-                                📦 Supplier / Distributor
+                                Supplier / Distributor
                             </button>
                             <button type="button" class="btn btn-secondary" id="mitra-tab-pelanggan" style="padding: 8px 18px; font-size: 13px; font-weight: 700; border-radius: 8px;" onclick="switchMitraTab('pelanggan')">
-                                👤 Pelanggan / Member
+                                Pelanggan / Member
                             </button>
                         </div>
                     </div>
@@ -1086,10 +1106,10 @@
                     <div id="mitra-content-supplier" class="view-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap;">
                             <div style="flex: 1; min-width: 280px; max-width: 480px;">
-                                <input type="text" id="supplier-search-input" class="form-control" placeholder="🔍 Cari ID, nama supplier, kontak, atau alamat..." oninput="loadSuppliers(1)" style="font-size: 13px; height: 38px;">
+                                <input type="text" id="supplier-search-input" class="form-control" placeholder="Cari ID, nama supplier, kontak, atau alamat..." oninput="loadSuppliers(1)" style="font-size: 13px; height: 38px;">
                             </div>
                             <button class="btn btn-primary" onclick="showAddSupplierModal()" style="padding: 10px 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-                                ✚ Tambah Supplier Baru
+                                Tambah Supplier Baru
                             </button>
                         </div>
                         
@@ -1117,10 +1137,10 @@
                     <div id="mitra-content-pelanggan" class="view-card hidden">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap;">
                             <div style="flex: 1; min-width: 280px; max-width: 480px;">
-                                <input type="text" id="pelanggan-search-input" class="form-control" placeholder="🔍 Cari ID, nama pelanggan, no. telepon, atau alamat..." oninput="loadPelanggan(1)" style="font-size: 13px; height: 38px;">
+                                <input type="text" id="pelanggan-search-input" class="form-control" placeholder="Cari ID, nama pelanggan, no. telepon, atau alamat..." oninput="loadPelanggan(1)" style="font-size: 13px; height: 38px;">
                             </div>
                             <button class="btn btn-primary" onclick="showAddPelangganModal()" style="padding: 10px 18px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-                                ✚ Tambah Pelanggan Baru
+                                Tambah Pelanggan Baru
                             </button>
                         </div>
 
@@ -1156,30 +1176,30 @@
                         <p style="color: var(--text-muted); font-size: 13.5px; max-width: 480px; margin: 0 auto 16px auto;">Sistem Informasi Manajemen Apoteker, Kasir POS & Dokumentasi Stok Terpadu</p>
                         <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
                             <span class="badge badge-info" style="font-size: 11px;">v2.5 Enterprise</span>
-                            <span class="badge" style="background:#ecfdf5; color:#10b981; font-size:11px;">● Online (Supabase Cloud)</span>
-                            <span class="badge" style="background:#eff6ff; color:#3b82f6; font-size:11px;">📱 Mobile PWA Ready</span>
+                            <span class="badge" style="background:#ecfdf5; color:#10b981; font-size:11px;">Online (Supabase Cloud)</span>
+                            <span class="badge" style="background:#eff6ff; color:#3b82f6; font-size:11px;">Mobile PWA Ready</span>
                         </div>
                     </div>
 
                     <!-- Statistics Grid (4 Metric Cards) -->
                     <div class="report-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
                         <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <div style="font-size: 24px; margin-bottom: 4px;">💊</div>
+                            <div style="font-size: 11px; font-weight:700; color:#8b5cf6; margin-bottom: 4px; text-transform:uppercase;">Inventaris</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Total Obat Terdaftar</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="info-total-obat">-</h2>
                         </div>
                         <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <div style="font-size: 24px; margin-bottom: 4px;">📑</div>
+                            <div style="font-size: 11px; font-weight:700; color:#3b82f6; margin-bottom: 4px; text-transform:uppercase;">Faktur</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Total Transaksi Jual</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: var(--primary-color); margin: 0;" id="info-total-transaksi">-</h2>
                         </div>
                         <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <div style="font-size: 24px; margin-bottom: 4px;">👤</div>
+                            <div style="font-size: 11px; font-weight:700; color:#10b981; margin-bottom: 4px; text-transform:uppercase;">Member</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Pelanggan Terdaftar</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: #16a34a; margin: 0;" id="info-total-pelanggan">-</h2>
                         </div>
                         <div class="view-card" style="text-align: center; margin-bottom: 0;">
-                            <div style="font-size: 24px; margin-bottom: 4px;">📦</div>
+                            <div style="font-size: 11px; font-weight:700; color:#10b981; margin-bottom: 4px; text-transform:uppercase;">Mitra</div>
                             <h4 style="color: var(--text-muted); font-size: 12px; margin: 0 0 4px 0;">Supplier Mitra</h4>
                             <h2 style="font-size: 20px; font-weight: 800; color: #d97706; margin: 0;" id="info-total-supplier">-</h2>
                         </div>
@@ -1189,31 +1209,31 @@
                     <div class="pembelian-layout">
                         <!-- Key Modules & Capabilities -->
                         <div class="view-card" style="margin-bottom: 0;">
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--primary-color);">🚀 Modul Utama Sistem</h3>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--primary-color);">Modul Utama Sistem</h3>
                             <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
                                 <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <span style="font-size: 18px;">🖥️</span>
+                                    
                                     <div>
                                         <strong>Point of Sales (Kasir & Barcode)</strong>
                                         <div style="font-size: 11.5px; color: var(--text-muted);">Pencarian instant, scanner kamera HP, struk belanja thermal.</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <span style="font-size: 18px;">💳</span>
+                                    <span style="font-weight:700; color:var(--primary-color); font-size:14px;">KASIR</span>
                                     <div>
                                         <strong>Manajemen Piutang & Hutang</strong>
                                         <div style="font-size: 11.5px; color: var(--text-muted);">Monitoring tagihan TEMPO pelanggan & faktur supplier.</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <span style="font-size: 18px;">↩️</span>
+                                    <span style="font-weight:700; color:var(--primary-color); font-size:14px;">RETUR</span>
                                     <div>
                                         <strong>Retur Penjualan & Restock Automatis</strong>
                                         <div style="font-size: 11.5px; color: var(--text-muted);">Pengembalian barang retur yang otomatis memperbarui stok obat.</div>
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 10px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
-                                    <span style="font-size: 18px;">🩺</span>
+                                    <span style="font-weight:700; color:var(--primary-color); font-size:14px;">MEDIS</span>
                                     <div>
                                         <strong>Rekam Kesehatan Pasien</strong>
                                         <div style="font-size: 11.5px; color: var(--text-muted);">Catatan tensi, gula darah, kolesterol & rekomendasi terapi obat.</div>
@@ -1224,7 +1244,7 @@
 
                         <!-- System Specifications & Security -->
                         <div class="view-card" style="margin-bottom: 0;">
-                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">⚙️ Spesifikasi & Keamanan</h3>
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text-main);">Spesifikasi & Keamanan</h3>
                             <div style="display: flex; flex-direction: column; gap: 12px; font-size: 13px;">
                                 <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px;">
                                     <span style="color: var(--text-muted);">Database Cloud:</span>
@@ -1254,13 +1274,13 @@
                 <!-- 13. SETTINGS & USER MANAGEMENT VIEW (ADMIN ONLY) -->
                 <section id="view-settings" class="hidden">
                     <div class="view-title" style="margin-bottom: 20px;">
-                        <h2>⚙️ Pengaturan Sistem & Manajemen Staf</h2>
+                        <h2>Pengaturan Sistem & Manajemen Staf</h2>
                     </div>
 
                     <!-- Top Tabs Switcher -->
                     <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                        <button type="button" id="tab-btn-settings-app" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('app')">⚙️ Identitas Aplikasi</button>
-                        <button type="button" id="tab-btn-settings-users" class="btn btn-secondary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('users')">👥 User Management (Staf)</button>
+                        <button type="button" id="tab-btn-settings-app" class="btn btn-primary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('app')">Identitas Aplikasi</button>
+                        <button type="button" id="tab-btn-settings-users" class="btn btn-secondary" style="padding: 8px 16px; font-weight: 700;" onclick="switchSettingsTab('users')">User Management (Staf)</button>
                     </div>
 
                     <!-- Panel 1: App Settings -->
@@ -1272,7 +1292,7 @@
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
                                 <!-- Mock 1: Browser Tab -->
                                 <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.25);">
-                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">🌐 Tab Browser:</div>
+                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">Tab Browser:</div>
                                     <div style="display: flex; align-items: center; gap: 8px; background: #fff; color: #0f172a; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                         <img id="mock-favicon-img" src="logo_hf.png" style="width: 16px; height: 16px; object-fit: contain;">
                                         <span id="mock-tab-title">Apotek HF</span>
@@ -1281,7 +1301,7 @@
 
                                 <!-- Mock 2: Sidebar Brand -->
                                 <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.25);">
-                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">📱 Sidebar Brand:</div>
+                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">Sidebar Brand:</div>
                                     <div style="display: flex; align-items: center; gap: 10px; background: #0f172a; color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 800;">
                                         <img id="mock-sidebar-logo" src="logo_hf.png" style="height: 24px; object-fit: contain;">
                                         <span id="mock-sidebar-name" style="letter-spacing: 0.5px;">APOTEK HF</span>
@@ -1290,7 +1310,7 @@
 
                                 <!-- Mock 3: Receipt Address -->
                                 <div style="background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.25);">
-                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">🧾 Header Struk Penjualan:</div>
+                                    <div style="font-size: 11px; color: #ccfbf1; margin-bottom: 6px; font-weight: 600;">Header Struk Penjualan:</div>
                                     <div style="background: #fff; color: #000; padding: 6px 10px; border-radius: 6px; font-size: 11.5px; text-align: center;">
                                         <div style="font-weight: 800; font-size: 13px;">Apotek HF</div>
                                         <div id="mock-receipt-address" style="color: #475569; font-weight: 600;">Makassar</div>
@@ -1306,7 +1326,7 @@
                                 <!-- Card 1: App Title & Address -->
                                 <div class="view-card" style="margin-bottom: 0; padding: 20px;">
                                     <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                                        <span>🔤</span> Nama Program & Alamat Toko
+                                        Nama Program & Alamat Toko
                                     </h3>
                                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                         <div class="form-group" style="margin: 0;">
@@ -1329,7 +1349,7 @@
                                 <!-- Card 2: Main Logo -->
                                 <div class="view-card" style="margin-bottom: 0; padding: 20px;">
                                     <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                                        <span>🖼️</span> Logo Utama Aplikasi
+                                        Logo Utama Aplikasi
                                     </h3>
                                     <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                                         <div style="width: 90px; height: 90px; border: 2px dashed var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-main); overflow: hidden; padding: 6px; flex-shrink: 0;">
@@ -1348,7 +1368,7 @@
                                 <!-- Card 3: Favicon -->
                                 <div class="view-card" style="margin-bottom: 0; padding: 20px;">
                                     <h3 style="font-size: 15px; font-weight: 700; color: var(--primary-color); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-                                        <span>🌐</span> Favicon Tab Browser
+                                        Favicon Tab Browser
                                     </h3>
                                     <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                                         <div style="width: 56px; height: 56px; border: 2px dashed var(--border-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--bg-main); overflow: hidden; padding: 6px; flex-shrink: 0;">
@@ -1368,10 +1388,10 @@
                                 <div class="view-card" style="margin-bottom: 0; padding: 16px 20px; background: var(--bg-main);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                         <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; font-size: 13.5px;">
-                                            <span>💾</span> Simpan Pengaturan Identitas
+                                            Simpan Pengaturan Identitas
                                         </button>
                                         <button type="button" class="btn btn-secondary" style="padding: 10px 18px; font-weight: 600; font-size: 13px;" onclick="resetAppSettingsDefault()">
-                                            🔄 Reset Pengaturan Default
+                                            Reset Pengaturan Default
                                         </button>
                                     </div>
                                 </div>
@@ -1385,22 +1405,22 @@
                         <!-- Stat Cards Grid -->
                         <div class="report-cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
                             <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
-                                <div style="font-size: 22px; margin-bottom: 2px;">👥</div>
+                                <div style="font-size: 11px; font-weight:700; color:#3b82f6; margin-bottom: 4px; text-transform:uppercase;">Total Staf</div>
                                 <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Total Staf Terdaftar</h4>
                                 <h2 style="font-size: 18px; font-weight: 800; color: var(--primary-color); margin: 0;" id="user-stat-total">0</h2>
                             </div>
                             <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
-                                <div style="font-size: 22px; margin-bottom: 2px;">🛡️</div>
+                                <div style="font-size: 11px; font-weight:700; color:#10b981; margin-bottom: 4px; text-transform:uppercase;">Admin</div>
                                 <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Administrator</h4>
                                 <h2 style="font-size: 18px; font-weight: 800; color: #7e22ce; margin: 0;" id="user-stat-admin">0</h2>
                             </div>
                             <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
-                                <div style="font-size: 22px; margin-bottom: 2px;">💻</div>
+                                <div style="font-size: 11px; font-weight:700; color:#0d9488; margin-bottom: 4px; text-transform:uppercase;">Kasir</div>
                                 <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Kasir POS</h4>
                                 <h2 style="font-size: 18px; font-weight: 800; color: #16a34a; margin: 0;" id="user-stat-kasir">0</h2>
                             </div>
                             <div class="view-card" style="text-align: center; margin-bottom: 0; padding: 14px 10px;">
-                                <div style="font-size: 22px; margin-bottom: 2px;">💊</div>
+                                <div style="font-size: 11px; font-weight:700; color:#8b5cf6; margin-bottom: 4px; text-transform:uppercase;">Apoteker</div>
                                 <h4 style="color: var(--text-muted); font-size: 11.5px; margin: 0 0 2px 0;">Apoteker</h4>
                                 <h2 style="font-size: 18px; font-weight: 800; color: #d97706; margin: 0;" id="user-stat-apoteker">0</h2>
                             </div>
@@ -1410,15 +1430,15 @@
                         <div class="view-card" style="margin-bottom: 20px; padding: 16px 20px;">
                             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                                 <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 240px;">
-                                    <input type="text" id="user-search-input" class="form-control" placeholder="🔍 Cari nama staf, username, atau role..." oninput="filterUserManagementTable()">
+                                    <input type="text" id="user-search-input" class="form-control" placeholder="Cari nama staf, username, atau role..." oninput="filterUserManagementTable()">
                                 </div>
                                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                                     <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('')">Semua Role</button>
-                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('ADMIN')">🛡️ Admin</button>
-                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('KASIR')">💻 Kasir</button>
-                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('APOTEKER')">💊 Apoteker</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('ADMIN')">Admin</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('KASIR')">Kasir</button>
+                                    <button type="button" class="btn btn-secondary" style="padding: 5px 12px; font-size: 11.5px; border-radius: 14px;" onclick="filterUserRole('APOTEKER')">Apoteker</button>
                                 </div>
-                                <button type="button" class="btn btn-primary" style="padding: 9px 18px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px;" onclick="openAddUserModal()">➕ Tambah Staf Baru</button>
+                                <button type="button" class="btn btn-primary" style="padding: 9px 18px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 6px;" onclick="openAddUserModal()">Tambah Staf Baru</button>
                             </div>
                         </div>
 
@@ -1480,14 +1500,14 @@
     <div id="modal-receipt" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 380px; padding: 20px; background: #fff;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;" class="no-print">
-                <h3 style="margin: 0; font-size: 15px; font-weight: 700;">📄 Struk Penjualan</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeReceiptModal()">✕ Tutup</button>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 700;">Struk Penjualan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeReceiptModal()">Tutup</button>
             </div>
             
             <div class="receipt-print-area" id="receipt-print-area" style="background: #fff; padding: 0; border: none;"></div>
             
             <div style="display: flex; gap: 10px; margin-top: 15px;" class="no-print">
-                <button class="btn btn-secondary" style="flex: 1; padding: 10px; font-weight: 600;" onclick="printReceipt()">🖨️ Print Struk</button>
+        <button class="btn btn-secondary" style="flex: 1; padding: 10px; font-weight: 600;" onclick="printReceipt()"> Print Struk</button>
                 <button class="btn btn-primary" style="flex: 1; padding: 10px; font-weight: 600;" onclick="closeReceiptModal()">Selesai</button>
             </div>
         </div>
@@ -1655,7 +1675,7 @@
         <div class="modal-content" style="max-width: 650px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 id="preview-obat-title" style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-color);">Detail Obat</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-preview-obat')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-preview-obat')">Tutup</button>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 13.5px; margin-bottom: 20px;">
@@ -1692,8 +1712,8 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
-                <button type="button" class="btn btn-primary" onclick="closeModal('modal-preview-obat'); editObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">✏️ Edit Obat</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('modal-preview-obat'); deleteObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">🗑️ Hapus Obat</button>
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-preview-obat'); editObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">Edit Obat</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-preview-obat'); deleteObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">Hapus Obat</button>
             </div>
         </div>
     </div>
@@ -1821,7 +1841,7 @@
         <div class="modal-content" style="max-width: 450px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--primary-color);">Detail Supplier</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-supplier')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-supplier')">Tutup</button>
             </div>
             <div style="font-size: 13.5px; margin-bottom: 20px;">
                 <p style="margin-bottom: 8px;"><strong>ID Supplier:</strong> <span id="detail-sup-id">-</span></p>
@@ -1830,8 +1850,8 @@
                 <p style="margin-bottom: 0;"><strong>Kontak Telepon:</strong> <span id="detail-sup-telp">-</span></p>
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-supplier'); editSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">✏️ Edit</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-supplier'); deleteSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">🗑️ Hapus</button>
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-supplier'); editSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">Edit</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-supplier'); deleteSupplier(encodeURIComponent(document.getElementById('detail-sup-id').textContent))">Hapus</button>
             </div>
         </div>
     </div>
@@ -1841,7 +1861,7 @@
         <div class="modal-content" style="max-width: 450px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--primary-color);">Detail Pelanggan</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-pelanggan')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-pelanggan')">Tutup</button>
             </div>
             <div style="font-size: 13.5px; margin-bottom: 20px;">
                 <p style="margin-bottom: 8px;"><strong>ID Pelanggan:</strong> <span id="detail-pel-id">-</span></p>
@@ -1851,8 +1871,8 @@
                 <p style="margin-bottom: 0;"><strong>Tingkat Harga:</strong> <span id="detail-pel-level" class="badge badge-info">-</span></p>
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-pelanggan'); editPelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">✏️ Edit</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-pelanggan'); deletePelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">🗑️ Hapus</button>
+                <button type="button" class="btn btn-primary" onclick="closeModal('modal-detail-pelanggan'); editPelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">Edit</button>
+                <button type="button" class="btn btn-danger" onclick="closeModal('modal-detail-pelanggan'); deletePelanggan(encodeURIComponent(document.getElementById('detail-pel-id').textContent))">Hapus</button>
             </div>
         </div>
     </div>
@@ -1919,7 +1939,7 @@
         <div class="modal-content" style="max-width: 480px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 id="modal-bayar-tagihan-title" style="margin: 0; font-size: 16px; font-weight: 700; color: var(--primary-color);">Bayar Tagihan</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-bayar-tagihan')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-bayar-tagihan')">Tutup</button>
             </div>
             <form id="form-bayar-tagihan" onsubmit="submitBayarTagihan(event)">
                 <input type="hidden" id="bayar-tagihan-id">
@@ -1965,9 +1985,9 @@
                 <div class="form-group">
                     <label style="font-weight: 700;">Metode Pembayaran</label>
                     <select id="bayar-tagihan-metode" class="form-control">
-                        <option value="CASH">💵 CASH (Tunai)</option>
-                        <option value="TRANSFER">🏦 TRANSFER BANK</option>
-                        <option value="QRIS">📱 QRIS / DIGITAL</option>
+                        <option value="CASH">CASH (Tunai)</option>
+                        <option value="TRANSFER">TRANSFER BANK</option>
+                        <option value="QRIS">QRIS / DIGITAL</option>
                     </select>
                 </div>
 
@@ -1979,7 +1999,7 @@
                 <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bayar-tagihan')">Batal</button>
                     <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">
-                        💳 Proses & Simpan Pelunasan
+                        Proses & Simpan Pelunasan
                     </button>
                 </div>
             </form>
@@ -1991,7 +2011,7 @@
         <div class="modal-content" style="max-width: 650px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-color);">Detail Faktur Pembelian</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-faktur')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-detail-faktur')">Tutup</button>
             </div>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; margin-bottom: 16px; background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
@@ -2034,7 +2054,7 @@
         <div class="modal-content" style="max-width: 550px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #dc2626;">↩️ Retur Barang Penjualan</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-retur-penjualan')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-retur-penjualan')">Tutup</button>
             </div>
             
             <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;">
@@ -2080,8 +2100,8 @@
     <div id="modal-barcode-scanner" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 440px; text-align: center; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;">📷 Scan Barcode / QR Obat</h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeCameraScanner()">✕ Tutup</button>
+                <h3 style="font-size: 16px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 6px;">Scan Barcode Barcode / QR Obat</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeCameraScanner()">Tutup</button>
             </div>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Arahkan kamera HP ke Barcode / QR Code pada kemasan obat.</p>
             <div id="qr-reader" style="width: 100%; min-height: 240px; background: #111; border-radius: 12px; overflow: hidden; border: 2px solid var(--border-color);"></div>
@@ -2090,7 +2110,7 @@
     <!-- MODAL ADD USER -->
     <div id="modal-add-user" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 450px;">
-            <h3>➕ Tambah Staf / Pengguna Baru</h3>
+            <h3>Tambah Staf / Pengguna Baru</h3>
             <form id="form-add-user" onsubmit="submitAddUser(event)">
                 <div class="form-group">
                     <label>Nama Staf / Pegawai</label>
@@ -2123,7 +2143,7 @@
     <!-- MODAL EDIT USER -->
     <div id="modal-edit-user" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 450px;">
-            <h3>✏️ Edit Data Staf</h3>
+            <h3>Edit Data Staf</h3>
             <form id="form-edit-user" onsubmit="submitEditUser(event)">
                 <input type="hidden" id="edit-user-id">
                 <div class="form-group">
@@ -2159,9 +2179,9 @@
         <div class="modal-content" style="max-width: 440px; border-radius: 16px; padding: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
                 <h3 style="font-size: 16px; font-weight: 800; color: var(--primary-color); margin: 0; display: flex; align-items: center; gap: 8px;">
-                    <span>💳</span> Pembayaran Kasir POS
+                    Pembayaran Kasir POS
                 </h3>
-                <button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);" onclick="closeModal('modal-pos-payment')">✕</button>
+                <button type="button" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);" onclick="closeModal('modal-pos-payment')">&times;</button>
             </div>
 
             <form id="form-pos-payment" onsubmit="submitPosPayment(event)">
@@ -2175,9 +2195,9 @@
                 <div class="form-group">
                     <label style="font-weight: 700;">Metode Pembayaran</label>
                     <select id="pay-modal-method" class="form-control" onchange="onPayMethodChange()">
-                        <option value="CASH" selected>💵 CASH (TUNAI)</option>
-                        <option value="QRIS">📱 QRIS / DIGITAL</option>
-                        <option value="TEMPO">⏳ TEMPO / PIUTANG</option>
+                        <option value="CASH" selected>CASH (TUNAI)</option>
+                        <option value="QRIS">QRIS / DIGITAL</option>
+                        <option value="TEMPO">TEMPO / PIUTANG</option>
                     </select>
                 </div>
 
@@ -2205,7 +2225,7 @@
                 <!-- Action Buttons -->
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" class="btn btn-primary" style="flex: 2; padding: 12px; font-size: 14px; font-weight: 700;">
-                        💳 Proses & Cetak Struk
+                        Proses & Cetak Struk
                     </button>
                     <button type="button" class="btn btn-secondary" style="flex: 1; padding: 12px; font-size: 13px;" onclick="closeModal('modal-pos-payment')">
                         Batal
@@ -2227,13 +2247,13 @@
         <div class="modal-content" style="max-width: 520px; border-radius: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                    🔌 Konfigurasi Database Cloud (Supabase)
+                    Konfigurasi Database Cloud (Supabase)
                 </h3>
-                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-db-config')">✕ Tutup</button>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-db-config')">Tutup</button>
             </div>
             
             <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5; color: #9f1239;">
-                <strong>💡 Catatan Supabase Free Tier:</strong><br>
+                <strong>Catatan Supabase Free Tier:</strong><br>
                 Jika data tidak keluar dan muncul <code>TypeError: Failed to fetch</code>, kemungkinan besar project Supabase Anda sedang <strong>Paused (Tidak Aktif)</strong> karena kebijakan free tier setelah 7 hari tidak ada traffic.<br>
                 Silakan buka <a href="https://supabase.com/dashboard" target="_blank" style="color: #0d9488; font-weight: 700; text-decoration: underline;">Supabase Dashboard</a> lalu klik tombol <strong>"Restore Project"</strong>.
             </div>
@@ -2254,8 +2274,8 @@
                 <div id="modal-db-status-msg" style="margin-bottom: 14px; font-size: 12.5px; font-weight: 600; display: none;"></div>
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="testModalSupabaseConn()">🧪 Uji Koneksi</button>
-                    <button type="submit" class="btn btn-primary">💾 Simpan & Terapkan</button>
+                    <button type="button" class="btn btn-secondary" onclick="testModalSupabaseConn()">Uji Koneksi</button>
+                    <button type="submit" class="btn btn-primary">Simpan & Terapkan</button>
                 </div>
             </form>
         </div>
