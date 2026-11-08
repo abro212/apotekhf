@@ -1861,25 +1861,25 @@ function setLocalObatEd(idObat, edDateStr) {
 }
 
 function getExpBadge(expDateStr) {
- if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px;">-</span>';
- 
- const today = new Date();
- today.setHours(0, 0, 0, 0);
- const expDate = new Date(expDateStr);
- if (isNaN(expDate.getTime())) return `<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px;">${expDateStr}</span>`;
- 
- const options = { day: 'numeric', month: 'short', year: 'numeric' };
- const formattedDate = expDate.toLocaleDateString('id-ID', options).toUpperCase();
+    if (!expDateStr) return '<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap; display:inline-block;">-</span>';
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expDate = new Date(expDateStr);
+    if (isNaN(expDate.getTime())) return `<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap; display:inline-block;">${expDateStr}</span>`;
+    
+    const options = { day: 'numeric', month: 'short', year: 'numeric' };
+    const formattedDate = expDate.toLocaleDateString('id-ID', options).toUpperCase();
 
- const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
- 
- if (diffDays < 0) {
- return `<span class="badge" style="background:#fee2e2; color:#ef4444; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px;" title="Kadaluarsa"> ${formattedDate} (ED)</span>`;
- } else if (diffDays <= 90) {
- return `<span class="badge" style="background:#fef3c7; color:#d97706; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px;" title="Mendekati Kadaluarsa"> ${formattedDate} (${diffDays} hr)</span>`;
- } else {
- return `<span class="badge" style="background:#ecfdf5; color:#10b981; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px;">${formattedDate}</span>`;
- }
+    const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap; display:inline-block;" title="Kadaluarsa">${formattedDate} (ED)</span>`;
+    } else if (diffDays <= 90) {
+        return `<span class="badge" style="background:#fef3c7; color:#d97706; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap; display:inline-block;" title="Mendekati Kadaluarsa">${formattedDate} (${diffDays} hr)</span>`;
+    } else {
+        return `<span class="badge" style="background:#ecfdf5; color:#059669; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap; display:inline-block;">${formattedDate}</span>`;
+    }
 }
 
 async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
