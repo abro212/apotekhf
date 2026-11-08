@@ -1983,7 +1983,7 @@ body {
 
 /* Ensure data-table has minimum width so all columns fit and slide horizontally */
 .data-table {
-    min-width: 1240px !important;
+    min-width: 1750px !important;
 }
 
 /* Sticky first column (ID Obat) so user never loses context while sliding */
@@ -1992,11 +1992,26 @@ body {
     position: sticky !important;
     left: 0 !important;
     background-color: #ffffff !important;
-    z-index: 2 !important;
+    z-index: 4 !important;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05) !important;
 }
 
 .data-table th:first-child {
     background-color: #fafbfc !important;
-    z-index: 3 !important;
+    z-index: 5 !important;
+}
+
+/* Sticky last column (Aksi / Actions) so buttons are NEVER hidden or lost off-screen */
+.data-table th:last-child,
+.data-table td:last-child {
+    position: sticky !important;
+    right: 0 !important;
+    background-color: #ffffff !important;
+    z-index: 4 !important;
+    box-shadow: -3px 0 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.data-table th:last-child {
+    background-color: #fafbfc !important;
+    z-index: 5 !important;
 }

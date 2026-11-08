@@ -2042,7 +2042,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  const mobileList = document.getElementById('master-obat-mobile-list');
  if (!tbody) return;
 
- tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted); font-weight:600;">Memuat data master obat...</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="17" style="text-align:center; padding:30px; color:var(--text-muted); font-weight:600;">Memuat data master obat...</td></tr>';
  if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat data...</div>';
 
  const from = (page - 1) * pageSize;
@@ -2114,7 +2114,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  
  tbody.innerHTML = `
  <tr>
- <td colspan="11" style="text-align:center; padding: 40px 20px;">
+ <td colspan="17" style="text-align:center; padding: 40px 20px;">
  <div style="max-width: 580px; margin: 0 auto; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.06);">
  
  <h3 style="color: #9f1239; font-size: 16px; font-weight: 800; margin-bottom: 8px;">Koneksi Database Cloud (Supabase) Terputus</h3>
@@ -2152,7 +2152,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  }
 
  if (!data || data.length === 0) {
- tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data obat yang ditemukan.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="17" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data obat yang ditemukan.</td></tr>';
  if (mobileList) mobileList.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada data obat.</div>';
  return;
  }
@@ -2192,73 +2192,111 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             const rawExpStr = String(expDateVal || '-');
             const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
 
-            // Desktop row (Single line per row)
+            // Desktop row (Single line per row with 9 price columns & sticky actions)
             const tr = document.createElement('tr');
+            
+            const formatP = (val) => {
+                const n = parseFloat(val || 0);
+                return n > 0 ? ('Rp ' + formatMoney(n)) : '<span style="color:#cbd5e1;">-</span>';
+            };
+
             tr.innerHTML = `
-                <td style="white-space:nowrap;"><strong>${o.id_obat || ''}</strong></td>
+                <td style="white-space:nowrap; position: sticky; left: 0; z-index: 4; background: #ffffff;"><strong>${o.id_obat || ''}</strong></td>
                 <td style="white-space:nowrap;"><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${safeName}</a></td>
                 <td style="white-space:nowrap;">${safeKat}</td>
                 <td style="white-space:nowrap;"><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap;">${safeJenis}</span></td>
                 <td style="white-space:nowrap;"><strong>${displayStok}</strong> <span style="font-size:11.5px; color:var(--text-muted);">${safeLabelKecil}</span></td>
-                <td style="white-space:nowrap;">${safeSat1}</td>
+                
+                <!-- Satuan 1 (Kecil) Levels -->
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l1_s1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l2_s1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l3_s1)}</td>
+                
+                <!-- Satuan 2 (Sedang) Levels -->
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l1_s2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l2_s2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l3_s2)}</td>
+                
+                <!-- Satuan 3 (Besar) Levels -->
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l1_s3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l2_s3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l3_s3)}</td>
+                
+                <!-- Info Lainnya -->
                 <td style="white-space:nowrap;">Rp ${formatMoney(o.harga_beli_sat_1)}</td>
                 <td style="white-space:nowrap;">${marginBadge}</td>
-                <td style="white-space:nowrap;">Rp ${formatMoney(o.harga_l1_s1)}</td>
                 <td style="white-space:nowrap;">${expBadge}</td>
-                <td style="white-space:nowrap; text-align: center;">
- <div style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;">
- <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
- </button>
- <button class="btn btn-primary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
- </button>
- <button class="btn btn-danger" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
- </button>
- </div>
- </td>
- `;
- tbody.appendChild(tr);
+                <td style="white-space:nowrap; text-align: center; position: sticky; right: 0; z-index: 4; background: #ffffff; box-shadow: -3px 0 6px rgba(0,0,0,0.06);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;">
+                        <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                        <button class="btn btn-primary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="btn btn-danger" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
 
- // Mobile card
- if (mobileList) {
- const card = document.createElement('div');
- card.className = 'price-card-mobile';
- 
- const stockNum = parseFloat(displayStok);
- const stockMin = parseFloat(o.stok_minimal || 5);
- const stockBadgeStyle = stockNum <= stockMin 
- ? 'background-color:#fee2e2; color:#ef4444;' 
- : 'background-color:#ecfdf5; color:#10b981;';
- 
- card.innerHTML = `
- <div class="price-card-header">
- <div style="flex:1;" onclick="previewObat('${encId}', event)">
- <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${safeName}</div>
- <div class="price-card-sub">ID: ${o.id_obat || ''} • ED: ${cleanExpStr} • Jenis: ${safeJenis}</div>
- </div>
- <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${safeLabelKecil}</span>
- </div>
- <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
- <div style="font-size:12px; color:var(--text-muted);">
- Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
- </div>
- <div style="display:flex; gap:6px;">
- <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
- </button>
- <button class="btn btn-primary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
- </button>
- <button class="btn btn-danger" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
- <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
- </button>
- </div>
- </div>
- `;
- mobileList.appendChild(card);
- }
+            // Mobile card with 9 price display
+            if (mobileList) {
+                const card = document.createElement('div');
+                card.className = 'price-card-mobile';
+                
+                const stockNum = parseFloat(displayStok);
+                const stockMin = parseFloat(o.stok_minimal || 5);
+                const stockBadgeStyle = stockNum <= stockMin 
+                    ? 'background-color:#fee2e2; color:#ef4444;' 
+                    : 'background-color:#ecfdf5; color:#10b981;';
+                
+                card.innerHTML = `
+                    <div class="price-card-header">
+                        <div style="flex:1;" onclick="previewObat('${encId}', event)">
+                            <div class="price-card-title" style="color:var(--primary-color); cursor:pointer;">${safeName}</div>
+                            <div class="price-card-sub">ID: ${o.id_obat || ''} • ED: ${cleanExpStr} • Jenis: ${safeJenis}</div>
+                        </div>
+                        <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${safeLabelKecil}</span>
+                    </div>
+                    <!-- 9 Harga Jual Grid Ringkas -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px; margin:8px 0; font-size:11.5px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:700; color:#166534;">${safeSat1}:</span>
+                            <span>L1: <strong>${formatP(o.harga_l1_s1)}</strong> • L2: ${formatP(o.harga_l2_s1)} • L3: ${formatP(o.harga_l3_s1)}</span>
+                        </div>
+                        ${o.satuan_2 ? `
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span style="font-weight:700; color:#1e40af;">${escapeHtml(o.satuan_2)}:</span>
+                            <span>L1: <strong>${formatP(o.harga_l1_s2)}</strong> • L2: ${formatP(o.harga_l2_s2)} • L3: ${formatP(o.harga_l3_s2)}</span>
+                        </div>` : ''}
+                        ${o.satuan_3 ? `
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="font-weight:700; color:#854d0e;">${escapeHtml(o.satuan_3)}:</span>
+                            <span>L1: <strong>${formatP(o.harga_l1_s3)}</strong> • L2: ${formatP(o.harga_l2_s3)} • L3: ${formatP(o.harga_l3_s3)}</span>
+                        </div>` : ''}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                        <div style="font-size:12px; color:var(--text-muted);">
+                            Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button class="btn btn-primary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="editObat('${encId}', event)" title="Edit Obat">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                            <button class="btn btn-danger" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="deleteObat('${encId}', event)" title="Hapus Obat">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                mobileList.appendChild(card);
+            }
  });
 
  const totalPages = Math.ceil((count !== null && count !== undefined ? count : data.length) / pageSize);
@@ -2266,7 +2304,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  } catch (e) {
  console.error('Error rendering Master Obat rows:', e);
  if (tbody) {
- tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:30px; color:#ef4444;">Terjadi kesalahan sistem: ${e.message}</td></tr>`;
+ tbody.innerHTML = `<tr><td colspan="17" style="text-align:center; padding:30px; color:#ef4444;">Terjadi kesalahan sistem: ${e.message}</td></tr>`;
  }
  }
 }
@@ -2377,40 +2415,55 @@ function showAddObatModal() {
 }
 
 async function submitAddObat(e) {
- e.preventDefault();
- try {
- if (!supabaseClient) return;
- 
- // Generate new ID (Format HFXXXXX)
- const { data: maxRow } = await supabaseClient.from('master_obat').select('id_obat').like('id_obat', 'HF%').order('id_obat', { ascending: false }).limit(1);
- let nextId = 'HF00001';
- if (maxRow && maxRow.length > 0) {
- const lastNum = parseInt(maxRow[0].id_obat.replace('HF', ''));
- nextId = 'HF' + String(lastNum + 1).padStart(5, '0');
- }
+    e.preventDefault();
+    try {
+        if (!supabaseClient) return;
+        
+        // Generate new ID (Format HFXXXXX)
+        const { data: maxRow } = await supabaseClient.from('master_obat').select('id_obat').like('id_obat', 'HF%').order('id_obat', { ascending: false }).limit(1);
+        let nextId = 'HF00001';
+        if (maxRow && maxRow.length > 0) {
+            const lastNum = parseInt(maxRow[0].id_obat.replace('HF', ''));
+            nextId = 'HF' + String(lastNum + 1).padStart(5, '0');
+        }
 
- const expVal = document.getElementById('add-obat-exp')?.value || null;
- if (expVal) {
- setLocalObatEd(nextId, expVal);
- }
+        const expVal = document.getElementById('add-obat-exp')?.value || null;
+        if (expVal) {
+            setLocalObatEd(nextId, expVal);
+        }
 
- const newObat = {
- id_obat: nextId,
- nama_obat: document.getElementById('add-obat-nama').value,
- kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
- jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
- satuan_1: document.getElementById('add-obat-sat1').value,
- label_satuan_kecil: document.getElementById('add-obat-sat1').value,
- satuan_2: document.getElementById('add-obat-sat2').value || '',
- isi_2_ke_1: document.getElementById('add-obat-isi2').value || '0',
- stok_unit_kecil: document.getElementById('add-obat-stok').value || '0',
- harga_beli_sat_1: document.getElementById('add-obat-beli1')?.value || '0',
- harga_beli_sat_2: document.getElementById('add-obat-l1s2').value || '0',
- harga_l1_s1: document.getElementById('add-obat-l1s1').value || '0',
- harga_l1_s2: document.getElementById('add-obat-l1s2').value || '0'
- };
+        const newObat = {
+            id_obat: nextId,
+            nama_obat: document.getElementById('add-obat-nama').value,
+            kategori: document.getElementById('add-obat-kategori').value || 'OBAT',
+            jenis_item: document.getElementById('add-obat-jenis')?.value || 'NON KONSI',
+            rak: document.getElementById('add-obat-rak')?.value || '',
+            stok_minimal: parseFloat(document.getElementById('add-obat-stokmin')?.value || 5),
+            stok_unit_kecil: parseFloat(document.getElementById('add-obat-stok').value || 0),
+            // Multi-satuan
+            satuan_1: document.getElementById('add-obat-sat1').value,
+            label_satuan_kecil: document.getElementById('add-obat-sat1').value,
+            satuan_2: document.getElementById('add-obat-sat2').value || null,
+            isi_2_ke_1: parseFloat(document.getElementById('add-obat-isi2').value || 0),
+            satuan_3: document.getElementById('add-obat-sat3').value || null,
+            isi_3_ke_2: parseFloat(document.getElementById('add-obat-isi3').value || 0),
+            // Harga Beli
+            harga_beli_sat_1: parseFloat(document.getElementById('add-obat-beli1')?.value || 0),
+            harga_beli_sat_2: parseFloat(document.getElementById('add-obat-beli2')?.value || 0),
+            harga_beli_sat_3: parseFloat(document.getElementById('add-obat-beli3')?.value || 0),
+            // 9 Harga Jual (3 Level x 3 Satuan)
+            harga_l1_s1: parseFloat(document.getElementById('add-obat-l1s1')?.value || 0),
+            harga_l2_s1: parseFloat(document.getElementById('add-obat-l2s1')?.value || 0),
+            harga_l3_s1: parseFloat(document.getElementById('add-obat-l3s1')?.value || 0),
+            harga_l1_s2: parseFloat(document.getElementById('add-obat-l1s2')?.value || 0),
+            harga_l2_s2: parseFloat(document.getElementById('add-obat-l2s2')?.value || 0),
+            harga_l3_s2: parseFloat(document.getElementById('add-obat-l3s2')?.value || 0),
+            harga_l1_s3: parseFloat(document.getElementById('add-obat-l1s3')?.value || 0),
+            harga_l2_s3: parseFloat(document.getElementById('add-obat-l2s3')?.value || 0),
+            harga_l3_s3: parseFloat(document.getElementById('add-obat-l3s3')?.value || 0)
+        };
 
- const { error } = await supabaseClient.from('master_obat').insert([newObat]);
+        const { error } = await supabaseClient.from('master_obat').insert([newObat]);
  if (error) throw error;
  
  alert('Obat berhasil didaftarkan!');
@@ -2441,95 +2494,127 @@ async function deleteObat(encodedId, e) {
 }
 
 async function editObat(encodedId, e) {
- if (e) e.preventDefault();
- const id = decodeURIComponent(encodedId);
- if (!id) return;
- try {
- if (!supabaseClient) return;
- const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).limit(1);
- if (error) throw error;
- if (!data || data.length === 0) {
- alert('Data obat tidak ditemukan.');
- return;
- }
+    if (e) e.preventDefault();
+    const id = decodeURIComponent(encodedId);
+    if (!id) return;
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('master_obat').select('*').eq('id_obat', id).limit(1);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            alert('Data obat tidak ditemukan.');
+            return;
+        }
 
- const item = data[0];
+        const item = data[0];
 
- document.getElementById('edit-obat-id').value = item.id_obat;
- document.getElementById('edit-obat-nama').value = item.nama_obat || '';
- document.getElementById('edit-obat-kategori').value = item.kategori || '';
+        document.getElementById('edit-obat-id').value = item.id_obat;
+        document.getElementById('edit-obat-nama').value = item.nama_obat || '';
+        document.getElementById('edit-obat-kategori').value = item.kategori || '';
 
- const rawJenis = String(item.jenis_item || 'NON KONSI').toUpperCase().trim();
- const selJenis = document.getElementById('edit-obat-jenis');
- if (selJenis) {
- if (rawJenis.includes('JASA')) {
- selJenis.value = 'JASA';
- } else if (rawJenis.includes('KONSI') && !rawJenis.includes('NON')) {
- selJenis.value = 'KONSI';
- } else {
- selJenis.value = 'NON KONSI';
- }
- }
+        const rawJenis = String(item.jenis_item || 'NON KONSI').toUpperCase().trim();
+        const selJenis = document.getElementById('edit-obat-jenis');
+        if (selJenis) {
+            if (rawJenis.includes('JASA')) {
+                selJenis.value = 'JASA';
+            } else if (rawJenis.includes('KONSI') && !rawJenis.includes('NON')) {
+                selJenis.value = 'KONSI';
+            } else {
+                selJenis.value = 'NON KONSI';
+            }
+        }
 
- const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || getLocalObatEd(item.id_obat) || '';
- if (document.getElementById('edit-obat-exp')) {
- document.getElementById('edit-obat-exp').value = expVal ? expVal.substring(0, 10) : '';
- }
+        const expVal = item.tanggal_kadaluarsa || item.expired_date || item.exp_date || getLocalObatEd(item.id_obat) || '';
+        if (document.getElementById('edit-obat-exp')) {
+            document.getElementById('edit-obat-exp').value = expVal ? expVal.substring(0, 10) : '';
+        }
 
- document.getElementById('edit-obat-rak').value = item.rak || '';
- document.getElementById('edit-obat-stokmin').value = item.stok_minimal || '5';
- document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
- document.getElementById('edit-obat-sat1').value = item.satuan_1 || 'Pcs';
- document.getElementById('edit-obat-sat2').value = item.satuan_2 || '';
- document.getElementById('edit-obat-sat3').value = item.satuan_3 || '';
- document.getElementById('edit-obat-beli1').value = item.harga_beli_sat_1 || '0';
- document.getElementById('edit-obat-l1s1').value = item.harga_l1_s1 || '0';
- document.getElementById('edit-obat-l1s2').value = item.harga_l1_s2 || '0';
- document.getElementById('edit-obat-l1s3').value = item.harga_l1_s3 || '0';
- calcEditMargin();
+        document.getElementById('edit-obat-rak').value = item.rak || '';
+        document.getElementById('edit-obat-stokmin').value = item.stok_minimal || '5';
+        document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
 
- document.getElementById('modal-edit-obat').classList.remove('hidden');
- } catch (err) {
- console.error(err);
- alert('Gagal mengambil data detail obat.');
- }
+        // Multi-satuan & Konversi
+        document.getElementById('edit-obat-sat1').value = item.satuan_1 || 'Pcs';
+        document.getElementById('edit-obat-sat2').value = item.satuan_2 || '';
+        document.getElementById('edit-obat-isi2').value = item.isi_2_ke_1 || '0';
+        document.getElementById('edit-obat-sat3').value = item.satuan_3 || '';
+        document.getElementById('edit-obat-isi3').value = item.isi_3_ke_2 || '0';
+
+        // Harga Beli
+        document.getElementById('edit-obat-beli1').value = item.harga_beli_sat_1 || '0';
+        document.getElementById('edit-obat-beli2').value = item.harga_beli_sat_2 || '0';
+        document.getElementById('edit-obat-beli3').value = item.harga_beli_sat_3 || '0';
+
+        // 9 Kolom Harga Jual (3 Level x 3 Satuan)
+        document.getElementById('edit-obat-l1s1').value = item.harga_l1_s1 || '0';
+        document.getElementById('edit-obat-l2s1').value = item.harga_l2_s1 || '0';
+        document.getElementById('edit-obat-l3s1').value = item.harga_l3_s1 || '0';
+
+        document.getElementById('edit-obat-l1s2').value = item.harga_l1_s2 || '0';
+        document.getElementById('edit-obat-l2s2').value = item.harga_l2_s2 || '0';
+        document.getElementById('edit-obat-l3s2').value = item.harga_l3_s2 || '0';
+
+        document.getElementById('edit-obat-l1s3').value = item.harga_l1_s3 || '0';
+        document.getElementById('edit-obat-l2s3').value = item.harga_l2_s3 || '0';
+        document.getElementById('edit-obat-l3s3').value = item.harga_l3_s3 || '0';
+
+        calcEditMargin();
+
+        document.getElementById('modal-edit-obat').classList.remove('hidden');
+    } catch (err) {
+        console.error(err);
+        alert('Gagal mengambil data detail obat.');
+    }
 }
 
 async function submitEditObat(e) {
- e.preventDefault();
- const id = document.getElementById('edit-obat-id').value;
- const expVal = document.getElementById('edit-obat-exp')?.value || null;
- setLocalObatEd(id, expVal);
+    e.preventDefault();
+    const id = document.getElementById('edit-obat-id').value;
+    const expVal = document.getElementById('edit-obat-exp')?.value || null;
+    setLocalObatEd(id, expVal);
 
- const updatedObat = {
- nama_obat: document.getElementById('edit-obat-nama').value,
- kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
- jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
- rak: document.getElementById('edit-obat-rak').value || '',
- stok_minimal: document.getElementById('edit-obat-stokmin').value || '5',
- stok_unit_kecil: document.getElementById('edit-obat-stok').value || '0',
- satuan_1: document.getElementById('edit-obat-sat1').value,
- label_satuan_kecil: document.getElementById('edit-obat-sat1').value,
- satuan_2: document.getElementById('edit-obat-sat2').value || '',
- satuan_3: document.getElementById('edit-obat-sat3').value || '',
- harga_beli_sat_1: document.getElementById('edit-obat-beli1').value || '0',
- harga_l1_s1: document.getElementById('edit-obat-l1s1').value || '0',
- harga_l1_s2: document.getElementById('edit-obat-l1s2').value || '0',
- harga_l1_s3: document.getElementById('edit-obat-l1s3').value || '0'
- };
+    const updatedObat = {
+        nama_obat: document.getElementById('edit-obat-nama').value,
+        kategori: document.getElementById('edit-obat-kategori').value || 'OBAT',
+        jenis_item: document.getElementById('edit-obat-jenis')?.value || 'NON KONSI',
+        rak: document.getElementById('edit-obat-rak').value || '',
+        stok_minimal: parseFloat(document.getElementById('edit-obat-stokmin').value || 5),
+        stok_unit_kecil: parseFloat(document.getElementById('edit-obat-stok').value || 0),
+        // Multi-satuan
+        satuan_1: document.getElementById('edit-obat-sat1').value,
+        label_satuan_kecil: document.getElementById('edit-obat-sat1').value,
+        satuan_2: document.getElementById('edit-obat-sat2').value || null,
+        isi_2_ke_1: parseFloat(document.getElementById('edit-obat-isi2').value || 0),
+        satuan_3: document.getElementById('edit-obat-sat3').value || null,
+        isi_3_ke_2: parseFloat(document.getElementById('edit-obat-isi3').value || 0),
+        // Harga Beli
+        harga_beli_sat_1: parseFloat(document.getElementById('edit-obat-beli1').value || 0),
+        harga_beli_sat_2: parseFloat(document.getElementById('edit-obat-beli2').value || 0),
+        harga_beli_sat_3: parseFloat(document.getElementById('edit-obat-beli3').value || 0),
+        // 9 Harga Jual
+        harga_l1_s1: parseFloat(document.getElementById('edit-obat-l1s1').value || 0),
+        harga_l2_s1: parseFloat(document.getElementById('edit-obat-l2s1').value || 0),
+        harga_l3_s1: parseFloat(document.getElementById('edit-obat-l3s1').value || 0),
+        harga_l1_s2: parseFloat(document.getElementById('edit-obat-l1s2').value || 0),
+        harga_l2_s2: parseFloat(document.getElementById('edit-obat-l2s2').value || 0),
+        harga_l3_s2: parseFloat(document.getElementById('edit-obat-l3s2').value || 0),
+        harga_l1_s3: parseFloat(document.getElementById('edit-obat-l1s3').value || 0),
+        harga_l2_s3: parseFloat(document.getElementById('edit-obat-l2s3').value || 0),
+        harga_l3_s3: parseFloat(document.getElementById('edit-obat-l3s3').value || 0)
+    };
 
- try {
- if (!supabaseClient) return;
- const { error } = await supabaseClient.from('master_obat').update(updatedObat).eq('id_obat', id);
- if (error) throw error;
- 
- alert('Data obat berhasil diperbarui!');
- closeModal('modal-edit-obat');
- loadMasterObat();
- } catch (err) {
- console.error(err);
- alert(`Gagal memperbarui data obat: ${err.message}`);
- }
+    try {
+        if (!supabaseClient) return;
+        const { error } = await supabaseClient.from('master_obat').update(updatedObat).eq('id_obat', id);
+        if (error) throw error;
+        
+        alert('Data obat berhasil diperbarui!');
+        closeModal('modal-edit-obat');
+        loadMasterObat();
+    } catch (err) {
+        console.error(err);
+        alert('Gagal memperbarui data obat: ' + err.message);
+    }
 }
 
 async function previewObat(encodedId, e) {
