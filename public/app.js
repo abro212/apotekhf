@@ -1574,6 +1574,7 @@ async function posCheckout() {
             const qty = parseFloat(item.jumlah);
             const price = parseFloat(item.harga);
             const subtotal = qty * price;
+            const qtyInSmallestUnit = qty * item.konversi;
 
             const o = item.obat;
             let hpp_unit = 0;
@@ -1603,7 +1604,6 @@ async function posCheckout() {
             });
 
             // Calculate new stock
-            const qtyInSmallestUnit = qty * item.konversi;
             const currentStock = parseFloat(o.stok_unit_kecil || 0);
             const newStock = currentStock - qtyInSmallestUnit;
             
