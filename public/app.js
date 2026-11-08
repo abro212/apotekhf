@@ -2873,7 +2873,7 @@ async function previewObat(encodedId, e) {
  document.getElementById('preview-obat-jenis').textContent = '...';
  if (document.getElementById('preview-obat-margin')) document.getElementById('preview-obat-margin').textContent = '...';
  if (document.getElementById('preview-obat-exp')) document.getElementById('preview-obat-exp').textContent = '...';
- document.getElementById('preview-obat-prices-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px; color:var(--text-muted);">Memuat rincian harga...</td></tr>';
+ document.getElementById('preview-obat-prices-body').innerHTML = '<tr><td colspan="6" style="text-align:center; padding:15px; color:var(--text-muted);">Memuat rincian harga...</td></tr>';
  
  modal.classList.remove('hidden');
 
@@ -3492,6 +3492,7 @@ async function submitReturPenjualan() {
 function togglePurchaseTempoDate() {
     const method = document.getElementById('purchase-pay-method')?.value;
     const group = document.getElementById('purchase-tempo-group');
+    const konsiNote = document.getElementById('purchase-konsi-note');
     const jatuhTempoInput = document.getElementById('purchase-jatuh-tempo');
     if (group) {
         if (method === 'TEMPO') {
@@ -3504,6 +3505,9 @@ function togglePurchaseTempoDate() {
         } else {
             group.style.display = 'none';
         }
+    }
+    if (konsiNote) {
+        konsiNote.style.display = (method === 'KONSINYASI') ? 'block' : 'none';
     }
 }
 
@@ -4457,7 +4461,7 @@ function renderLaporanTable(data) {
  if (tfoot) {
  tfoot.innerHTML = `
  <tr>
- <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL KESELURUHAN PENJUALAN:</td>
+ <td colspan="6" style="padding: 14px 16px; text-align: right;">TOTAL KESELURUHAN PENJUALAN:</td>
  <td style="padding: 14px 16px; text-align: right; color: var(--primary-color); font-size: 15px;">${formatRp(totalSales)}</td>
  </tr>
  `;
@@ -4495,7 +4499,7 @@ function renderLaporanTable(data) {
 
  if (tbody) {
  if (data.length === 0) {
- tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data pembelian pada periode ini.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada data pembelian pada periode ini.</td></tr>';
  } else {
  data.forEach(x => {
  const tr = document.createElement('tr');
@@ -4626,7 +4630,7 @@ function renderLaporanTable(data) {
  if (tfoot) {
  tfoot.innerHTML = `
  <tr>
- <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL SISA PIUTANG OUTSTANDING:</td>
+ <td colspan="6" style="padding: 14px 16px; text-align: right;">TOTAL SISA PIUTANG OUTSTANDING:</td>
  <td colspan="2" style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalSisaPiutang)}</td>
  </tr>
  `;
@@ -4722,7 +4726,7 @@ function renderLaporanTable(data) {
  if (tfoot) {
  tfoot.innerHTML = `
  <tr>
- <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL SISA HUTANG OUTSTANDING:</td>
+ <td colspan="6" style="padding: 14px 16px; text-align: right;">TOTAL SISA HUTANG OUTSTANDING:</td>
  <td colspan="2" style="padding: 14px 16px; text-align: right; color: #dc2626; font-size: 15px;">${formatRp(totalSisaHutang)}</td>
  </tr>
  `;
@@ -4766,7 +4770,7 @@ function renderLaporanTable(data) {
 
  if (tbody) {
  if (data.length === 0) {
- tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada transaksi kas pada periode ini.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">Tidak ada transaksi kas pada periode ini.</td></tr>';
  } else {
  data.forEach(x => {
  const isMasuk = String(x.tipe || '').toUpperCase() === 'MASUK';
@@ -4963,7 +4967,7 @@ function renderLaporanTable(data) {
  if (tfoot) {
  tfoot.innerHTML = `
  <tr>
- <td colspan="5" style="padding: 14px 16px; text-align: right;">TOTAL UANG MASUK SHIFT:</td>
+ <td colspan="6" style="padding: 14px 16px; text-align: right;">TOTAL UANG MASUK SHIFT:</td>
  <td style="padding: 14px 16px; text-align: right; color: #16a34a; font-size: 15px;">${formatRp(totalMasukShift)}</td>
  </tr>
  `;
@@ -5818,7 +5822,7 @@ async function showDetailFaktur(encNo) {
  tbody.appendChild(tr);
  });
  } else {
- tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:16px;">Tidak ada rincian item log untuk faktur ini.</td></tr>';
+ tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:16px;">Tidak ada rincian item log untuk faktur ini.</td></tr>';
  }
 
  document.getElementById('modal-detail-faktur').classList.remove('hidden');
@@ -7200,3 +7204,200 @@ function initTableDragToScroll() {
 }
 document.addEventListener('DOMContentLoaded', initTableDragToScroll);
 window.addEventListener('load', initTableDragToScroll);
+
+
+// --------------------------------------------------------------------------
+// RETUR SUPPLIER (KONSINYASI VS REGULER ACCOUNTING)
+// --------------------------------------------------------------------------
+window.openReturSupplierModal = function(encIdBeli, encIdObat, encMedNama, encSatuan, maxQty, harga, encMetode, encNoFk, encSupNama) {
+    const idBeli = decodeURIComponent(encIdBeli);
+    const idObat = decodeURIComponent(encIdObat);
+    const medNama = decodeURIComponent(encMedNama);
+    const satuan = decodeURIComponent(encSatuan);
+    const metode = decodeURIComponent(encMetode).toUpperCase();
+    const noFk = decodeURIComponent(encNoFk);
+    const supNama = decodeURIComponent(encSupNama);
+
+    document.getElementById('retur-sup-id-beli').value = idBeli;
+    document.getElementById('retur-sup-id-obat').value = idObat;
+    document.getElementById('retur-sup-satuan').value = satuan;
+    document.getElementById('retur-sup-harga').value = harga;
+    document.getElementById('retur-sup-max-qty').value = maxQty;
+    document.getElementById('retur-sup-metode').value = metode;
+    document.getElementById('retur-sup-faktur-id').value = noFk;
+    document.getElementById('retur-sup-nama-supplier').value = supNama;
+
+    document.getElementById('retur-sup-faktur').textContent = noFk;
+    document.getElementById('retur-sup-supplier').textContent = supNama || '-';
+    document.getElementById('retur-sup-tipe').textContent = metode === 'KONSINYASI' ? 'KONSINYASI (Titipan)' : `PEMBELIAN (${metode})`;
+    document.getElementById('retur-sup-tipe').className = metode === 'KONSINYASI' ? 'badge badge-primary' : (metode === 'TEMPO' ? 'badge badge-warning' : 'badge badge-success');
+    document.getElementById('retur-sup-item').textContent = `${medNama} (${idObat})`;
+    document.getElementById('retur-sup-max-label').textContent = maxQty;
+    document.getElementById('retur-sup-unit-label').textContent = satuan;
+
+    const qtyInput = document.getElementById('retur-sup-qty');
+    qtyInput.value = '1';
+    qtyInput.max = maxQty;
+    document.getElementById('retur-sup-alasan').value = '';
+
+    const noticeEl = document.getElementById('retur-sup-notice');
+    if (metode === 'KONSINYASI') {
+        noticeEl.innerHTML = `<div style="background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; padding:10px 14px; border-radius:8px; font-size:12.5px; line-height:1.5;">
+            🏷️ <strong>Retur Barang Titipan (Konsinyasi):</strong><br>
+            Pengembalian ini akan <strong>mengurangi stok apotek</strong> dan mengembalikannya ke supplier konsinyor. <strong>TIDAK ADA pemotongan hutang atau transaksi kas</strong>, karena barang titipan tidak menimbulkan hutang sejak awal.
+        </div>`;
+    } else if (metode === 'TEMPO') {
+        noticeEl.innerHTML = `<div style="background:#fffbeb; border:1px solid #fde68a; color:#b45309; padding:10px 14px; border-radius:8px; font-size:12.5px; line-height:1.5;">
+            ⚠️ <strong>Retur Pembelian Tempo (Reguler):</strong><br>
+            Pengembalian ini akan <strong>mengurangi stok apotek</strong> dan otomatis <strong>memotong saldo hutang faktur</strong> sebesar nilai total retur.
+        </div>`;
+    } else {
+        noticeEl.innerHTML = `<div style="background:#ecfdf5; border:1px solid #a7f3d0; color:#047857; padding:10px 14px; border-radius:8px; font-size:12.5px; line-height:1.5;">
+            💵 <strong>Retur Pembelian Cash (Reguler):</strong><br>
+            Pengembalian ini akan <strong>mengurangi stok apotek</strong> dan membukukan <strong>Kas Masuk</strong> (pengembalian uang kas dari supplier) ke Kas Operasional.
+        </div>`;
+    }
+
+    calcReturSupTotal();
+    document.getElementById('modal-retur-supplier').classList.remove('hidden');
+};
+
+window.calcReturSupTotal = function() {
+    const qty = parseFloat(document.getElementById('retur-sup-qty').value) || 0;
+    const harga = parseFloat(document.getElementById('retur-sup-harga').value) || 0;
+    const total = qty * harga;
+    document.getElementById('retur-sup-total-display').value = `Rp ${formatMoney(total)}`;
+};
+
+window.submitReturSupplier = async function(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    const idBeli = document.getElementById('retur-sup-id-beli').value;
+    const idObat = document.getElementById('retur-sup-id-obat').value;
+    const satuan = document.getElementById('retur-sup-satuan').value;
+    const harga = parseFloat(document.getElementById('retur-sup-harga').value) || 0;
+    const maxQty = parseFloat(document.getElementById('retur-sup-max-qty').value) || 0;
+    const qty = parseFloat(document.getElementById('retur-sup-qty').value) || 0;
+    const metode = document.getElementById('retur-sup-metode').value;
+    const noFk = document.getElementById('retur-sup-faktur-id').value;
+    const supNama = document.getElementById('retur-sup-nama-supplier').value;
+    const alasan = document.getElementById('retur-sup-alasan').value.trim();
+
+    if (qty <= 0 || qty > maxQty) {
+        alert(`Jumlah retur tidak valid! Harus antara 1 dan ${maxQty}.`);
+        return;
+    }
+    if (!alasan) {
+        alert('Harap isi alasan retur!');
+        return;
+    }
+
+    const nilaiRetur = qty * harga;
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    try {
+        // 1. Kurangi stok di master_obat
+        const { data: med } = await supabaseClient.from('master_obat').select('stok_unit_kecil, nama_obat').eq('id_obat', idObat).single();
+        const currentStock = med ? parseFloat(med.stok_unit_kecil || 0) : 0;
+        const newStock = Math.max(0, currentStock - qty);
+
+        const { error: medErr } = await supabaseClient.from('master_obat').update({
+            stok_unit_kecil: String(newStock)
+        }).eq('id_obat', idObat);
+        if (medErr) throw medErr;
+
+        // 2. Perlakuan Keuangan Berdasarkan Jenis Transaksi
+        if (metode === 'KONSINYASI') {
+            // KONSINYASI: Tanpa kas, tanpa hutang
+            alert(`✅ Retur Konsinyasi Berhasil!\n\nStok sebanyak ${qty} ${satuan} telah dikembalikan ke Supplier ${supNama}.\nKarena ini barang titipan, tidak ada pemotongan hutang atau transaksi kas.`);
+        } else if (metode === 'TEMPO') {
+            // REGULER TEMPO: Potong hutang faktur
+            const { data: fk } = await supabaseClient.from('faktur_beli').select('id_faktur, nominal_bayar').or(`nomor_faktur.eq.${noFk},id_faktur.eq.${noFk}`).single();
+            if (fk) {
+                const currentNominal = parseFloat(fk.nominal_bayar || 0);
+                const newNominal = Math.max(0, currentNominal - nilaiRetur);
+                await supabaseClient.from('faktur_beli').update({
+                    nominal_bayar: String(newNominal)
+                }).eq('id_faktur', fk.id_faktur);
+            }
+            alert(`✅ Retur Pembelian Tempo Berhasil!\n\nStok berkurang dan sisa hutang faktur dipotong sebesar Rp ${formatMoney(nilaiRetur)}.`);
+        } else {
+            // REGULER CASH: Catat Kas Masuk Pengembalian Dana
+            await supabaseClient.from('kas').insert([{
+                id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                tanggal: dateStr,
+                jenis_kas: 'MASUK',
+                kategori: 'Pengembalian Retur Pembelian',
+                jumlah: String(nilaiRetur),
+                keterangan: `Pengembalian dana retur ${qty} ${satuan} ${med?.nama_obat || idObat} (${supNama}): ${alasan}`,
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+            alert(`✅ Retur Pembelian Cash Berhasil!\n\nStok berkurang dan pengembalian uang sebesar Rp ${formatMoney(nilaiRetur)} telah dibukukan ke Kas Operasional.`);
+        }
+
+        closeModal('modal-retur-supplier');
+        closeModal('modal-detail-faktur');
+        loadDokumentasiFaktur();
+
+    } catch (err) {
+        console.error('Error processing retur supplier:', err);
+        alert('Gagal memproses retur supplier: ' + err.message);
+    }
+};
+
+// --------------------------------------------------------------------------
+// SETTLEMENT / PEMBAYARAN KONSINYASI (BAGI HASIL)
+// --------------------------------------------------------------------------
+window.openBayarKonsinyasiModal = function(supplier, idObat, namaObat, qty, hargaBeli, totalHak) {
+    document.getElementById('bayar-konsi-supplier').value = supplier;
+    document.getElementById('bayar-konsi-id-obat').value = idObat;
+    document.getElementById('bayar-konsi-sup-name').value = supplier || '-';
+    document.getElementById('bayar-konsi-med-name').value = `${namaObat} (${idObat})`;
+    document.getElementById('bayar-konsi-qty').value = `${qty} Terjual`;
+    document.getElementById('bayar-konsi-harga').value = `Rp ${formatMoney(hargaBeli)}`;
+    document.getElementById('bayar-konsi-nominal').value = Math.round(totalHak);
+    document.getElementById('bayar-konsi-catatan').value = `Bagi hasil penjualan titipan konsinyasi ${namaObat} (${qty} terjual)`;
+
+    document.getElementById('modal-bayar-konsinyasi').classList.remove('hidden');
+};
+
+window.submitBayarKonsinyasi = async function(e) {
+    e.preventDefault();
+    if (!supabaseClient) return;
+
+    const supplier = document.getElementById('bayar-konsi-supplier').value;
+    const idObat = document.getElementById('bayar-konsi-id-obat').value;
+    const nominal = parseFloat(document.getElementById('bayar-konsi-nominal').value) || 0;
+    const catatan = document.getElementById('bayar-konsi-catatan').value.trim() || 'Pembayaran Bagi Hasil Konsinyasi';
+
+    if (nominal <= 0) {
+        alert('Nominal pembayaran harus lebih dari 0!');
+        return;
+    }
+
+    try {
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        // Masukkan mutasi kas keluar untuk pembayaran konsinyasi
+        const { error: kasErr } = await supabaseClient.from('kas').insert([{
+            id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            tanggal: dateStr,
+            jenis_kas: 'KELUAR',
+            kategori: 'Pembayaran Bagi Hasil Konsinyasi',
+            jumlah: String(nominal),
+            keterangan: `Pelunasan Konsinyasi [${supplier}] ${idObat}: ${catatan}`,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (kasErr) throw kasErr;
+
+        alert(`✅ Pembayaran bagi hasil konsinyasi sebesar Rp ${formatMoney(nominal)} berhasil dibukukan ke Kas Operasional!`);
+        closeModal('modal-bayar-konsinyasi');
+        loadTagihanData();
+
+    } catch (err) {
+        console.error('Error bayar konsinyasi:', err);
+        alert('Gagal membukukan pembayaran konsinyasi: ' + err.message);
+    }
+};

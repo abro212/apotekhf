@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css?v=20261109_02">
+    <link rel="stylesheet" href="style.css?v=20261109_03">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -574,8 +574,16 @@
                 <!-- 4. VIEW: MASTER OBAT -->
                 <section id="view-master-obat" class="hidden">
                     <div class="view-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
-                            <input type="text" id="master-obat-search" class="form-control" style="max-width: 400px;" placeholder="Cari berdasarkan nama atau ID..." oninput="loadMasterObat(1)">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 8px; flex: 1; max-width: 550px;">
+                                <input type="text" id="master-obat-search" class="form-control" style="flex: 1;" placeholder="Cari berdasarkan nama atau ID..." oninput="loadMasterObat(1)">
+                                <select id="master-obat-filter-jenis" class="form-control" style="width: auto; min-width: 130px; font-weight: 600;" onchange="loadMasterObat(1)">
+                                    <option value="">Semua Jenis</option>
+                                    <option value="NON KONSI">NON KONSI (Reguler)</option>
+                                    <option value="KONSI">KONSI (Titipan)</option>
+                                    <option value="JASA">JASA</option>
+                                </select>
+                            </div>
                             <button class="btn btn-primary" onclick="showAddObatModal()">Tambah Obat</button>
                         </div>
                         <div class="table-container desktop-only-table">
@@ -687,13 +695,20 @@
                                 <div class="form-group">
                                     <label>Metode Bayar</label>
                                     <select id="purchase-pay-method" class="form-control" onchange="togglePurchaseTempoDate()">
-                                        <option value="CASH">CASH (Tunai)</option>
-                                        <option value="TEMPO">TEMPO (Kredit)</option>
+                                        <option value="CASH">CASH (Tunai - Reguler)</option>
+                                        <option value="TEMPO">TEMPO (Hutang Kredit - Reguler)</option>
+                                        <option value="KONSINYASI">KONSINYASI (Titipan - Tanpa Hutang Faktur)</option>
                                     </select>
                                 </div>
                                 <div class="form-group" id="purchase-tempo-group" style="display: none;">
                                     <label>Jatuh Tempo Hutang</label>
                                     <input type="date" id="purchase-jatuh-tempo" class="form-control">
+                                </div>
+                                <div class="form-group" id="purchase-konsi-note" style="display: none; grid-column: 1 / -1; margin-top: 4px;">
+                                    <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #3730a3; display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 16px;">💡</span>
+                                        <div><strong>Penerimaan Titipan Konsinyasi:</strong> Stok obat akan langsung bertambah untuk siap dijual, namun <strong>tidak dicatat sebagai hutang faktur</strong> dan <strong>tidak mengeluarkan kas apotek</strong> saat ini. Pembayaran bagi hasil baru dihitung saat barang laku terjual di POS.</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1088,9 +1103,10 @@
                 <!-- VIEW: MENU TAGIHAN (PIUTANG & HUTANG) -->
                 <section id="view-menu-tagihan" class="hidden">
                     <!-- Tab Switcher for Tagihan -->
-                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                         <button type="button" class="btn btn-primary" id="tagihan-tab-piutang" onclick="switchTagihanTab('piutang')">Piutang Pelanggan (Penjualan Tempo)</button>
                         <button type="button" class="btn btn-secondary" id="tagihan-tab-hutang" onclick="switchTagihanTab('hutang')">Hutang Supplier (Pembelian Tempo)</button>
+                        <button type="button" class="btn btn-secondary" id="tagihan-tab-konsinyasi" onclick="switchTagihanTab('konsinyasi')">Tagihan Konsinyasi (Barang Laku)</button>
                     </div>
 
                     <!-- Summary Cards -->
@@ -2349,6 +2365,7 @@
                             <th>Qty Masuk</th>
                             <th>Harga Beli Satuan</th>
                             <th>Total Harga</th>
+                            <th style="text-align: center;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="faktur-detail-items-body"></tbody>
@@ -2358,6 +2375,113 @@
             <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                 <button type="button" class="btn btn-secondary" onclick="closeModal('modal-detail-faktur')">Tutup</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Modal Retur ke Supplier (Konsinyasi vs Reguler) -->
+    <div id="modal-retur-supplier" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 550px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #dc2626;">↩️ Retur Barang ke Mitra Supplier</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-retur-supplier')">Tutup</button>
+            </div>
+            
+            <div style="background: var(--bg-main); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px; font-size: 13px;">
+                <p style="margin-bottom: 4px;"><strong>No. Faktur:</strong> <span id="retur-sup-faktur">-</span></p>
+                <p style="margin-bottom: 4px;"><strong>Mitra Supplier:</strong> <span id="retur-sup-supplier">-</span></p>
+                <p style="margin-bottom: 4px;"><strong>Tipe Transaksi:</strong> <span id="retur-sup-tipe" class="badge badge-info">-</span></p>
+                <p style="margin-bottom: 0;"><strong>Item Obat:</strong> <span id="retur-sup-item" style="font-weight: 700; color: var(--primary-color);">-</span></p>
+            </div>
+
+            <!-- Dynamic Accounting Notice -->
+            <div id="retur-sup-notice" style="margin-bottom: 15px;"></div>
+
+            <form onsubmit="submitReturSupplier(event)">
+                <input type="hidden" id="retur-sup-id-beli">
+                <input type="hidden" id="retur-sup-id-obat">
+                <input type="hidden" id="retur-sup-satuan">
+                <input type="hidden" id="retur-sup-harga">
+                <input type="hidden" id="retur-sup-max-qty">
+                <input type="hidden" id="retur-sup-metode">
+                <input type="hidden" id="retur-sup-faktur-id">
+                <input type="hidden" id="retur-sup-nama-supplier">
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Jumlah yang Diretur (Maksimal: <span id="retur-sup-max-label">0</span> <span id="retur-sup-unit-label">Pcs</span>)</label>
+                    <input type="number" id="retur-sup-qty" class="form-control" min="1" step="any" required oninput="calcReturSupTotal()">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Total Nilai Retur</label>
+                    <input type="text" id="retur-sup-total-display" class="form-control" readonly style="font-weight: 800; color: #dc2626; background: #fff1f2;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label>Alasan Retur / Catatan</label>
+                    <input type="text" id="retur-sup-alasan" class="form-control" placeholder="Contoh: Barang kadaluarsa/rusak, titipan ditarik supplier..." required>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-retur-supplier')">Batal</button>
+                    <button type="submit" class="btn btn-danger">↩️ Proses Retur ke Supplier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Pelunasan Bagi Hasil Konsinyasi -->
+    <div id="modal-bayar-konsinyasi" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: #047857;">🤝 Pembayaran Bagi Hasil Konsinyasi</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-bayar-konsinyasi')">Tutup</button>
+            </div>
+
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px; margin-bottom: 15px; font-size: 12.5px; color: #065f46;">
+                <strong>Pelunasan Barang Titipan Laku:</strong><br>
+                Membukukan pengeluaran kas apotek untuk dibayarkan kepada pemilik barang titipan (supplier konsinyor) sesuai jumlah unit yang telah terjual.
+            </div>
+
+            <form onsubmit="submitBayarKonsinyasi(event)">
+                <input type="hidden" id="bayar-konsi-supplier">
+                <input type="hidden" id="bayar-konsi-id-obat">
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Supplier Konsinyor</label>
+                    <input type="text" id="bayar-konsi-sup-name" class="form-control" readonly style="font-weight: 700; background: #f8fafc;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Item Obat Titipan</label>
+                    <input type="text" id="bayar-konsi-med-name" class="form-control" readonly style="background: #f8fafc;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label>Qty Terjual</label>
+                        <input type="text" id="bayar-konsi-qty" class="form-control" readonly style="font-weight: 700;">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Beli Konsinyasi</label>
+                        <input type="text" id="bayar-konsi-harga" class="form-control" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label>Nominal Pembayaran (Hak Supplier)</label>
+                    <input type="number" id="bayar-konsi-nominal" class="form-control" required style="font-size: 16px; font-weight: 800; color: #047857;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label>Keterangan / Catatan Bukti Kas</label>
+                    <input type="text" id="bayar-konsi-catatan" class="form-control" placeholder="Bagi hasil penjualan titipan konsinyasi...">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bayar-konsinyasi')">Batal</button>
+                    <button type="submit" class="btn btn-primary" style="background: #047857; border-color: #047857;">💾 Bayar & Catat di Kas</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -2552,7 +2676,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_02"></script>
+    <script src="app.js?v=20261109_03"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
