@@ -1111,6 +1111,7 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
  try {
  if (!supabaseClient) return;
  let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
+		query = query.not('nama_obat', 'is', null);
  if (q) {
  const cleanQ = q.replace(/[%_,()]/g, '');
  if (cleanQ) {
@@ -1312,6 +1313,7 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
  try {
  const cleanQ = q.replace(/[%_,()]/g, '');
  let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
+		query = query.not('nama_obat', 'is', null);
  if (cleanQ) {
  query = query.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
  }
@@ -1321,6 +1323,7 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
  let res = await query.order('nama_obat', { ascending: true }).range(from, to);
  if (res.error) {
  let altQuery = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+			altQuery = altQuery.not('nama_obat', 'is', null);
  if (cleanQ) altQuery = altQuery.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
  if (catFilter) altQuery = altQuery.eq('kategori', catFilter);
  res = await altQuery.order('nama_obat', { ascending: true }).range(from, to);
@@ -2074,6 +2077,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  if (supabaseClient) {
  try {
  let query = supabaseClient.from('view_stok_realtime').select('*', { count: 'exact' });
+		query = query.not('nama_obat', 'is', null);
  if (q) {
  const cleanQ = q.replace(/[%_,()]/g, '');
  if (cleanQ) {
@@ -2084,6 +2088,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  if (res.error) {
  // Try fallback to master_obat table if view_stok_realtime does not exist
  let altQuery = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+			altQuery = altQuery.not('nama_obat', 'is', null);
  if (q) {
  const cleanQ = q.replace(/[%_,()]/g, '');
  if (cleanQ) altQuery = altQuery.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%`);
