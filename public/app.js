@@ -2022,47 +2022,44 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  
  const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
 
- const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
- const jualNum = parseFloat(o.harga_l1_s1 || 0);
- const diffNom = jualNum - beliNum;
- let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px;">Rp 0 (0%)</span>';
+            const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
+            const jualNum = parseFloat(o.harga_l1_s1 || 0);
+            const diffNom = jualNum - beliNum;
+            let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap;">Rp 0 (0%)</span>';
 
- if (beliNum > 0 || jualNum > 0) {
- const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
- const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
- const nomStr = formatMoney(diffNom);
- 
- if (diffNom > 0) {
- marginBadge = `<span class="badge" style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center; background:#ecfdf5; color:#10b981; font-weight:700; padding:4px 10px; border-radius:9999px; line-height:1.2; font-size:11px;"><span>+RP ${nomStr}</span><span>(+${mStr}%)</span></span>`;
- } else if (diffNom < 0) {
- marginBadge = `<span class="badge" style="display:inline-flex; flex-direction:column; align-items:center; justify-content:center; background:#fef2f2; color:#ef4444; font-weight:700; padding:4px 10px; border-radius:9999px; line-height:1.2; font-size:11px;"><span>-RP ${formatMoney(Math.abs(diffNom))}</span><span>(${mStr}%)</span></span>`;
- } else {
- marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px;">Rp 0 (0%)</span>`;
- }
- }
+            if (beliNum > 0 || jualNum > 0) {
+                const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
+                const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
+                const nomStr = formatMoney(diffNom);
+                
+                if (diffNom > 0) {
+                    marginBadge = `<span class="badge" style="background:#ecfdf5; color:#059669; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">+Rp ${nomStr} (+${mStr}%)</span>`;
+                } else if (diffNom < 0) {
+                    marginBadge = `<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">-Rp ${formatMoney(Math.abs(diffNom))} (${mStr}%)</span>`;
+                } else {
+                    marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">Rp 0 (0%)</span>`;
+                }
+            }
 
- const expDateVal = o.expired_date || o.tanggal_kadaluarsa || o.exp_date || getLocalObatEd(o.id_obat);
- const expBadge = getExpBadge(expDateVal);
- const rawExpStr = String(expDateVal || '-');
- const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
+            const expDateVal = o.expired_date || o.tanggal_kadaluarsa || o.exp_date || getLocalObatEd(o.id_obat);
+            const expBadge = getExpBadge(expDateVal);
+            const rawExpStr = String(expDateVal || '-');
+            const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
 
- // Desktop row
- const tr = document.createElement('tr');
- tr.innerHTML = `
- <td><strong>${o.id_obat || ''}</strong></td>
- <td><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${safeName}</a></td>
- <td>${safeKat}</td>
- <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px;">${safeJenis}</span></td>
- <td>
- <div style="font-weight:800; font-size:14px; color:var(--text-main); line-height:1.2;">${displayStok}</div>
- <div style="font-size:11px; color:var(--text-muted);">${safeLabelKecil}</div>
- </td>
- <td>${safeSat1}</td>
- <td>Rp ${formatMoney(o.harga_beli_sat_1)}</td>
- <td>${marginBadge}</td>
- <td>Rp ${formatMoney(o.harga_l1_s1)}</td>
- <td>${expBadge}</td>
- <td style="white-space: nowrap; text-align: center;">
+            // Desktop row (Single line per row)
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="white-space:nowrap;"><strong>${o.id_obat || ''}</strong></td>
+                <td style="white-space:nowrap;"><a href="javascript:void(0)" style="font-weight:700; color:var(--primary-color); text-decoration:none;" onclick="previewObat('${encId}', event)">${safeName}</a></td>
+                <td style="white-space:nowrap;">${safeKat}</td>
+                <td style="white-space:nowrap;"><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap;">${safeJenis}</span></td>
+                <td style="white-space:nowrap;"><strong>${displayStok}</strong> <span style="font-size:11.5px; color:var(--text-muted);">${safeLabelKecil}</span></td>
+                <td style="white-space:nowrap;">${safeSat1}</td>
+                <td style="white-space:nowrap;">Rp ${formatMoney(o.harga_beli_sat_1)}</td>
+                <td style="white-space:nowrap;">${marginBadge}</td>
+                <td style="white-space:nowrap;">Rp ${formatMoney(o.harga_l1_s1)}</td>
+                <td style="white-space:nowrap;">${expBadge}</td>
+                <td style="white-space:nowrap; text-align: center;">
  <div style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;">
  <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>

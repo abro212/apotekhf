@@ -1851,3 +1851,13 @@ body {
 }
 
 
+
+/* ENFORCE STRICT SINGLE LINE ROWS FOR DATA TABLES */
+.desktop-only-table th,
+.desktop-only-table td,
+.data-table th,
+.data-table td,
+#master-obat-table-body td {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
