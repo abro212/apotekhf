@@ -684,10 +684,14 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Metode Bayar</label>
-                                    <select id="purchase-pay-method" class="form-control">
+                                    <select id="purchase-pay-method" class="form-control" onchange="togglePurchaseTempoDate()">
                                         <option value="CASH">CASH (Tunai)</option>
                                         <option value="TEMPO">TEMPO (Kredit)</option>
                                     </select>
+                                </div>
+                                <div class="form-group" id="purchase-tempo-group" style="display: none;">
+                                    <label>Jatuh Tempo Hutang</label>
+                                    <input type="date" id="purchase-jatuh-tempo" class="form-control">
                                 </div>
                             </div>
 
@@ -725,6 +729,17 @@
                                     <div class="form-group">
                                         <label>Harga Beli Satuan (Rp)</label>
                                         <input type="number" id="purchase-item-price" class="form-control" value="0" min="0" oninput="updatePurchaseSubtotalPreview()">
+                                    </div>
+                                </div>
+
+                                <div class="pembelian-form-row">
+                                    <div class="form-group">
+                                        <label>No. Batch (Opsional)</label>
+                                        <input type="text" id="purchase-item-batch" class="form-control" placeholder="Contoh: B2608">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Expired Date (ED)</label>
+                                        <input type="date" id="purchase-item-exp" class="form-control">
                                     </div>
                                 </div>
 

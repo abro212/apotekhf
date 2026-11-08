@@ -1852,28 +1852,16 @@ async function posCheckout() {
             await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
         }
 
-        // 4. Record to transaksi_kas & log_pelunasan_jual
+        // 4. Record to kas & log_pelunasan_jual
         try {
-            if (payMethod === 'CASH') {
-                await supabaseClient.from('transaksi_kas').insert([{
-                    id_trx: Math.random().toString(36).substring(2, 10),
-                    waktu: tanggalStr,
-                    nama_kas: 'KAS-01',
-                    kategori: 'Omzet Penjualan Tunai',
-                    keterangan: `Penjualan Tunai Nota ${id_jual}`,
-                    uang_masuk: String(totalHarga),
-                    uang_keluar: '0',
-                    user: currentUser?.nama_staf || 'cashier'
-                }]);
-            } else if (payMethod === 'QRIS') {
-                await supabaseClient.from('transaksi_kas').insert([{
-                    id_trx: Math.random().toString(36).substring(2, 10),
-                    waktu: tanggalStr,
-                    nama_kas: 'KAS-04',
-                    kategori: 'Omzet Penjualan QRIS',
-                    keterangan: `Penjualan QRIS Nota ${id_jual}`,
-                    uang_masuk: String(totalHarga),
-                    uang_keluar: '0',
+            if (payMethod === 'CASH' || payMethod === 'QRIS') {
+                await supabaseClient.from('kas').insert([{
+                    id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    tanggal: tanggalStr,
+                    jenis_kas: 'MASUK',
+                    kategori: payMethod === 'QRIS' ? 'Omzet Penjualan QRIS' : 'Omzet Penjualan Tunai',
+                    jumlah: String(totalHarga),
+                    keterangan: (payMethod === 'QRIS' ? 'Penjualan QRIS' : 'Penjualan Tunai') + ` Nota ${id_jual}`,
                     user: currentUser?.nama_staf || 'cashier'
                 }]);
             } else if (payMethod === 'TEMPO' && dpAmount > 0) {
@@ -1887,20 +1875,19 @@ async function posCheckout() {
                     catatan: `Uang Muka (DP) Penjualan Tempo Nota ${id_jual}`,
                     user: currentUser?.nama_staf || 'cashier'
                 }]);
-                // Record DP cash into cash drawer
-                await supabaseClient.from('transaksi_kas').insert([{
-                    id_trx: Math.random().toString(36).substring(2, 10),
-                    waktu: tanggalStr,
-                    nama_kas: 'KAS-01',
+                // Record DP cash into cash drawer (kas table)
+                await supabaseClient.from('kas').insert([{
+                    id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    tanggal: tanggalStr,
+                    jenis_kas: 'MASUK',
                     kategori: 'Uang Muka Piutang',
+                    jumlah: String(dpAmount),
                     keterangan: `Uang Muka (DP) Piutang Nota ${id_jual}`,
-                    uang_masuk: String(dpAmount),
-                    uang_keluar: '0',
                     user: currentUser?.nama_staf || 'cashier'
                 }]);
             }
         } catch (kasErr) {
-            console.warn('transaksi_kas insert notice:', kasErr);
+            console.warn('kas insert notice:', kasErr);
         }
 
         if (payMethod === 'TEMPO') {
@@ -3497,6 +3484,24 @@ async function submitReturPenjualan() {
 // --------------------------------------------------------------------------
 // 6. PEMBELIAN STOK (RESTOCKING)
 // --------------------------------------------------------------------------
+function togglePurchaseTempoDate() {
+    const method = document.getElementById('purchase-pay-method')?.value;
+    const group = document.getElementById('purchase-tempo-group');
+    const jatuhTempoInput = document.getElementById('purchase-jatuh-tempo');
+    if (group) {
+        if (method === 'TEMPO') {
+            group.style.display = 'block';
+            if (jatuhTempoInput && !jatuhTempoInput.value) {
+                const d = new Date();
+                d.setDate(d.getDate() + 30);
+                jatuhTempoInput.value = d.toISOString().split('T')[0];
+            }
+        } else {
+            group.style.display = 'none';
+        }
+    }
+}
+
 function initPembelian() {
  purchaseItems = [];
  renderPurchaseGrid();
@@ -3550,6 +3555,9 @@ function addPurchaseItemToGrid() {
  return;
  }
 
+ const batchVal = document.getElementById('purchase-item-batch')?.value.trim() || '';
+ const expVal = document.getElementById('purchase-item-exp')?.value || '';
+
  purchaseItems.push({
  id_obat: o.id_obat,
  nama_obat: o.nama_obat,
@@ -3557,12 +3565,16 @@ function addPurchaseItemToGrid() {
  konversi: konv,
  jumlah: qty,
  harga_beli: price,
- total: qty * price
+ total: qty * price,
+ no_batch: batchVal,
+ expired_date: expVal
  });
  
  // Reset item inputs
  document.getElementById('purchase-item-qty').value = 1;
  document.getElementById('purchase-item-price').value = 0;
+ if (document.getElementById('purchase-item-batch')) document.getElementById('purchase-item-batch').value = '';
+ if (document.getElementById('purchase-item-exp')) document.getElementById('purchase-item-exp').value = '';
  updatePurchaseSubtotalPreview();
  
  renderPurchaseGrid();
@@ -3644,13 +3656,15 @@ async function submitPurchaseInvoice() {
  let grandTotalFaktur = 0;
  purchaseItems.forEach(i => { grandTotalFaktur += i.total; });
 
- // 1. Insert into faktur_beli
+ // 1. Insert into faktur_beli (nominal_bayar & optional jatuh_tempo)
+ const tempoDate = (metode_bayar === 'TEMPO') ? (document.getElementById('purchase-jatuh-tempo')?.value || null) : null;
  const { error: fkErr } = await supabaseClient.from('faktur_beli').insert([{
  id_faktur: id_faktur,
  nomor_faktur: nomor_faktur,
  tanggal_masuk: dateStr,
  supplier: supplier,
- total_harga: String(grandTotalFaktur),
+ nominal_bayar: String(grandTotalFaktur),
+ jatuh_tempo: tempoDate,
  jenis_transaksi: 'PEMBELIAN',
  metode_bayar: metode_bayar,
  user: currentUser?.nama_staf || 'cashier'
@@ -3658,7 +3672,24 @@ async function submitPurchaseInvoice() {
 
  if (fkErr) throw fkErr;
 
- // 2. Insert detail logs & Update Stocks
+ // Record cash expense if paid CASH
+ if (metode_bayar === 'CASH') {
+   try {
+     await supabaseClient.from('kas').insert([{
+       id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+       tanggal: dateStr,
+       jenis_kas: 'KELUAR',
+       kategori: 'Pembelian Stok Obat',
+       jumlah: String(grandTotalFaktur),
+       keterangan: `Pembelian Faktur ${nomor_faktur} (${supplier})`,
+       user: currentUser?.nama_staf || 'cashier'
+     }]);
+   } catch (kasErr) {
+     console.warn('Kas purchase log warning:', kasErr);
+   }
+ }
+
+ // 2. Insert detail logs, Batch/ED & Update Stocks
  for (const item of purchaseItems) {
  const id_beli = 'B' + Math.random().toString(36).substring(2, 8).toUpperCase();
  const total_harga = item.harga_beli * item.jumlah;
@@ -3668,7 +3699,7 @@ async function submitPurchaseInvoice() {
  const currentStock = currentMed ? parseFloat(currentMed.stok_unit_kecil || 0) : 0;
  const newStock = currentStock + (item.jumlah * item.konversi);
 
- // Log Beli
+ // Log Beli with Batch & ED
  const { error: logErr } = await supabaseClient.from('log_beli').insert([{
  id_beli: id_beli,
  tanggal_masuk: dateStr,
@@ -3679,14 +3710,21 @@ async function submitPurchaseInvoice() {
  konversi_masuk: String(item.jumlah * item.konversi),
  id_faktur: id_faktur,
  total_harga: String(total_harga),
+ no_batch: item.no_batch || null,
+ expired_date: item.expired_date || null,
  jenis_transaksi: 'PEMBELIAN',
  user: currentUser?.nama_staf || 'cashier'
  }]);
 
  if (logErr) throw logErr;
 
- // Update master_obat stock
- await supabaseClient.from('master_obat').update({ stok_unit_kecil: String(newStock) }).eq('id_obat', item.id_obat);
+ // Update master_obat stock and expired_date if provided
+ const updatePayload = { stok_unit_kecil: String(newStock) };
+ if (item.expired_date) {
+   updatePayload.tanggal_kadaluarsa = item.expired_date;
+   updatePayload.expired_date = item.expired_date;
+ }
+ await supabaseClient.from('master_obat').update(updatePayload).eq('id_obat', item.id_obat);
  }
 
  alert('Faktur Pembelian Stok Berhasil Disimpan!');
@@ -5388,7 +5426,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
  }
  const { data: fkList, count, error } = await query.range(from, to);
 
- const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('id_faktur, nomor_faktur, total_harga').eq('metode_bayar', 'TEMPO');
+ const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('id_faktur, nomor_faktur, nominal_bayar').eq('metode_bayar', 'TEMPO');
  const { data: hLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('*');
  
  const paidHutangMap = {};
@@ -5407,7 +5445,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
 
  if (allTempoFk) {
  allTempoFk.forEach(fk => {
- const tot = parseFloat(fk.total_harga || 0);
+ const tot = parseFloat(fk.nominal_bayar || fk.total_harga || 0);
  const key = fk.nomor_faktur || fk.id_faktur;
  const pd = paidHutangMap[key] || 0;
  const rem = Math.max(0, tot - pd);
@@ -5423,7 +5461,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
  document.getElementById('tagihan-count-badge').textContent = `${count !== null ? count : fkList.length} Faktur`;
 
  fkList.forEach(fk => {
- const total = parseFloat(fk.total_harga || 0);
+ const total = parseFloat(fk.nominal_bayar || fk.total_harga || 0);
  const key = fk.nomor_faktur || fk.id_faktur;
  const paid = paidHutangMap[key] || paidHutangMap[fk.id_faktur] || 0;
  const sisa = Math.max(0, total - paid);
@@ -5674,7 +5712,7 @@ async function loadDokumentasiFaktur(page = currentFakturPage, pageSize = curren
  if (countBadge) countBadge.textContent = `${count !== null ? count : list.length} Faktur`;
 
  list.forEach(fk => {
- const total = parseFloat(fk.total_harga || 0);
+ const total = parseFloat(fk.nominal_bayar || fk.total_harga || 0);
  const metodeBadge = fk.metode_bayar === 'CASH' 
  ? 'background:#ecfdf5;color:#10b981;' 
  : 'background:#fef3c7;color:#f59e0b;';
@@ -5818,74 +5856,31 @@ async function loadKasLedger(page = currentKasPage, pageSize = currentKasPageSiz
 
  let list = null;
  let count = 0;
- let isTransaksiKas = false;
 
- // Try transaksi_kas first (Modul 4 & 27)
- let queryTx = supabaseClient.from('transaksi_kas').select('*', { count: 'exact' });
- if (q) {
- queryTx = queryTx.or(`kategori.ilike.%${q}%,keterangan.ilike.%${q}%,id_trx.ilike.%${q}%,user.ilike.%${q}%`);
- }
- if (filterJenis === 'MASUK') {
- queryTx = queryTx.gt('uang_masuk', 0);
- } else if (filterJenis === 'KELUAR') {
- queryTx = queryTx.gt('uang_keluar', 0);
- }
-
- const resTx = await queryTx.order('waktu', { ascending: false }).range(from, to);
- if (!resTx.error && resTx.data) {
- isTransaksiKas = true;
- list = resTx.data.map(item => {
- const uMasuk = parseFloat(item.uang_masuk || 0);
- const uKeluar = parseFloat(item.uang_keluar || 0);
- const isMasuk = uMasuk > 0;
- return {
- id_kas: item.id_trx || item.id_kas || '-',
- tanggal: item.waktu || '-',
- jenis_kas: isMasuk ? 'MASUK' : 'KELUAR',
- kategori: `${item.kategori || 'Mutasi Kas'} (${kasNameMap[item.nama_kas] || item.nama_kas || 'Kas'})`,
- jumlah: isMasuk ? uMasuk : uKeluar,
- keterangan: item.keterangan || '-',
- user: item.user || '-'
- };
- });
- count = resTx.count;
- } else {
- // Fallback to legacy kas table
+ // Primary kas table query
  let queryLegacy = supabaseClient.from('kas').select('*', { count: 'exact' });
  if (q) {
- queryLegacy = queryLegacy.or(`kategori.ilike.%${q}%,keterangan.ilike.%${q}%,id_kas.ilike.%${q}%`);
+   queryLegacy = queryLegacy.or(`kategori.ilike.%${q}%,keterangan.ilike.%${q}%,id_kas.ilike.%${q}%`);
  }
  if (filterJenis && filterJenis !== 'ALL') {
- queryLegacy = queryLegacy.eq('jenis_kas', filterJenis);
+   queryLegacy = queryLegacy.eq('jenis_kas', filterJenis);
  }
  const resLegacy = await queryLegacy.order('tanggal', { ascending: false }).range(from, to);
  list = resLegacy.data || [];
  count = resLegacy.count;
- }
 
  // Fetch overall totals for summary cards
  let totalMasuk = 0;
  let totalKeluar = 0;
 
- if (isTransaksiKas) {
- const { data: allTx } = await supabaseClient.from('transaksi_kas').select('uang_masuk, uang_keluar');
- if (allTx) {
- allTx.forEach(k => {
- totalMasuk += parseFloat(k.uang_masuk || 0);
- totalKeluar += parseFloat(k.uang_keluar || 0);
- });
- }
- } else {
  const { data: allKas } = await supabaseClient.from('kas').select('jenis_kas, jumlah');
  if (allKas) {
- allKas.forEach(k => {
- const amt = parseFloat(k.jumlah || 0);
- if (k.jenis_kas === 'MASUK') totalMasuk += amt;
- else if (k.jenis_kas === 'KELUAR') totalKeluar += amt;
- });
+   allKas.forEach(k => {
+     const amt = parseFloat(k.jumlah || 0);
+     if (k.jenis_kas === 'MASUK') totalMasuk += amt;
+     else if (k.jenis_kas === 'KELUAR') totalKeluar += amt;
+   });
  }
- }
-
  document.getElementById('kas-summary-masuk').textContent = `Rp ${formatMoney(totalMasuk)}`;
  document.getElementById('kas-summary-keluar').textContent = `Rp ${formatMoney(totalKeluar)}`;
  const saldoNet = totalMasuk - totalKeluar;
