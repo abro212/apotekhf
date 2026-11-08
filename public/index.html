@@ -453,31 +453,39 @@
                     <div class="pos-layout">
                         <!-- Left Side: Item Search & Selection -->
                         <div class="view-card pos-section-wrapper" id="pos-catalog-container" style="padding: 20px;">
-                            <!-- Top Bar: Customer & Camera Scan -->
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <label style="font-size: 13px; font-weight: 700; margin: 0; white-space: nowrap;">Pelanggan:</label>
-                                    <select id="pos-customer-select" class="form-control" style="width: auto; min-width: 140px; padding: 4px 8px; font-size: 12px;" onchange="posChangeCustomer()"></select>
-                                    <span id="pos-customer-level" class="badge badge-info" style="font-size: 11px;">Level 1</span>
-                                    <button type="button" class="btn btn-primary" style="padding: 4px 10px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;" onclick="showAddPelangganModal()" title="Tambah Pelanggan Baru">
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                        <span>+ Pelanggan</span>
-                                    </button>
+                            <!-- Customer Selection Bar (Unified 1-Line Flex) -->
+                            <div class="pos-customer-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; background: #f8fafc; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 8px;">
+                                <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
+                                    <label style="font-size: 12px; font-weight: 700; margin: 0; color: var(--text-muted); white-space: nowrap;">Pelanggan:</label>
+                                    <select id="pos-customer-select" class="form-control" style="flex: 1; min-width: 80px; height: 32px; padding: 3px 8px; font-size: 12px; font-weight: 600;" onchange="posChangeCustomer()"></select>
+                                    <span id="pos-customer-level" class="badge badge-info" style="font-size: 10px; padding: 3px 7px; white-space: nowrap; border-radius: 6px;">Level 1</span>
                                 </div>
-                                <button type="button" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px; white-space: nowrap; display: flex; align-items: center; gap: 5px;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">Scan Barcode Kamera</button>
+                                <button type="button" class="btn btn-primary" style="height: 32px; padding: 0 10px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; white-space: nowrap; flex-shrink: 0;" onclick="showAddPelangganModal()" title="Tambah Pelanggan Baru">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    <span>Pelanggan</span>
+                                </button>
                             </div>
 
-                            <!-- Search Input -->
-                            <div class="form-group" style="margin-bottom: 12px;">
-                                <input type="text" id="pos-search-input" class="form-control" placeholder="Ketik nama obat atau scan barcode..." oninput="posSearchObat()" autocomplete="off">
+                            <!-- Search Input & Camera Scan (Unified 1-Line Flex) -->
+                            <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                                <div style="position: relative; flex: 1;">
+                                    <input type="text" id="pos-search-input" class="form-control" style="width: 100%; height: 38px; padding-left: 36px; font-size: 12.5px; border-radius: 8px;" placeholder="Ketik nama obat / scan barcode..." oninput="posSearchObat()" autocomplete="off">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="height: 38px; padding: 0 12px; font-size: 12px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; border-radius: 8px; flex-shrink: 0;" onclick="openCameraScanner('pos-search-input', posSearchObat)" title="Scan Barcode / QR Kamera HP">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+                                    <span>Scan</span>
+                                </button>
                             </div>
 
                             <!-- Quick Category Pills -->
-                            <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none;">
-                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('')">Semua Obat</button>
-                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Obat Bebas')">Obat Bebas</button>
-                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Resep Dokter')">Resep Dokter</button>
-                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('Vitamin & Suplemen')">Vitamin</button>
+                            <div id="pos-category-pills" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; scrollbar-width: none; -webkit-overflow-scrolling: touch;">
+                                <button type="button" class="btn btn-secondary pos-cat-pill active" style="padding: 4px 12px; font-size: 11px; font-weight: 700; white-space: nowrap; border-radius: 14px; background: var(--primary-color); color: white; border-color: var(--primary-color);" onclick="posFilterCategory('')">Semua</button>
+                                <button type="button" class="btn btn-secondary pos-cat-pill" style="padding: 4px 12px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('OBAT')">Obat</button>
+                                <button type="button" class="btn btn-secondary pos-cat-pill" style="padding: 4px 12px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('ALKES BMHP')">Alkes</button>
+                                <button type="button" class="btn btn-secondary pos-cat-pill" style="padding: 4px 12px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('SYRUP')">Syrup</button>
+                                <button type="button" class="btn btn-secondary pos-cat-pill" style="padding: 4px 12px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('SALEP TM TT')">Salep</button>
+                                <button type="button" class="btn btn-secondary pos-cat-pill" style="padding: 4px 12px; font-size: 11px; font-weight: 600; white-space: nowrap; border-radius: 14px;" onclick="posFilterCategory('LAIN')">Lainnya</button>
                             </div>
 
                             <!-- Search Results List -->

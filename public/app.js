@@ -1413,6 +1413,22 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
 
 function posFilterCategory(cat) {
  document.getElementById('pos-search-input').value = '';
+ document.querySelectorAll('.pos-cat-pill').forEach(btn => {
+   const isMatch = (!cat && btn.textContent.trim() === 'Semua') || (cat && btn.getAttribute('onclick')?.includes(`'${cat}'`));
+   if (isMatch) {
+     btn.classList.add('active');
+     btn.style.background = 'var(--primary-color)';
+     btn.style.color = '#ffffff';
+     btn.style.borderColor = 'var(--primary-color)';
+     btn.style.fontWeight = '700';
+   } else {
+     btn.classList.remove('active');
+     btn.style.background = '';
+     btn.style.color = '';
+     btn.style.borderColor = '';
+     btn.style.fontWeight = '600';
+   }
+ });
  posSearchObat(1, currentPOSPageSize, cat);
 }
 
