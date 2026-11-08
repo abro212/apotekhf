@@ -1712,10 +1712,6 @@ async function posCheckout() {
             return;
         }
     } else if (payMethod === 'TEMPO') {
-        if (!activeCustomer || !activeCustomer.nama || activeCustomer.nama.toUpperCase() === 'UMUM') {
-            alert('Pembayaran TEMPO (Piutang) memerlukan data Pelanggan terdaftar! Silakan pilih pelanggan terlebih dahulu.');
-            return;
-        }
         dpAmount = parseFloat(dpInput?.value || 0);
         if (dpAmount > totalHarga) {
             alert('Uang Muka (DP) tidak boleh melebihi Total Belanja (Rp ' + formatMoney(totalHarga) + ')!');
@@ -1806,7 +1802,7 @@ async function posCheckout() {
             metode_bayar: payMethod,
             total_bayar: String(totalHarga),
             jatuh_tempo: payMethod === 'TEMPO' ? (jatuhTempoStr || null) : null,
-            nama_pelanggan: activeCustomer?.id_pelanggan || 'UMUM',
+            nama_pelanggan: activeCustomer ? (activeCustomer.nama || activeCustomer.id_pelanggan) : 'UMUM',
             jenis_transaksi: 'PENJUALAN',
             user: currentUser?.nama_staf || 'cashier'
         }]);
