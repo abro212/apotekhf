@@ -1523,18 +1523,32 @@ function updateCartUI() {
  container.innerHTML = '';
  
  if (cart.length === 0) {
- container.innerHTML = `
- <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
- <div style="font-size:36px; margin-bottom:8px;"></div>
- <div style="font-size:13px; font-weight:600;">Keranjang Masih Kosong</div>
- <div style="font-size:11.5px; margin-top:4px;">Klik barang di sebelah kiri untuk menambah ke keranjang</div>
- </div>
- `;
- document.getElementById('pos-grand-total').textContent = 'Rp 0';
- const badge = document.getElementById('pos-cart-count-badge');
- if (badge) badge.textContent = '0';
- return;
- }
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px 10px; color:var(--text-muted);">
+                <div style="font-size:36px; margin-bottom:8px;"></div>
+                <div style="font-size:13px; font-weight:600;">Keranjang Masih Kosong</div>
+                <div style="font-size:11.5px; margin-top:4px;">Klik barang di sebelah kiri untuk menambah ke keranjang</div>
+            </div>
+        `;
+        document.getElementById('pos-grand-total').textContent = 'Rp 0';
+        const badge = document.getElementById('pos-cart-count-badge');
+        if (badge) badge.textContent = '0';
+
+        // Reset payment & change display to 0
+        const bayarInput = document.getElementById('pos-cart-bayar-input');
+        if (bayarInput) bayarInput.value = '';
+        const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
+        if (kembalianDisplay) {
+            kembalianDisplay.textContent = 'Rp 0';
+            kembalianDisplay.style.color = '#047857';
+        }
+        const kembalianRow = document.getElementById('pos-cart-kembalian-row');
+        if (kembalianRow) {
+            kembalianRow.style.background = '#ecfdf5';
+            kembalianRow.style.borderColor = '#a7f3d0';
+        }
+        return;
+    }
 
  let grandTotal = 0;
  let totalQty = 0;
@@ -1593,11 +1607,22 @@ function updatePosCartTotals() {
  const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
 
  if (method === 'CASH') {
- if (bayarRow) bayarRow.style.display = 'flex';
- if (kembalianRow) kembalianRow.style.display = 'flex';
+        if (bayarRow) bayarRow.style.display = 'flex';
+        if (kembalianRow) kembalianRow.style.display = 'flex';
 
- const uangBayar = parseFloat(bayarInput?.value || 0);
- const kembalian = uangBayar - totalHarga;
+        const uangBayar = parseFloat(bayarInput?.value || 0);
+        if (totalHarga === 0 || uangBayar === 0) {
+            if (kembalianDisplay) {
+                kembalianDisplay.textContent = 'Rp 0';
+                kembalianDisplay.style.color = '#047857';
+            }
+            if (kembalianRow) {
+                kembalianRow.style.background = '#ecfdf5';
+                kembalianRow.style.borderColor = '#a7f3d0';
+            }
+            return;
+        }
+        const kembalian = uangBayar - totalHarga;
 
  if (kembalianDisplay) {
  if (kembalian >= 0) {
@@ -1775,10 +1800,24 @@ async function posCheckout() {
  console.warn('transaksi_kas insert notice:', kasErr);
  }
 
- alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '\nKembalian: Rp ' + formatMoney(kembalian) : ''}`);
- showReceipt(id_jual, totalHarga, tanggalStr, uangBayar, kembalian);
- initPOS();
- if (bayarInput) bayarInput.value = '';
+ alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '
+Kembalian: Rp ' + formatMoney(kembalian) : ''}`);
+        showReceipt(id_jual, totalHarga, tanggalStr, uangBayar, kembalian);
+
+        // Reset payment & change display to 0
+        if (bayarInput) bayarInput.value = '';
+        const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
+        if (kembalianDisplay) {
+            kembalianDisplay.textContent = 'Rp 0';
+            kembalianDisplay.style.color = '#047857';
+        }
+        const kembalianRow = document.getElementById('pos-cart-kembalian-row');
+        if (kembalianRow) {
+            kembalianRow.style.background = '#ecfdf5';
+            kembalianRow.style.borderColor = '#a7f3d0';
+        }
+
+        initPOS();
  } catch (e) {
  console.error('Checkout failed:', e);
  alert(`Checkout gagal: ${e.message}`);
