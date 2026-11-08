@@ -1218,36 +1218,51 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
 // --------------------------------------------------------------------------
 // 3. KASIR (POS)
 // --------------------------------------------------------------------------
+async function loadPosCustomers(selectedId = null) {
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient.from('pelanggan').select('*').order('nama');
+        const select = document.getElementById('pos-customer-select');
+        if (!select) return;
+        select.innerHTML = '';
+        customers = data || [];
+        
+        let foundSelected = false;
+        customers.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id_pelanggan;
+            opt.textContent = c.nama;
+            if (selectedId && c.id_pelanggan === selectedId) {
+                opt.selected = true;
+                activeCustomer = c;
+                foundSelected = true;
+            } else if (!selectedId && c.nama === 'UMUM') {
+                opt.selected = true;
+                activeCustomer = c;
+                foundSelected = true;
+            }
+            select.appendChild(opt);
+        });
+
+        if (!foundSelected && customers.length > 0) {
+            select.selectedIndex = 0;
+            activeCustomer = customers[0];
+        }
+        
+        posChangeCustomer();
+    } catch (e) {
+        console.error('Error loading customers in POS:', e);
+    }
+}
+
 async function initPOS() {
- cart = [];
- activeCustomer = null;
- updateCartUI();
- switchPOSTab('catalog');
- 
- // Load customers
- try {
- if (!supabaseClient) return;
- const { data, error } = await supabaseClient.from('pelanggan').select('*').order('nama');
- const select = document.getElementById('pos-customer-select');
- select.innerHTML = '';
- customers = data || [];
- 
- customers.forEach(c => {
- const opt = document.createElement('option');
- opt.value = c.id_pelanggan;
- opt.textContent = c.nama;
- if (c.nama === 'UMUM') {
- opt.selected = true;
- activeCustomer = c;
- }
- select.appendChild(opt);
- });
- 
- posChangeCustomer();
- posSearchObat();
- } catch (e) {
- console.error('Error initializing customers in POS:', e);
- }
+    cart = [];
+    activeCustomer = null;
+    updateCartUI();
+    switchPOSTab('catalog');
+    
+    await loadPosCustomers();
+    posSearchObat();
 }
 
 function posChangeCustomer() {
@@ -5976,30 +5991,39 @@ function showAddPelangganModal() {
 }
 
 async function submitAddPelanggan(e) {
- e.preventDefault();
- const nama = document.getElementById('add-pel-nama').value.trim();
- const alamat = document.getElementById('add-pel-alamat').value.trim();
- const telp = document.getElementById('add-pel-telp').value.trim();
- const level = document.getElementById('add-pel-level').value;
- 
- try {
- if (!supabaseClient) return;
- const id_pelanggan = 'PL' + Math.random().toString(36).substring(2, 8).toUpperCase();
- 
- const { error } = await supabaseClient.from('pelanggan').insert([{
- id_pelanggan,
- nama,
- alamat,
- kontak: telp,
- level_harga: level
- }]);
+    e.preventDefault();
+    const nama = document.getElementById('add-pel-nama').value.trim();
+    const alamat = document.getElementById('add-pel-alamat').value.trim();
+    const telp = document.getElementById('add-pel-telp').value.trim();
+    const level = document.getElementById('add-pel-level').value;
+    
+    try {
+        if (!supabaseClient) return;
+        const id_pelanggan = 'PL' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        const { error } = await supabaseClient.from('pelanggan').insert([{
+            id_pelanggan,
+            nama,
+            alamat,
+            kontak: telp,
+            level_harga: level
+        }]);
 
- if (error) throw error;
- alert('Pelanggan berhasil disimpan!');
- closeModal('modal-add-pelanggan');
- document.getElementById('form-add-pelanggan').reset();
- loadSupplierPelanggan();
- } catch (e) {
+        if (error) throw error;
+        alert('Pelanggan "' + nama + '" berhasil disimpan!');
+        closeModal('modal-add-pelanggan');
+        document.getElementById('form-add-pelanggan').reset();
+
+        // Auto-select in Kasir POS if select element exists
+        if (document.getElementById('pos-customer-select')) {
+            await loadPosCustomers(id_pelanggan);
+        }
+        
+        // Refresh supplier/pelanggan view if available
+        if (typeof loadSupplierPelanggan === 'function') {
+            loadSupplierPelanggan();
+        }
+    } catch (e) {
  console.error(e);
  alert('Gagal menambah pelanggan.');
  }
