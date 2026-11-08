@@ -2050,6 +2050,7 @@ function getExpBadge(expDateStr) {
 
 async function loadMasterObat(page = currentObatPage, pageSize = currentObatPageSize) {
     loadMasterCategories();
+    loadMasterUnits();
  currentObatPage = page;
  currentObatPageSize = pageSize;
  const searchEl = document.getElementById('master-obat-search');
@@ -2640,8 +2641,221 @@ function getSelectedCategory(prefix) {
     return selectEl ? (selectEl.value || 'OBAT') : 'OBAT';
 }
 
+// --------------------------------------------------------------------------
+// Master Obat: Dynamic Satuan (Units) Management & CRUD
+// --------------------------------------------------------------------------
+let masterUnits = [];
+
+async function loadMasterUnits() {
+    try {
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient.from('satuan').select('nama_satuan').order('nama_satuan', { ascending: true });
+            if (!error && data && data.length > 0) {
+                masterUnits = data.map(d => (d.nama_satuan || '').trim()).filter(Boolean);
+            }
+        }
+    } catch (e) {
+        console.warn('Error loading satuan from Supabase:', e);
+    }
+
+    if (!masterUnits || masterUnits.length === 0) {
+        masterUnits = ['Tablet', 'Strip', 'Box', 'Botol', 'Pcs', 'Caps', 'Tube', 'Sachet', 'Fls', 'Blister', 'Dos', 'Pak', 'Toples', 'Renceng', 'Ampul', 'Vial', 'Supp'];
+    }
+
+    masterUnits = Array.from(new Set(masterUnits)).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    populateSatuanDropdowns('add');
+}
+
+function populateSatuanDropdowns(prefix, sel1 = '', sel2 = '', sel3 = '') {
+    const s1 = document.getElementById(`${prefix}-obat-sat1`);
+    const s2 = document.getElementById(`${prefix}-obat-sat2`);
+    const s3 = document.getElementById(`${prefix}-obat-sat3`);
+
+    const current1 = (sel1 !== undefined && sel1 !== null && sel1 !== '') ? sel1 : (s1?.value || 'Tablet');
+    const current2 = (sel2 !== undefined && sel2 !== null) ? sel2 : (s2?.value || '');
+    const current3 = (sel3 !== undefined && sel3 !== null) ? sel3 : (s3?.value || '');
+
+    [current1, current2, current3].forEach(u => {
+        if (u && !masterUnits.includes(u)) {
+            masterUnits.push(u);
+        }
+    });
+    masterUnits.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+    if (s1) {
+        let h1 = '';
+        masterUnits.forEach(u => {
+            const isSel = (u.toLowerCase() === current1.toLowerCase()) ? 'selected' : '';
+            h1 += `<option value="${escapeHtml(u)}" ${isSel}>${escapeHtml(u)}</option>`;
+        });
+        h1 += `<option value="__MANAGE__">⚙️ + Kelola / Tambah Satuan...</option>`;
+        s1.innerHTML = h1;
+    }
+
+    if (s2) {
+        let h2 = `<option value="">- Tidak Ada -</option>`;
+        masterUnits.forEach(u => {
+            const isSel = (current2 && u.toLowerCase() === current2.toLowerCase()) ? 'selected' : '';
+            h2 += `<option value="${escapeHtml(u)}" ${isSel}>${escapeHtml(u)}</option>`;
+        });
+        h2 += `<option value="__MANAGE__">⚙️ + Kelola / Tambah Satuan...</option>`;
+        s2.innerHTML = h2;
+    }
+
+    if (s3) {
+        let h3 = `<option value="">- Tidak Ada -</option>`;
+        masterUnits.forEach(u => {
+            const isSel = (current3 && u.toLowerCase() === current3.toLowerCase()) ? 'selected' : '';
+            h3 += `<option value="${escapeHtml(u)}" ${isSel}>${escapeHtml(u)}</option>`;
+        });
+        h3 += `<option value="__MANAGE__">⚙️ + Kelola / Tambah Satuan...</option>`;
+        s3.innerHTML = h3;
+    }
+}
+
+function onSatuanDropdownChange(prefix, num) {
+    const el = document.getElementById(`${prefix}-obat-sat${num}`);
+    if (!el) return;
+    if (el.value === '__MANAGE__') {
+        el.value = (num === 1) ? 'Tablet' : '';
+        openKelolaSatuanModal();
+    }
+}
+
+window.openKelolaSatuanModal = function() {
+    document.getElementById('input-satuan-baru').value = '';
+    document.getElementById('search-kelola-satuan').value = '';
+    renderKelolaSatuanTable();
+    document.getElementById('modal-kelola-satuan').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('input-satuan-baru')?.focus();
+    }, 100);
+};
+
+window.renderKelolaSatuanTable = function() {
+    const q = (document.getElementById('search-kelola-satuan')?.value || '').trim().toLowerCase();
+    const tbody = document.getElementById('table-kelola-satuan-body');
+    const badge = document.getElementById('count-kelola-satuan');
+    if (!tbody) return;
+
+    let filtered = masterUnits;
+    if (q) {
+        filtered = masterUnits.filter(u => u.toLowerCase().includes(q));
+    }
+
+    if (badge) badge.textContent = `${filtered.length} Satuan`;
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:16px; color:var(--text-muted);">Tidak ada satuan ditemukan.</td></tr>';
+        return;
+    }
+
+    filtered.forEach((u, idx) => {
+        const encU = encodeURIComponent(u).replace(/'/g, "%27");
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td><strong>${escapeHtml(u)}</strong></td>
+            <td style="text-align:center;">
+                <div style="display:flex; gap:6px; justify-content:center;">
+                    <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:11px;" onclick="editSatuan('${encU}')" title="Ubah Nama Satuan">✏️ Edit</button>
+                    <button type="button" class="btn btn-secondary" style="padding:2px 8px; font-size:11px; color:#dc2626; border-color:#fca5a5;" onclick="deleteSatuan('${encU}')" title="Hapus Satuan">🗑️</button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.submitTambahSatuan = async function() {
+    const input = document.getElementById('input-satuan-baru');
+    const val = input ? input.value.trim() : '';
+    if (!val) {
+        alert('Harap isi nama satuan baru!');
+        return;
+    }
+
+    const exists = masterUnits.some(u => u.toLowerCase() === val.toLowerCase());
+    if (exists) {
+        alert(`Satuan "${val}" sudah terdaftar!`);
+        return;
+    }
+
+    try {
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('satuan').insert([{ nama_satuan: val }]);
+            if (error) console.warn('Supabase insert satuan warning:', error);
+        }
+    } catch (e) {
+        console.warn('Error saving satuan to DB:', e);
+    }
+
+    masterUnits.push(val);
+    masterUnits.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+    input.value = '';
+    renderKelolaSatuanTable();
+
+    populateSatuanDropdowns('add');
+    populateSatuanDropdowns('edit');
+    input.focus();
+};
+
+window.editSatuan = async function(encOldName) {
+    const oldName = decodeURIComponent(encOldName);
+    const newName = prompt(`Ubah nama satuan "${oldName}" menjadi:`, oldName);
+    if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+
+    const trimmed = newName.trim();
+    const exists = masterUnits.some(u => u.toLowerCase() === trimmed.toLowerCase() && u.toLowerCase() !== oldName.toLowerCase());
+    if (exists) {
+        alert(`Satuan "${trimmed}" sudah ada!`);
+        return;
+    }
+
+    try {
+        if (supabaseClient) {
+            await supabaseClient.from('satuan').update({ nama_satuan: trimmed }).eq('nama_satuan', oldName);
+        }
+    } catch (e) {
+        console.warn('Error updating satuan in DB:', e);
+    }
+
+    const idx = masterUnits.indexOf(oldName);
+    if (idx !== -1) {
+        masterUnits[idx] = trimmed;
+    } else {
+        masterUnits.push(trimmed);
+    }
+    masterUnits.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+    renderKelolaSatuanTable();
+    populateSatuanDropdowns('add');
+    populateSatuanDropdowns('edit');
+};
+
+window.deleteSatuan = async function(encName) {
+    const name = decodeURIComponent(encName);
+    if (!confirm(`Hapus satuan "${name}" dari daftar pilihan master?`)) return;
+
+    try {
+        if (supabaseClient) {
+            await supabaseClient.from('satuan').delete().eq('nama_satuan', name);
+        }
+    } catch (e) {
+        console.warn('Error deleting satuan from DB:', e);
+    }
+
+    masterUnits = masterUnits.filter(u => u.toLowerCase() !== name.toLowerCase());
+    renderKelolaSatuanTable();
+    populateSatuanDropdowns('add');
+    populateSatuanDropdowns('edit');
+};
+
 function showAddObatModal() {
     populateCategoryDropdown('add', 'OBAT');
+    populateSatuanDropdowns('add', 'Tablet', '', '');
     document.getElementById('modal-add-obat').classList.remove('hidden');
     calcAddMargin();
     calcAutoBuyPricesAdd();
@@ -2768,10 +2982,8 @@ async function editObat(encodedId, e) {
         document.getElementById('edit-obat-stok').value = item.stok_unit_kecil || '0';
 
         // Multi-satuan & Konversi
-        document.getElementById('edit-obat-sat1').value = item.satuan_1 || 'Pcs';
-        document.getElementById('edit-obat-sat2').value = item.satuan_2 || '';
+        populateSatuanDropdowns('edit', item.satuan_1 || 'Tablet', item.satuan_2 || '', item.satuan_3 || '');
         document.getElementById('edit-obat-isi2').value = item.isi_2_ke_1 || '0';
-        document.getElementById('edit-obat-sat3').value = item.satuan_3 || '';
         document.getElementById('edit-obat-isi3').value = item.isi_3_ke_2 || '0';
 
         // Harga Beli

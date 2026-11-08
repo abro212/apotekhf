@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css?v=20261109_03">
+    <link rel="stylesheet" href="style.css?v=20261109_04">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -2378,6 +2378,51 @@
         </div>
     </div>
 
+    <!-- Modal Kelola Satuan (CRUD Satuan Obat) -->
+    <div id="modal-kelola-satuan" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                    📦 Kelola Master Satuan Obat
+                </h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-kelola-satuan')">✕ Tutup</button>
+            </div>
+
+            <!-- Form Tambah Satuan Baru (Create) -->
+            <div style="background: var(--bg-main); padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 16px;">
+                <label style="font-size: 12.5px; font-weight: 700; margin-bottom: 6px; display: block;">Tambah Satuan Baru</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="input-satuan-baru" class="form-control" placeholder="Contoh: Strip, Tablet, Box, Botol..." style="flex: 1;" onkeypress="if(event.key==='Enter'){event.preventDefault();submitTambahSatuan();}">
+                    <button type="button" class="btn btn-primary" style="padding: 0 14px; font-size: 12px; font-weight: 700; white-space: nowrap;" onclick="submitTambahSatuan()">+ Tambah</button>
+                </div>
+            </div>
+
+            <!-- Search Satuan Input -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px;">
+                <input type="text" id="search-kelola-satuan" class="form-control" style="font-size: 12px; height: 32px;" placeholder="Cari satuan..." oninput="renderKelolaSatuanTable()">
+                <span class="badge badge-info" id="count-kelola-satuan" style="font-size: 11px; white-space: nowrap;">0 Satuan</span>
+            </div>
+
+            <!-- Tabel Daftar Satuan (Read, Update, Delete) -->
+            <div class="table-container" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                <table class="data-table" style="font-size: 12.5px; margin-bottom: 0;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">No</th>
+                            <th>Nama Satuan</th>
+                            <th style="text-align: center; width: 130px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-kelola-satuan-body"></tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-kelola-satuan')">Selesai</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Retur ke Supplier (Konsinyasi vs Reguler) -->
     <div id="modal-retur-supplier" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 550px;">
@@ -2676,7 +2721,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_03"></script>
+    <script src="app.js?v=20261109_04"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
