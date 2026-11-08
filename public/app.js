@@ -677,6 +677,7 @@ async function loadDashboard() {
 
  const card = document.createElement('div');
  card.className = 'menu-card';
+        card.setAttribute('data-menu', item.menu);
  card.onclick = () => switchView(viewTarget);
  
  const svgIcon = menuIcons[item.menu] || `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="menu-icon"><circle cx="12" cy="12" r="10"></circle></svg>`;
