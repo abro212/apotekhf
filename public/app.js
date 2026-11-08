@@ -2221,17 +2221,17 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 <td style="white-space:nowrap;"><strong>${displayStok}</strong> <span style="font-size:11.5px; color:var(--text-muted);">${safeLabelKecil}</span></td>
                 
                 <!-- Satuan 1 (Kecil) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l1_s1, beliS1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;"><div style="font-size:10px; font-weight:800; color:#166534; margin-bottom:2px; text-transform:uppercase;">${safeSat1}</div>${cellPriceMargin(o.harga_l1_s1, beliS1)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l2_s1, beliS1)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l3_s1, beliS1)}</td>
                 
                 <!-- Satuan 2 (Sedang) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l1_s2, beliS2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${o.satuan_2 ? `<div style="font-size:10px; font-weight:800; color:#1e40af; margin-bottom:2px; text-transform:uppercase;">${escapeHtml(o.satuan_2)} (1=${o.isi_2_ke_1 || 0})</div>` : ''}${cellPriceMargin(o.harga_l1_s2, beliS2)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l2_s2, beliS2)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l3_s2, beliS2)}</td>
                 
                 <!-- Satuan 3 (Besar) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l1_s3, beliS3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${o.satuan_3 ? `<div style="font-size:10px; font-weight:800; color:#854d0e; margin-bottom:2px; text-transform:uppercase;">${escapeHtml(o.satuan_3)} (1=${o.isi_3_ke_2 || 0})</div>` : ''}${cellPriceMargin(o.harga_l1_s3, beliS3)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l2_s3, beliS3)}</td>
                 <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l3_s3, beliS3)}</td>
                 
@@ -2644,7 +2644,7 @@ function getSelectedCategory(prefix) {
 // --------------------------------------------------------------------------
 // Master Obat: Dynamic Satuan (Units) Management & CRUD
 // --------------------------------------------------------------------------
-let masterUnits = [];
+let masterUnits = ['Tablet', 'Strip', 'Box', 'Botol', 'Pcs', 'Caps', 'Tube', 'Sachet', 'Fls', 'Blister', 'Dos', 'Pak', 'Toples', 'Renceng', 'Ampul', 'Vial', 'Supp'];
 
 async function loadMasterUnits() {
     try {
