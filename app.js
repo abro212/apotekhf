@@ -2182,36 +2182,25 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
  
  const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
 
-            const beliNum = parseFloat(o.harga_beli_sat_1 || 0);
-            const jualNum = parseFloat(o.harga_l1_s1 || 0);
-            const diffNom = jualNum - beliNum;
-            let marginBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b; border-radius:9999px; padding:4px 10px; font-size:11px; white-space:nowrap;">Rp 0 (0%)</span>';
-
-            if (beliNum > 0 || jualNum > 0) {
-                const mVal = beliNum > 0 ? ((jualNum - beliNum) / beliNum) * 100 : 0;
-                const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
-                const nomStr = formatMoney(diffNom);
-                
-                if (diffNom > 0) {
-                    marginBadge = `<span class="badge" style="background:#ecfdf5; color:#059669; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">+Rp ${nomStr} (+${mStr}%)</span>`;
-                } else if (diffNom < 0) {
-                    marginBadge = `<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">-Rp ${formatMoney(Math.abs(diffNom))} (${mStr}%)</span>`;
-                } else {
-                    marginBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:700; padding:4px 10px; border-radius:9999px; font-size:11px; white-space:nowrap; display:inline-block;">Rp 0 (0%)</span>`;
-                }
-            }
+            const beliS1 = parseFloat(o.harga_beli_sat_1 || 0);
+            const isi2 = parseFloat(o.isi_2_ke_1 || 0);
+            const beliS2 = parseFloat(o.harga_beli_sat_2 || 0) || (isi2 > 0 ? Math.round(beliS1 * isi2) : 0);
+            const isi3 = parseFloat(o.isi_3_ke_2 || 0);
+            const baseFor3 = beliS2 > 0 ? beliS2 : (isi2 > 0 ? Math.round(beliS1 * isi2) : beliS1);
+            const beliS3 = parseFloat(o.harga_beli_sat_3 || 0) || (isi3 > 0 ? Math.round(baseFor3 * isi3) : 0);
 
             const expDateVal = o.expired_date || o.tanggal_kadaluarsa || o.exp_date || getLocalObatEd(o.id_obat);
             const expBadge = getExpBadge(expDateVal);
             const rawExpStr = String(expDateVal || '-');
             const cleanExpStr = rawExpStr !== 'null' && rawExpStr !== 'undefined' ? rawExpStr.substring(0, 10) : '-';
 
-            // Desktop row (Single line per row with 9 price columns & sticky actions)
+            // Desktop row (Single line per row with 9 price columns & live margins)
             const tr = document.createElement('tr');
             
-            const formatP = (val) => {
+            const cellPriceMargin = (val, cost) => {
                 const n = parseFloat(val || 0);
-                return n > 0 ? ('Rp ' + formatMoney(n)) : '<span style="color:#cbd5e1;">-</span>';
+                if (n <= 0) return '<div style="color:#cbd5e1; font-weight:600;">-</div>';
+                return `<div><strong>Rp ${formatMoney(n)}</strong></div>${getMarginBadgeHtml(n, cost)}`;
             };
 
             tr.innerHTML = `
@@ -2222,23 +2211,22 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                 <td style="white-space:nowrap;"><strong>${displayStok}</strong> <span style="font-size:11.5px; color:var(--text-muted);">${safeLabelKecil}</span></td>
                 
                 <!-- Satuan 1 (Kecil) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l1_s1)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l2_s1)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${formatP(o.harga_l3_s1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l1_s1, beliS1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l2_s1, beliS1)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fafdf7;">${cellPriceMargin(o.harga_l3_s1, beliS1)}</td>
                 
                 <!-- Satuan 2 (Sedang) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l1_s2)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l2_s2)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${formatP(o.harga_l3_s2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l1_s2, beliS2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l2_s2, beliS2)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #f8fbff;">${cellPriceMargin(o.harga_l3_s2, beliS2)}</td>
                 
                 <!-- Satuan 3 (Besar) Levels -->
-                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l1_s3)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l2_s3)}</td>
-                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${formatP(o.harga_l3_s3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l1_s3, beliS3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l2_s3, beliS3)}</td>
+                <td style="white-space:nowrap; text-align: right; background: #fffef5;">${cellPriceMargin(o.harga_l3_s3, beliS3)}</td>
                 
                 <!-- Info Lainnya -->
-                <td style="white-space:nowrap;">Rp ${formatMoney(o.harga_beli_sat_1)}</td>
-                <td style="white-space:nowrap;">${marginBadge}</td>
+                <td style="white-space:nowrap;">Rp ${formatMoney(beliS1)}</td>
                 <td style="white-space:nowrap;">${expBadge}</td>
                 <td style="white-space:nowrap; text-align: center; position: sticky; right: 0; z-index: 4; background: #ffffff; box-shadow: -3px 0 6px rgba(0,0,0,0.06);">
                     <div style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: nowrap;">
@@ -2256,7 +2244,7 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
             `;
             tbody.appendChild(tr);
 
-            // Mobile card with 9 price display
+            // Mobile card with 9 price & margin display
             if (mobileList) {
                 const card = document.createElement('div');
                 card.className = 'price-card-mobile';
@@ -2275,26 +2263,38 @@ async function loadMasterObat(page = currentObatPage, pageSize = currentObatPage
                         </div>
                         <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${safeLabelKecil}</span>
                     </div>
-                    <!-- 9 Harga Jual Grid Ringkas -->
+                    <!-- 9 Harga Jual & Margin Grid Ringkas -->
                     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px; margin:8px 0; font-size:11.5px;">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <span style="font-weight:700; color:#166534;">${safeSat1}:</span>
-                            <span>L1: <strong>${formatP(o.harga_l1_s1)}</strong> • L2: ${formatP(o.harga_l2_s1)} • L3: ${formatP(o.harga_l3_s1)}</span>
+                        <div style="margin-bottom:6px;">
+                            <div style="font-weight:700; color:#166534; margin-bottom:2px;">${safeSat1} (Beli: Rp ${formatMoney(beliS1)}):</div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
+                                <span>L1: <strong>Rp ${formatMoney(o.harga_l1_s1)}</strong> ${getMarginBadgeHtml(o.harga_l1_s1, beliS1, true)}</span>
+                                <span>• L2: Rp ${formatMoney(o.harga_l2_s1)} ${getMarginBadgeHtml(o.harga_l2_s1, beliS1, true)}</span>
+                                <span>• L3: Rp ${formatMoney(o.harga_l3_s1)} ${getMarginBadgeHtml(o.harga_l3_s1, beliS1, true)}</span>
+                            </div>
                         </div>
                         ${o.satuan_2 ? `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <span style="font-weight:700; color:#1e40af;">${escapeHtml(o.satuan_2)}:</span>
-                            <span>L1: <strong>${formatP(o.harga_l1_s2)}</strong> • L2: ${formatP(o.harga_l2_s2)} • L3: ${formatP(o.harga_l3_s2)}</span>
+                        <div style="margin-bottom:6px;">
+                            <div style="font-weight:700; color:#1e40af; margin-bottom:2px;">${escapeHtml(o.satuan_2)} (Beli: Rp ${formatMoney(beliS2)}):</div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
+                                <span>L1: <strong>Rp ${formatMoney(o.harga_l1_s2)}</strong> ${getMarginBadgeHtml(o.harga_l1_s2, beliS2, true)}</span>
+                                <span>• L2: Rp ${formatMoney(o.harga_l2_s2)} ${getMarginBadgeHtml(o.harga_l2_s2, beliS2, true)}</span>
+                                <span>• L3: Rp ${formatMoney(o.harga_l3_s2)} ${getMarginBadgeHtml(o.harga_l3_s2, beliS2, true)}</span>
+                            </div>
                         </div>` : ''}
                         ${o.satuan_3 ? `
-                        <div style="display:flex; justify-content:space-between;">
-                            <span style="font-weight:700; color:#854d0e;">${escapeHtml(o.satuan_3)}:</span>
-                            <span>L1: <strong>${formatP(o.harga_l1_s3)}</strong> • L2: ${formatP(o.harga_l2_s3)} • L3: ${formatP(o.harga_l3_s3)}</span>
+                        <div>
+                            <div style="font-weight:700; color:#854d0e; margin-bottom:2px;">${escapeHtml(o.satuan_3)} (Beli: Rp ${formatMoney(beliS3)}):</div>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap; font-size:11px;">
+                                <span>L1: <strong>Rp ${formatMoney(o.harga_l1_s3)}</strong> ${getMarginBadgeHtml(o.harga_l1_s3, beliS3, true)}</span>
+                                <span>• L2: Rp ${formatMoney(o.harga_l2_s3)} ${getMarginBadgeHtml(o.harga_l2_s3, beliS3, true)}</span>
+                                <span>• L3: Rp ${formatMoney(o.harga_l3_s3)} ${getMarginBadgeHtml(o.harga_l3_s3, beliS3, true)}</span>
+                            </div>
                         </div>` : ''}
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
                         <div style="font-size:12px; color:var(--text-muted);">
-                            Beli: <strong>Rp ${formatMoney(o.harga_beli_sat_1)}</strong> • Margin: ${marginBadge}
+                            Beli S1: <strong>Rp ${formatMoney(beliS1)}</strong>
                         </div>
                         <div style="display:flex; gap:6px;">
                             <button class="btn btn-secondary" style="width: 32px; height: 32px; padding: 0; border-radius: 8px; display:inline-flex; align-items:center; justify-content:center;" onclick="previewObat('${encId}', event)" title="Lihat Detail">
@@ -2339,6 +2339,91 @@ function calcAddMargin() {
  } else {
  marginEl.value = '0';
  }
+}
+
+function getMarginBadgeHtml(jual, beli, isCompact = false) {
+    const j = parseFloat(jual || 0);
+    const b = parseFloat(beli || 0);
+    if (j <= 0 || b <= 0) {
+        return `<span style="font-size:10px; color:#94a3b8; font-weight:600;">(Margin: -)</span>`;
+    }
+    const diff = j - b;
+    const mVal = (diff / b) * 100;
+    const mStr = mVal % 1 === 0 ? mVal.toString() : mVal.toFixed(1);
+    const nomStr = formatMoney(Math.abs(diff));
+
+    if (diff > 0) {
+        if (isCompact) {
+            return `<span style="color:#059669; font-weight:700; font-size:10.5px;">(+${mStr}%)</span>`;
+        }
+        return `<div style="font-size:10.5px; font-weight:700; color:#059669; line-height:1.2; margin-top:2px;">+Rp ${nomStr} (+${mStr}%)</div>`;
+    } else if (diff < 0) {
+        if (isCompact) {
+            return `<span style="color:#dc2626; font-weight:700; font-size:10.5px;">(${mStr}%)</span>`;
+        }
+        return `<div style="font-size:10.5px; font-weight:700; color:#dc2626; line-height:1.2; margin-top:2px;">-Rp ${nomStr} (${mStr}%)</div>`;
+    } else {
+        if (isCompact) {
+            return `<span style="color:#64748b; font-weight:600; font-size:10.5px;">(0%)</span>`;
+        }
+        return `<div style="font-size:10.5px; font-weight:700; color:#64748b; line-height:1.2; margin-top:2px;">Rp 0 (0%)</div>`;
+    }
+}
+
+function updateAllMargins(prefix = 'add') {
+    const beli1 = parseFloat(document.getElementById(prefix + '-obat-beli1')?.value || 0);
+    const isi2 = parseFloat(document.getElementById(prefix + '-obat-isi2')?.value || 0);
+    const isi3 = parseFloat(document.getElementById(prefix + '-obat-isi3')?.value || 0);
+    
+    let beli2 = parseFloat(document.getElementById(prefix + '-obat-beli2')?.value || 0);
+    if (beli2 <= 0 && isi2 > 0) beli2 = Math.round(beli1 * isi2);
+    
+    let beli3 = parseFloat(document.getElementById(prefix + '-obat-beli3')?.value || 0);
+    if (beli3 <= 0 && isi3 > 0) {
+        const base = beli2 > 0 ? beli2 : (isi2 > 0 ? beli2 : beli1);
+        beli3 = Math.round(base * isi3);
+    }
+
+    const setSpan = (spanId, jualVal, beliVal, defaultColor) => {
+        const span = document.getElementById(spanId);
+        if (!span) return;
+        const j = parseFloat(jualVal || 0);
+        const b = parseFloat(beliVal || 0);
+        if (j <= 0 || b <= 0) {
+            span.textContent = 'Margin: -';
+            span.style.color = defaultColor;
+            return;
+        }
+        const diff = j - b;
+        const pct = (diff / b) * 100;
+        const pctStr = pct % 1 === 0 ? pct.toString() : pct.toFixed(1);
+        const nomStr = formatMoney(Math.abs(diff));
+        if (diff > 0) {
+            span.textContent = `+Rp ${nomStr} (+${pctStr}%)`;
+            span.style.color = '#059669';
+        } else if (diff < 0) {
+            span.textContent = `-Rp ${nomStr} (${pctStr}%)`;
+            span.style.color = '#dc2626';
+        } else {
+            span.textContent = 'Rp 0 (0%)';
+            span.style.color = '#64748b';
+        }
+    };
+
+    // Satuan 1 (Kecil)
+    setSpan(prefix + '-margin-l1s1', document.getElementById(prefix + '-obat-l1s1')?.value, beli1, '#166534');
+    setSpan(prefix + '-margin-l2s1', document.getElementById(prefix + '-obat-l2s1')?.value, beli1, '#166534');
+    setSpan(prefix + '-margin-l3s1', document.getElementById(prefix + '-obat-l3s1')?.value, beli1, '#166534');
+
+    // Satuan 2 (Sedang)
+    setSpan(prefix + '-margin-l1s2', document.getElementById(prefix + '-obat-l1s2')?.value, beli2, '#1e40af');
+    setSpan(prefix + '-margin-l2s2', document.getElementById(prefix + '-obat-l2s2')?.value, beli2, '#1e40af');
+    setSpan(prefix + '-margin-l3s2', document.getElementById(prefix + '-obat-l3s2')?.value, beli2, '#1e40af');
+
+    // Satuan 3 (Besar)
+    setSpan(prefix + '-margin-l1s3', document.getElementById(prefix + '-obat-l1s3')?.value, beli3, '#854d0e');
+    setSpan(prefix + '-margin-l2s3', document.getElementById(prefix + '-obat-l2s3')?.value, beli3, '#854d0e');
+    setSpan(prefix + '-margin-l3s3', document.getElementById(prefix + '-obat-l3s3')?.value, beli3, '#854d0e');
 }
 
 function calcAddPriceFromMargin() {
@@ -2437,6 +2522,7 @@ function calcAutoBuyPricesAdd() {
     const baseFor3 = beli2 > 0 ? beli2 : (isi2 > 0 ? beli2 : beli1);
     const beli3 = isi3 > 0 ? Math.round(baseFor3 * isi3) : 0;
     if (beli3El) beli3El.value = beli3;
+    updateAllMargins('add');
 }
 
 function calcAutoBuyPricesEdit() {
@@ -2453,12 +2539,14 @@ function calcAutoBuyPricesEdit() {
     const baseFor3 = beli2 > 0 ? beli2 : (isi2 > 0 ? beli2 : beli1);
     const beli3 = isi3 > 0 ? Math.round(baseFor3 * isi3) : 0;
     if (beli3El) beli3El.value = beli3;
+    updateAllMargins('edit');
 }
 
 function showAddObatModal() {
     document.getElementById('modal-add-obat').classList.remove('hidden');
     calcAddMargin();
     calcAutoBuyPricesAdd();
+    updateAllMargins('add');
 }
 
 async function submitAddObat(e) {
@@ -2607,6 +2695,7 @@ async function editObat(encodedId, e) {
 
         calcEditMargin();
         calcAutoBuyPricesEdit();
+        updateAllMargins('edit');
 
         document.getElementById('modal-edit-obat').classList.remove('hidden');
     } catch (err) {
@@ -2738,44 +2827,57 @@ async function previewObat(encodedId, e) {
  document.getElementById('preview-obat-exp').innerHTML = getExpBadge(expVal);
  }
 
+ const pBeli1 = parseFloat(item.harga_beli_sat_1 || 0);
+ const isi2 = parseFloat(item.isi_2_ke_1 || 0);
+ const pBeli2 = parseFloat(item.harga_beli_sat_2 || 0) || (isi2 > 0 ? Math.round(pBeli1 * isi2) : 0);
+ const isi3 = parseFloat(item.isi_3_ke_2 || 0);
+ const base3 = pBeli2 > 0 ? pBeli2 : (isi2 > 0 ? Math.round(pBeli1 * isi2) : pBeli1);
+ const pBeli3 = parseFloat(item.harga_beli_sat_3 || 0) || (isi3 > 0 ? Math.round(base3 * isi3) : 0);
+
  const tbody = document.getElementById('preview-obat-prices-body');
  tbody.innerHTML = '';
+
+ const previewCell = (val, cost) => {
+   const n = parseFloat(val || 0);
+   if (n <= 0) return '<div style="color:#cbd5e1;">-</div>';
+   return `<div><strong>Rp ${formatMoney(n)}</strong></div>${getMarginBadgeHtml(n, cost)}`;
+ };
 
  // Row for Satuan 1
  const tr1 = document.createElement('tr');
  tr1.innerHTML = `
- <td><strong>${item.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
- <td>Rp ${formatMoney(item.harga_l1_s1)}</td>
- <td>Rp ${formatMoney(item.harga_l2_s1)}</td>
- <td>Rp ${formatMoney(item.harga_l3_s1)}</td>
- <td>Rp ${formatMoney(item.harga_beli_sat_1)}</td>
+   <td><strong>${item.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
+   <td>${previewCell(item.harga_l1_s1, pBeli1)}</td>
+   <td>${previewCell(item.harga_l2_s1, pBeli1)}</td>
+   <td>${previewCell(item.harga_l3_s1, pBeli1)}</td>
+   <td>Rp ${formatMoney(pBeli1)}</td>
  `;
  tbody.appendChild(tr1);
 
  // Row for Satuan 2
  if (item.satuan_2) {
- const tr2 = document.createElement('tr');
- tr2.innerHTML = `
- <td><strong>${item.satuan_2}</strong> (Isi: ${item.isi_2_ke_1 || 0})</td>
- <td>Rp ${formatMoney(item.harga_l1_s2)}</td>
- <td>Rp ${formatMoney(item.harga_l2_s2)}</td>
- <td>Rp ${formatMoney(item.harga_l3_s2)}</td>
- <td>Rp ${formatMoney(item.harga_beli_sat_2)}</td>
- `;
- tbody.appendChild(tr2);
+   const tr2 = document.createElement('tr');
+   tr2.innerHTML = `
+     <td><strong>${item.satuan_2}</strong> (Isi: ${item.isi_2_ke_1 || 0})</td>
+     <td>${previewCell(item.harga_l1_s2, pBeli2)}</td>
+     <td>${previewCell(item.harga_l2_s2, pBeli2)}</td>
+     <td>${previewCell(item.harga_l3_s2, pBeli2)}</td>
+     <td>Rp ${formatMoney(pBeli2)}</td>
+   `;
+   tbody.appendChild(tr2);
  }
 
  // Row for Satuan 3
  if (item.satuan_3) {
- const tr3 = document.createElement('tr');
- tr3.innerHTML = `
- <td><strong>${item.satuan_3}</strong> (Isi: ${item.isi_3_ke_2 || 0})</td>
- <td>Rp ${formatMoney(item.harga_l1_s3)}</td>
- <td>Rp ${formatMoney(item.harga_l2_s3)}</td>
- <td>Rp ${formatMoney(item.harga_l3_s3)}</td>
- <td>Rp ${formatMoney(item.harga_beli_sat_3)}</td>
- `;
- tbody.appendChild(tr3);
+   const tr3 = document.createElement('tr');
+   tr3.innerHTML = `
+     <td><strong>${item.satuan_3}</strong> (Isi: ${item.isi_3_ke_2 || 0})</td>
+     <td>${previewCell(item.harga_l1_s3, pBeli3)}</td>
+     <td>${previewCell(item.harga_l2_s3, pBeli3)}</td>
+     <td>${previewCell(item.harga_l3_s3, pBeli3)}</td>
+     <td>Rp ${formatMoney(pBeli3)}</td>
+   `;
+   tbody.appendChild(tr3);
  }
  } catch (err) {
  console.error(err);
