@@ -1893,20 +1893,34 @@ body {
 
 /* RESPONSIVE TABLE VS MOBILE LIST VISIBILITY */
 @media(min-width: 769px) {
-    .desktop-only-table {
+    .desktop-only-table,
+    .table-container.desktop-only-table,
+    div.desktop-only-table {
         display: block !important;
     }
-    .mobile-only-list {
+    .mobile-only-list,
+    .cek-harga-mobile-container,
+    .master-obat-mobile-container,
+    .penjualan-mobile-container,
+    .report-shift-mobile-container {
         display: none !important;
     }
 }
 
 @media(max-width: 768px) {
-    .desktop-only-table {
+    .desktop-only-table,
+    .table-container.desktop-only-table,
+    div.desktop-only-table {
         display: none !important;
     }
-    .mobile-only-list {
+    .mobile-only-list,
+    .cek-harga-mobile-container,
+    .master-obat-mobile-container,
+    .penjualan-mobile-container,
+    .report-shift-mobile-container {
         display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
     }
 }
 
@@ -1957,7 +1971,6 @@ body {
     border-radius: var(--radius-md) !important;
     border: 1px solid var(--border-color) !important;
     box-sizing: border-box !important;
-    display: block !important;
     scrollbar-width: thin !important;
     scrollbar-color: #0d9488 #f1f5f9 !important;
 }

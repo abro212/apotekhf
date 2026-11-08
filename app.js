@@ -1155,62 +1155,65 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
  renderPaginationControls('cek-harga-pagination', 1, 1, pageSize, 'searchHarga');
  } else {
  data.forEach(o => {
- const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
+                    const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
+                    const stockNum = parseFloat(displayStok);
+                    const stockMin = parseFloat(o.stok_minimal || 5);
+                    const isOutOfStock = stockNum <= 0;
+                    const stockBadgeStyle = isOutOfStock
+                        ? 'background-color:#fee2e2; color:#ef4444; border: 1px solid #fecaca; font-weight:700;'
+                        : (stockNum <= stockMin
+                            ? 'background-color:#fef3c7; color:#b45309; border: 1px solid #fde68a; font-weight:700;'
+                            : 'background-color:#ecfdf5; color:#047857; border: 1px solid #a7f3d0; font-weight:700;');
 
- // Desktop table row
- const tr = document.createElement('tr');
- tr.innerHTML = `
- <td><strong>${o.id_obat}</strong></td>
- <td>${escapeHtml(o.nama_obat)}</td>
- <td>${escapeHtml(o.kategori || '-')}</td>
- <td>${escapeHtml(o.rak || '-')}</td>
- <td><strong>${displayStok}</strong> ${escapeHtml(o.label_satuan_kecil || 'Pcs')}</td>
- <td>Rp ${formatMoney(o.harga_l1_s1)} / ${escapeHtml(o.satuan_1 || 'Pcs')}</td>
- <td>${o.satuan_2 ? `Rp ${formatMoney(o.harga_l1_s2)} / ${escapeHtml(o.satuan_2)}` : '-'}</td>
- <td>${o.satuan_3 ? `Rp ${formatMoney(o.harga_l1_s3)} / ${escapeHtml(o.satuan_3)}` : '-'}</td>
- `;
- tbody.appendChild(tr);
+                    // Desktop table row
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${o.id_obat}</strong></td>
+                        <td>${escapeHtml(o.nama_obat)}</td>
+                        <td>${escapeHtml(o.kategori || '-')}</td>
+                        <td>${escapeHtml(o.rak || o.rak_tempat || '-')}</td>
+                        <td><strong>${stockNum}</strong> ${escapeHtml(o.label_satuan_kecil || o.satuan_1 || 'Pcs')}</td>
+                        <td>Rp ${formatMoney(o.harga_l1_s1)} / ${escapeHtml(o.satuan_1 || 'Pcs')}</td>
+                        <td>${o.satuan_2 && parseFloat(o.harga_l1_s2 || 0) > 0 ? ('Rp ' + formatMoney(o.harga_l1_s2) + ' / ' + escapeHtml(o.satuan_2)) : '<span style="color:#cbd5e1;">-</span>'}</td>
+                        <td>${o.satuan_3 && parseFloat(o.harga_l1_s3 || 0) > 0 ? ('Rp ' + formatMoney(o.harga_l1_s3) + ' / ' + escapeHtml(o.satuan_3)) : '<span style="color:#cbd5e1;">-</span>'}</td>
+                    `;
+                    tbody.appendChild(tr);
 
- // Mobile price card
- if (mobileList) {
- const card = document.createElement('div');
- card.className = 'price-card-mobile';
- 
- let pricesHtml = `<div class="price-pill primary"><span>${o.satuan_1 || 'Pcs'}:</span> <strong>Rp ${formatMoney(o.harga_l1_s1)}</strong></div>`;
- if (o.satuan_2 && parseFloat(o.harga_l1_s2 || 0) > 0) {
- pricesHtml += `<div class="price-pill"><span>${o.satuan_2}:</span> <strong>Rp ${formatMoney(o.harga_l1_s2)}</strong></div>`;
- }
- if (o.satuan_3 && parseFloat(o.harga_l1_s3 || 0) > 0) {
- pricesHtml += `<div class="price-pill"><span>${o.satuan_3}:</span> <strong>Rp ${formatMoney(o.harga_l1_s3)}</strong></div>`;
- }
+                    // Mobile price card
+                    if (mobileList) {
+                        const card = document.createElement('div');
+                        card.className = 'price-card-mobile';
+                        card.style.cssText = 'background: #ffffff; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);';
+                        
+                        let pricesHtml = `<span style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700;">${escapeHtml(o.satuan_1 || 'Pcs')}: Rp ${formatMoney(o.harga_l1_s1)}</span>`;
+                        if (o.satuan_2 && parseFloat(o.harga_l1_s2 || 0) > 0) {
+                            pricesHtml += `<span style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700;">${escapeHtml(o.satuan_2)}: Rp ${formatMoney(o.harga_l1_s2)}</span>`;
+                        }
+                        if (o.satuan_3 && parseFloat(o.harga_l1_s3 || 0) > 0) {
+                            pricesHtml += `<span style="background:#fefce8; border:1px solid #fef08a; color:#854d0e; padding:4px 8px; border-radius:6px; font-size:12px; font-weight:700;">${escapeHtml(o.satuan_3)}: Rp ${formatMoney(o.harga_l1_s3)}</span>`;
+                        }
 
- const stockNum = parseFloat(o.stok_unit_kecil || 0);
- const stockMin = parseFloat(o.stok_minimal || 5);
- const stockBadgeStyle = stockNum <= stockMin 
- ? 'background-color:#fee2e2; color:#ef4444;' 
- : 'background-color:#ecfdf5; color:#10b981;';
+                        card.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                                <div style="flex: 1;">
+                                    <div style="font-size: 14.5px; font-weight: 800; color: var(--primary-color); line-height: 1.3;">${escapeHtml(o.nama_obat)}</div>
+                                    <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">ID: ${o.id_obat} • Rak: ${escapeHtml(o.rak || o.rak_tempat || '-')} • Kat: ${escapeHtml(o.kategori || '-')}</div>
+                                </div>
+                                <span class="badge" style="${stockBadgeStyle}; font-size: 11px; white-space: nowrap;">Stok: ${stockNum} ${escapeHtml(o.label_satuan_kecil || o.satuan_1 || 'Pcs')}</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+                                ${pricesHtml}
+                            </div>
+                        `;
+                        mobileList.appendChild(card);
+                    }
+                });
 
- card.innerHTML = `
- <div class="price-card-header">
- <div style="flex:1;">
- <div class="price-card-title">${o.nama_obat}</div>
- <div class="price-card-sub">ID: ${o.id_obat} • Rak: ${o.rak_tempat || '-'} • Kat: ${o.kategori || '-'}</div>
- </div>
- <span class="badge" style="${stockBadgeStyle}">Stok: ${stockNum} ${o.label_satuan_kecil || 'Pcs'}</span>
- </div>
- <div class="price-pills-row">
- ${pricesHtml}
- </div>
- `;
- mobileList.appendChild(card);
- }
- });
-
- const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
- renderPaginationControls('cek-harga-pagination', page, totalPages, pageSize, 'searchHarga');
- }
- }
- } catch (e) {
+                const totalPages = Math.ceil((count !== null ? count : data.length) / pageSize);
+                renderPaginationControls('cek-harga-pagination', page, totalPages, pageSize, 'searchHarga');
+            }
+        }
+    } catch (e) {
  console.error('Error searching prices:', e);
  }
 }
