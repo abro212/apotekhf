@@ -1547,6 +1547,10 @@ function updateCartUI() {
             kembalianRow.style.background = '#ecfdf5';
             kembalianRow.style.borderColor = '#a7f3d0';
         }
+        const dpInput = document.getElementById('pos-cart-dp-input');
+        if (dpInput) dpInput.value = '';
+        const sisaPiutangDisplay = document.getElementById('pos-cart-sisa-piutang-display');
+        if (sisaPiutangDisplay) sisaPiutangDisplay.textContent = 'Rp 0';
         return;
     }
 
@@ -1599,14 +1603,19 @@ function updateCartUI() {
 }
 
 function updatePosCartTotals() {
- const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
- const method = document.getElementById('pos-pay-method')?.value || 'CASH';
- const bayarRow = document.getElementById('pos-cart-bayar-row');
- const kembalianRow = document.getElementById('pos-cart-kembalian-row');
- const bayarInput = document.getElementById('pos-cart-bayar-input');
- const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
+    const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const method = document.getElementById('pos-pay-method')?.value || 'CASH';
+    const bayarRow = document.getElementById('pos-cart-bayar-row');
+    const kembalianRow = document.getElementById('pos-cart-kembalian-row');
+    const bayarInput = document.getElementById('pos-cart-bayar-input');
+    const kembalianDisplay = document.getElementById('pos-cart-kembalian-display');
+    const tempoGroup = document.getElementById('pos-cart-tempo-group');
+    const dpInput = document.getElementById('pos-cart-dp-input');
+    const tempoDate = document.getElementById('pos-cart-tempo-date');
+    const sisaPiutangDisplay = document.getElementById('pos-cart-sisa-piutang-display');
 
- if (method === 'CASH') {
+    if (method === 'CASH') {
+        if (tempoGroup) tempoGroup.style.display = 'none';
         if (bayarRow) bayarRow.style.display = 'flex';
         if (kembalianRow) kembalianRow.style.display = 'flex';
 
@@ -1624,27 +1633,45 @@ function updatePosCartTotals() {
         }
         const kembalian = uangBayar - totalHarga;
 
- if (kembalianDisplay) {
- if (kembalian >= 0) {
- kembalianDisplay.textContent = `Rp ${formatMoney(kembalian)}`;
- kembalianDisplay.style.color = '#047857';
- if (kembalianRow) {
- kembalianRow.style.background = '#ecfdf5';
- kembalianRow.style.borderColor = '#a7f3d0';
- }
- } else {
- kembalianDisplay.textContent = `Kurang Rp ${formatMoney(Math.abs(kembalian))}`;
- kembalianDisplay.style.color = '#ef4444';
- if (kembalianRow) {
- kembalianRow.style.background = '#fef2f2';
- kembalianRow.style.borderColor = '#fca5a5';
- }
- }
- }
- } else {
- if (bayarRow) bayarRow.style.display = 'none';
- if (kembalianRow) kembalianRow.style.display = 'none';
- }
+        if (kembalianDisplay) {
+            if (kembalian >= 0) {
+                kembalianDisplay.textContent = 'Rp ' + formatMoney(kembalian);
+                kembalianDisplay.style.color = '#047857';
+                if (kembalianRow) {
+                    kembalianRow.style.background = '#ecfdf5';
+                    kembalianRow.style.borderColor = '#a7f3d0';
+                }
+            } else {
+                kembalianDisplay.textContent = 'Kurang Rp ' + formatMoney(Math.abs(kembalian));
+                kembalianDisplay.style.color = '#ef4444';
+                if (kembalianRow) {
+                    kembalianRow.style.background = '#fef2f2';
+                    kembalianRow.style.borderColor = '#fca5a5';
+                }
+            }
+        }
+    } else if (method === 'TEMPO') {
+        if (bayarRow) bayarRow.style.display = 'none';
+        if (kembalianRow) kembalianRow.style.display = 'none';
+        if (tempoGroup) tempoGroup.style.display = 'flex';
+
+        if (tempoDate && !tempoDate.value) {
+            const d = new Date();
+            d.setDate(d.getDate() + 30);
+            tempoDate.value = d.toISOString().split('T')[0];
+        }
+
+        const dp = parseFloat(dpInput?.value || 0);
+        const sisa = Math.max(0, totalHarga - dp);
+        if (sisaPiutangDisplay) {
+            sisaPiutangDisplay.textContent = 'Rp ' + formatMoney(sisa);
+        }
+    } else {
+        // QRIS
+        if (bayarRow) bayarRow.style.display = 'none';
+        if (kembalianRow) kembalianRow.style.display = 'none';
+        if (tempoGroup) tempoGroup.style.display = 'none';
+    }
 }
 
 function setPosCartPreset(val) {
@@ -1661,148 +1688,202 @@ function setPosCartPreset(val) {
 }
 
 async function posCheckout() {
- if (cart.length === 0) {
- alert('Keranjang belanja kosong!');
- return;
- }
+    if (cart.length === 0) {
+        alert('Keranjang belanja kosong!');
+        return;
+    }
 
- const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
- const payMethod = document.getElementById('pos-pay-method')?.value || 'CASH';
- const bayarInput = document.getElementById('pos-cart-bayar-input');
- const uangBayar = payMethod === 'CASH' ? parseFloat(bayarInput?.value || 0) : totalHarga;
+    const totalHarga = cart.reduce((sum, item) => sum + (item.jumlah * item.harga), 0);
+    const payMethod = document.getElementById('pos-pay-method')?.value || 'CASH';
+    const bayarInput = document.getElementById('pos-cart-bayar-input');
+    const dpInput = document.getElementById('pos-cart-dp-input');
+    const tempoDate = document.getElementById('pos-cart-tempo-date');
 
- if (payMethod === 'CASH' && uangBayar < totalHarga) {
- alert(`Uang pembayaran kurang! Total Harga: Rp ${formatMoney(totalHarga)}, Total Bayar (Cash): Rp ${formatMoney(uangBayar)} (Kurang Rp ${formatMoney(totalHarga - uangBayar)})`);
- if (bayarInput) bayarInput.focus();
- return;
- }
+    let uangBayar = totalHarga;
+    let dpAmount = 0;
+    let sisaPiutang = 0;
+    let jatuhTempoStr = '';
 
- const kembalian = payMethod === 'CASH' ? (uangBayar - totalHarga) : 0;
+    if (payMethod === 'CASH') {
+        uangBayar = parseFloat(bayarInput?.value || 0);
+        if (uangBayar < totalHarga) {
+            alert('Uang pembayaran kurang! Total Harga: Rp ' + formatMoney(totalHarga) + ', Total Bayar (Cash): Rp ' + formatMoney(uangBayar) + ' (Kurang Rp ' + formatMoney(totalHarga - uangBayar) + ')');
+            if (bayarInput) bayarInput.focus();
+            return;
+        }
+    } else if (payMethod === 'TEMPO') {
+        if (!activeCustomer || !activeCustomer.nama || activeCustomer.nama.toUpperCase() === 'UMUM') {
+            alert('Pembayaran TEMPO (Piutang) memerlukan data Pelanggan terdaftar! Silakan pilih pelanggan terlebih dahulu.');
+            return;
+        }
+        dpAmount = parseFloat(dpInput?.value || 0);
+        if (dpAmount > totalHarga) {
+            alert('Uang Muka (DP) tidak boleh melebihi Total Belanja (Rp ' + formatMoney(totalHarga) + ')!');
+            if (dpInput) dpInput.focus();
+            return;
+        }
+        sisaPiutang = Math.max(0, totalHarga - dpAmount);
+        jatuhTempoStr = tempoDate?.value || '';
+        uangBayar = dpAmount;
+    }
 
- try {
- if (!supabaseClient) return;
+    const kembalian = payMethod === 'CASH' ? (uangBayar - totalHarga) : 0;
 
- // ID Jual YYMMDD-user-suffix
- const dateObj = new Date();
- const yy = String(dateObj.getFullYear()).substring(2);
- const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
- const dd = String(dateObj.getDate()).padStart(2, '0');
- const dateStr = `${yy}${mm}${dd}`;
- const suffix = Math.random().toString(36).substring(2, 6).toLowerCase();
- const id_jual = `${dateStr}-${(currentUser?.nama_staf || 'cashier').toLowerCase()}-${suffix}`;
+    try {
+        if (!supabaseClient) return;
 
- // Date formatter DD/MM/YYYY hh.mm.ss
- const formatJSDate = (d) => {
- const day = String(d.getDate()).padStart(2, '0');
- const month = String(d.getMonth() + 1).padStart(2, '0');
- const year = d.getFullYear();
- const hours = String(d.getHours()).padStart(2, '0');
- const mins = String(d.getMinutes()).padStart(2, '0');
- const secs = String(d.getSeconds()).padStart(2, '0');
- return `${day}/${month}/${year} ${hours}.${mins}.${secs}`;
- };
- const tanggalStr = formatJSDate(dateObj);
+        // ID Jual YYMMDD-user-suffix
+        const dateObj = new Date();
+        const yy = String(dateObj.getFullYear()).substring(2);
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const dateStr = `${yy}${mm}${dd}`;
+        const suffix = Math.random().toString(36).substring(2, 6).toLowerCase();
+        const id_jual = `${dateStr}-${(currentUser?.nama_staf || 'cashier').toLowerCase()}-${suffix}`;
 
- const detailsToInsert = [];
- const stockUpdates = [];
+        // Date formatter DD/MM/YYYY hh.mm.ss
+        const formatJSDate = (d) => {
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            const hours = String(d.getHours()).padStart(2, '0');
+            const mins = String(d.getMinutes()).padStart(2, '0');
+            const secs = String(d.getSeconds()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}.${mins}.${secs}`;
+        };
+        const tanggalStr = formatJSDate(dateObj);
 
- for (const item of cart) {
- const qty = parseFloat(item.jumlah);
- const price = parseFloat(item.harga);
- const subtotal = qty * price;
- const qtyInSmallestUnit = qty * item.konversi;
+        const detailsToInsert = [];
+        const stockUpdates = [];
 
- const o = item.obat;
- let hpp_unit = 0;
- if (item.satuan === 'Satuan 1') hpp_unit = parseFloat(o.harga_beli_sat_1 || 0);
- else if (item.satuan === 'Satuan 2') hpp_unit = parseFloat(o.harga_beli_sat_2 || 0);
- else if (item.satuan === 'Satuan 3') hpp_unit = parseFloat(o.harga_beli_sat_3 || 0);
+        for (const item of cart) {
+            const qty = parseFloat(item.jumlah);
+            const price = parseFloat(item.harga);
+            const subtotal = qty * price;
+            const qtyInSmallestUnit = qty * item.konversi;
 
- const total_hpp = qty * hpp_unit;
- const laba_bersih = subtotal - total_hpp;
- const detailId = Math.random().toString(36).substring(2, 10);
+            const o = item.obat;
+            let hpp_unit = 0;
+            if (item.satuan === 'Satuan 1') hpp_unit = parseFloat(o.harga_beli_sat_1 || 0);
+            else if (item.satuan === 'Satuan 2') hpp_unit = parseFloat(o.harga_beli_sat_2 || 0);
+            else if (item.satuan === 'Satuan 3') hpp_unit = parseFloat(o.harga_beli_sat_3 || 0);
 
- detailsToInsert.push({
- id_detail: detailId,
- id_jual: id_jual,
- id_obat: item.id_obat,
- nama_obat: item.nama_obat,
- satuan_dipilih: item.satuan_nama,
- jumlah_beli: String(qty),
- harga_satuan: String(price),
- subtotal: String(subtotal),
- konversi_keluar: String(qtyInSmallestUnit),
- jenis_transaksi: 'PENJUALAN',
- tanggal: tanggalStr,
- user: currentUser?.nama_staf || 'cashier',
- total_hpp: String(total_hpp),
- laba_bersih: String(laba_bersih)
- });
+            const total_hpp = qty * hpp_unit;
+            const laba_bersih = subtotal - total_hpp;
+            const detailId = Math.random().toString(36).substring(2, 10);
 
- // Calculate new stock
- const currentStock = getEffectiveStock(o);
- const newStock = currentStock - qtyInSmallestUnit;
- 
- stockUpdates.push({
- id_obat: item.id_obat,
- stok_unit_kecil: String(newStock)
- });
- }
+            detailsToInsert.push({
+                id_detail: detailId,
+                id_jual: id_jual,
+                id_obat: item.id_obat,
+                nama_obat: item.nama_obat,
+                satuan_dipilih: item.satuan_nama,
+                jumlah_beli: String(qty),
+                harga_satuan: String(price),
+                subtotal: String(subtotal),
+                konversi_keluar: String(qtyInSmallestUnit),
+                jenis_transaksi: 'PENJUALAN',
+                tanggal: tanggalStr,
+                user: currentUser?.nama_staf || 'cashier',
+                total_hpp: String(total_hpp),
+                laba_bersih: String(laba_bersih)
+            });
 
- // 1. Insert into transaksi_jual
- const { error: txErr } = await supabaseClient.from('transaksi_jual').insert([{
- id_jual: id_jual,
- tanggal: tanggalStr,
- metode_bayar: payMethod,
- total_bayar: String(totalHarga),
- nama_pelanggan: activeCustomer?.id_pelanggan || 'UMUM',
- jenis_transaksi: 'PENJUALAN',
- user: currentUser?.nama_staf || 'cashier'
- }]);
+            // Calculate new stock
+            const currentStock = getEffectiveStock(o);
+            const newStock = currentStock - qtyInSmallestUnit;
+            
+            stockUpdates.push({
+                id_obat: item.id_obat,
+                stok_unit_kecil: String(newStock)
+            });
+        }
 
- if (txErr) throw txErr;
+        // 1. Insert into transaksi_jual
+        const { error: txErr } = await supabaseClient.from('transaksi_jual').insert([{
+            id_jual: id_jual,
+            tanggal: tanggalStr,
+            metode_bayar: payMethod,
+            total_bayar: String(totalHarga),
+            jatuh_tempo: payMethod === 'TEMPO' ? (jatuhTempoStr || null) : null,
+            nama_pelanggan: activeCustomer?.id_pelanggan || 'UMUM',
+            jenis_transaksi: 'PENJUALAN',
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
 
- // 2. Insert into detail_jual
- const { error: dtlErr } = await supabaseClient.from('detail_jual').insert(detailsToInsert);
- if (dtlErr) throw dtlErr;
+        if (txErr) throw txErr;
 
- // 3. Update stock in master_obat
- for (const update of stockUpdates) {
- await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
- }
+        // 2. Insert into detail_jual
+        const { error: dtlErr } = await supabaseClient.from('detail_jual').insert(detailsToInsert);
+        if (dtlErr) throw dtlErr;
 
- // 4. Record to transaksi_kas (Modul 4 & 27: Cash -> KAS-01 Laci Kasir, QRIS -> KAS-04 Rekening Bank)
- try {
- if (payMethod === 'CASH') {
- await supabaseClient.from('transaksi_kas').insert([{
- id_trx: Math.random().toString(36).substring(2, 10),
- waktu: tanggalStr,
- nama_kas: 'KAS-01',
- kategori: 'Omzet Penjualan Tunai',
- keterangan: `Penjualan Tunai Nota ${id_jual}`,
- uang_masuk: String(totalHarga),
- uang_keluar: '0',
- user: currentUser?.nama_staf || 'cashier'
- }]);
- } else if (payMethod === 'QRIS') {
- await supabaseClient.from('transaksi_kas').insert([{
- id_trx: Math.random().toString(36).substring(2, 10),
- waktu: tanggalStr,
- nama_kas: 'KAS-04',
- kategori: 'Omzet Penjualan QRIS',
- keterangan: `Penjualan QRIS Nota ${id_jual}`,
- uang_masuk: String(totalHarga),
- uang_keluar: '0',
- user: currentUser?.nama_staf || 'cashier'
- }]);
- }
- } catch (kasErr) {
- console.warn('transaksi_kas insert notice:', kasErr);
- }
+        // 3. Update stock in master_obat
+        for (const update of stockUpdates) {
+            await supabaseClient.from('master_obat').update({ stok_unit_kecil: update.stok_unit_kecil }).eq('id_obat', update.id_obat);
+        }
 
- alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '
-Kembalian: Rp ' + formatMoney(kembalian) : ''}`);
-        showReceipt(id_jual, totalHarga, tanggalStr, uangBayar, kembalian);
+        // 4. Record to transaksi_kas & log_pelunasan_jual
+        try {
+            if (payMethod === 'CASH') {
+                await supabaseClient.from('transaksi_kas').insert([{
+                    id_trx: Math.random().toString(36).substring(2, 10),
+                    waktu: tanggalStr,
+                    nama_kas: 'KAS-01',
+                    kategori: 'Omzet Penjualan Tunai',
+                    keterangan: `Penjualan Tunai Nota ${id_jual}`,
+                    uang_masuk: String(totalHarga),
+                    uang_keluar: '0',
+                    user: currentUser?.nama_staf || 'cashier'
+                }]);
+            } else if (payMethod === 'QRIS') {
+                await supabaseClient.from('transaksi_kas').insert([{
+                    id_trx: Math.random().toString(36).substring(2, 10),
+                    waktu: tanggalStr,
+                    nama_kas: 'KAS-04',
+                    kategori: 'Omzet Penjualan QRIS',
+                    keterangan: `Penjualan QRIS Nota ${id_jual}`,
+                    uang_masuk: String(totalHarga),
+                    uang_keluar: '0',
+                    user: currentUser?.nama_staf || 'cashier'
+                }]);
+            } else if (payMethod === 'TEMPO' && dpAmount > 0) {
+                // Record DP as payment log so Menu Tagihan & Dashboard compute sisa debt correctly
+                await supabaseClient.from('log_pelunasan_jual').insert([{
+                    id_pelunasan: 'DP-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+                    id_jual: id_jual,
+                    tanggal_bayar: tanggalStr,
+                    jumlah_bayar: String(dpAmount),
+                    metode_bayar: 'CASH',
+                    catatan: `Uang Muka (DP) Penjualan Tempo Nota ${id_jual}`,
+                    user: currentUser?.nama_staf || 'cashier'
+                }]);
+                // Record DP cash into cash drawer
+                await supabaseClient.from('transaksi_kas').insert([{
+                    id_trx: Math.random().toString(36).substring(2, 10),
+                    waktu: tanggalStr,
+                    nama_kas: 'KAS-01',
+                    kategori: 'Uang Muka Piutang',
+                    keterangan: `Uang Muka (DP) Piutang Nota ${id_jual}`,
+                    uang_masuk: String(dpAmount),
+                    uang_keluar: '0',
+                    user: currentUser?.nama_staf || 'cashier'
+                }]);
+            }
+        } catch (kasErr) {
+            console.warn('transaksi_kas insert notice:', kasErr);
+        }
+
+        if (payMethod === 'TEMPO') {
+            alert(`Transaksi TEMPO Berhasil Disimpan!\nTotal: Rp ${formatMoney(totalHarga)}\nDP / Uang Muka: Rp ${formatMoney(dpAmount)}\nSisa Piutang: Rp ${formatMoney(sisaPiutang)}\nJatuh Tempo: ${jatuhTempoStr || '-'}`);
+        } else {
+            alert(`Checkout & Pembayaran Berhasil!${payMethod === 'CASH' ? '\nKembalian: Rp ' + formatMoney(kembalian) : ''}`);
+        }
+
+        showReceipt(id_jual, totalHarga, tanggalStr, uangBayar, kembalian, {
+            dp_amount: dpAmount,
+            sisa_piutang: sisaPiutang,
+            jatuh_tempo: jatuhTempoStr
+        });
 
         // Reset payment & change display to 0
         if (bayarInput) bayarInput.value = '';
@@ -1818,10 +1899,10 @@ Kembalian: Rp ' + formatMoney(kembalian) : ''}`);
         }
 
         initPOS();
- } catch (e) {
- console.error('Checkout failed:', e);
- alert(`Checkout gagal: ${e.message}`);
- }
+    } catch (e) {
+        console.error('Checkout failed:', e);
+        alert('Checkout gagal: ' + e.message);
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -2774,6 +2855,20 @@ function renderThermalReceiptHTML(data) {
  <span>Rp${formatMoney(total_bayar)}</span>
  </div>
 
+ ${metode_bayar === 'TEMPO' ? `
+ <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #333;">
+ <span>DP / Uang Muka</span>
+ <span style="font-weight: 700;">Rp${formatMoney(data.dp_amount || 0)}</span>
+ </div>
+ <div style="display: flex; justify-content: space-between; font-size: 12px; color: #b45309; font-weight: 800;">
+ <span>Sisa Piutang</span>
+ <span>Rp${formatMoney(data.sisa_piutang !== undefined ? data.sisa_piutang : total_bayar)}</span>
+ </div>
+ <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 2px;">
+ <span>Jatuh Tempo</span>
+ <span>${data.jatuh_tempo || '-'}</span>
+ </div>
+ ` : `
  <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #333;">
  <span>Tunai / Bayar (${metode_bayar})</span>
  <span>Rp${formatMoney(data.uang_bayar !== undefined ? data.uang_bayar : total_bayar)}</span>
@@ -2782,6 +2877,7 @@ function renderThermalReceiptHTML(data) {
  <span>Kembalian</span>
  <span style="font-weight: 800; color: #000;">Rp${formatMoney(data.kembalian !== undefined ? data.kembalian : 0)}</span>
  </div>
+ `}
  </div>
 
  <!-- Dotted Separator -->
@@ -2857,7 +2953,7 @@ async function showReceiptDetail(id_jual) {
  }
 }
 
-function showReceipt(id_jual, total, tanggal, uangBayar, kembalian) {
+function showReceipt(id_jual, total, tanggal, uangBayar, kembalian, extraData = {}) {
  const customerName = activeCustomer ? activeCustomer.nama : 'UMUM';
  const payMethod = document.getElementById('pay-modal-method')?.value || document.getElementById('pos-pay-method')?.value || 'CASH';
 
@@ -2878,7 +2974,10 @@ function showReceipt(id_jual, total, tanggal, uangBayar, kembalian) {
  items: items,
  total_bayar: total,
  uang_bayar: uangBayar,
- kembalian: kembalian
+ kembalian: kembalian,
+ dp_amount: extraData.dp_amount || 0,
+ sisa_piutang: extraData.sisa_piutang,
+ jatuh_tempo: extraData.jatuh_tempo
  });
 
  const printArea = document.getElementById('receipt-print-area');
