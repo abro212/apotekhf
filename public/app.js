@@ -2420,9 +2420,42 @@ function calcEditPriceFromMarginNominal() {
  }
 }
 
+function calcAutoBuyPricesAdd() {
+    const beli1 = parseFloat(document.getElementById('add-obat-beli1')?.value || 0);
+    const isi2 = parseFloat(document.getElementById('add-obat-isi2')?.value || 0);
+    const isi3 = parseFloat(document.getElementById('add-obat-isi3')?.value || 0);
+
+    const beli2El = document.getElementById('add-obat-beli2');
+    const beli3El = document.getElementById('add-obat-beli3');
+
+    const beli2 = isi2 > 0 ? Math.round(beli1 * isi2) : 0;
+    if (beli2El) beli2El.value = beli2;
+
+    const baseFor3 = beli2 > 0 ? beli2 : (isi2 > 0 ? beli2 : beli1);
+    const beli3 = isi3 > 0 ? Math.round(baseFor3 * isi3) : 0;
+    if (beli3El) beli3El.value = beli3;
+}
+
+function calcAutoBuyPricesEdit() {
+    const beli1 = parseFloat(document.getElementById('edit-obat-beli1')?.value || 0);
+    const isi2 = parseFloat(document.getElementById('edit-obat-isi2')?.value || 0);
+    const isi3 = parseFloat(document.getElementById('edit-obat-isi3')?.value || 0);
+
+    const beli2El = document.getElementById('edit-obat-beli2');
+    const beli3El = document.getElementById('edit-obat-beli3');
+
+    const beli2 = isi2 > 0 ? Math.round(beli1 * isi2) : 0;
+    if (beli2El) beli2El.value = beli2;
+
+    const baseFor3 = beli2 > 0 ? beli2 : (isi2 > 0 ? beli2 : beli1);
+    const beli3 = isi3 > 0 ? Math.round(baseFor3 * isi3) : 0;
+    if (beli3El) beli3El.value = beli3;
+}
+
 function showAddObatModal() {
- document.getElementById('modal-add-obat').classList.remove('hidden');
- calcAddMargin();
+    document.getElementById('modal-add-obat').classList.remove('hidden');
+    calcAddMargin();
+    calcAutoBuyPricesAdd();
 }
 
 async function submitAddObat(e) {
@@ -2570,6 +2603,7 @@ async function editObat(encodedId, e) {
         document.getElementById('edit-obat-l3s3').value = item.harga_l3_s3 || '0';
 
         calcEditMargin();
+        calcAutoBuyPricesEdit();
 
         document.getElementById('modal-edit-obat').classList.remove('hidden');
     } catch (err) {

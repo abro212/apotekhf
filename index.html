@@ -1605,7 +1605,7 @@
                         <input type="text" id="add-obat-sat2" class="form-control" placeholder="Contoh: Strip">
                         <div style="margin-top:6px;">
                             <label style="font-size:11px;">Isi ke Satuan 1:</label>
-                            <input type="number" id="add-obat-isi2" class="form-control" value="0" placeholder="Contoh: 10">
+                            <input type="number" id="add-obat-isi2" class="form-control" value="0" placeholder="Contoh: 10" oninput="calcAutoBuyPricesAdd()">
                         </div>
                     </div>
                     <div>
@@ -1613,7 +1613,7 @@
                         <input type="text" id="add-obat-sat3" class="form-control" placeholder="Contoh: Box">
                         <div style="margin-top:6px;">
                             <label style="font-size:11px;">Isi ke Satuan 2:</label>
-                            <input type="number" id="add-obat-isi3" class="form-control" value="0" placeholder="Contoh: 10">
+                            <input type="number" id="add-obat-isi3" class="form-control" value="0" placeholder="Contoh: 10" oninput="calcAutoBuyPricesAdd()">
                         </div>
                     </div>
                 </div>
@@ -1622,16 +1622,19 @@
                 <div style="font-weight:700; font-size:13px; color:var(--text-main); margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">3. Harga Beli (HPP)</div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                     <div class="form-group">
-                        <label>Harga Beli Satuan 1</label>
-                        <input type="number" id="add-obat-beli1" class="form-control" value="0" oninput="calcAddMargin()">
+                        <label>Harga Beli Satuan 1 *</label>
+                        <input type="number" id="add-obat-beli1" class="form-control" value="0" oninput="calcAddMargin(); calcAutoBuyPricesAdd();" required>
+                        <small style="color:var(--text-muted); font-size:11px;">Input HPP satuan terkecil</small>
                     </div>
                     <div class="form-group">
-                        <label>Harga Beli Satuan 2</label>
-                        <input type="number" id="add-obat-beli2" class="form-control" value="0">
+                        <label>Harga Beli Satuan 2 <span style="font-size:10px; color:#0d9488; font-weight:700;">(Otomatis)</span></label>
+                        <input type="number" id="add-obat-beli2" class="form-control" value="0" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:700; color:#334155;">
+                        <small style="color:var(--text-muted); font-size:11px;">= Beli Sat 1 × Isi Sat 2</small>
                     </div>
                     <div class="form-group">
-                        <label>Harga Beli Satuan 3</label>
-                        <input type="number" id="add-obat-beli3" class="form-control" value="0">
+                        <label>Harga Beli Satuan 3 <span style="font-size:10px; color:#0d9488; font-weight:700;">(Otomatis)</span></label>
+                        <input type="number" id="add-obat-beli3" class="form-control" value="0" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:700; color:#334155;">
+                        <small style="color:var(--text-muted); font-size:11px;">= Beli Sat 2 × Isi Sat 3</small>
                     </div>
                 </div>
 
@@ -1711,12 +1714,18 @@
     </div>
 
     <!-- Edit Obat -->
-    <div id="modal-edit-obat"  class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 600px;">
-            <h3>Edit Detail Obat</h3>
+    <div id="modal-edit-obat" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:15px;">
+                <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--primary-color);">Edit Detail Obat</h3>
+                <button type="button" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="closeModal('modal-edit-obat')">✕</button>
+            </div>
             <form id="form-edit-obat" onsubmit="submitEditObat(event)">
                 <input type="hidden" id="edit-obat-id">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+
+                <!-- 1. Identitas Dasar -->
+                <div style="font-weight:700; font-size:13px; color:var(--text-main); margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">1. Informasi Obat</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
                     <div class="form-group">
                         <label>Nama Obat</label>
                         <input type="text" id="edit-obat-nama" class="form-control" required>
@@ -1738,57 +1747,135 @@
                         <input type="date" id="edit-obat-exp" class="form-control">
                     </div>
                     <div class="form-group">
-                        <label>Rak Tempat (Lokasi)</label>
+                        <label>Lokasi Rak</label>
                         <input type="text" id="edit-obat-rak" class="form-control" placeholder="Contoh: RAK A-1">
+                    </div>
+                    <div class="form-group">
+                        <label>Stok Saat Ini (Satuan Kecil)</label>
+                        <input type="number" id="edit-obat-stok" class="form-control" required>
                     </div>
                     <div class="form-group">
                         <label>Stok Minimal</label>
                         <input type="number" id="edit-obat-stokmin" class="form-control" value="5">
                     </div>
-                    <div class="form-group">
-                        <label>Stok Saat Ini (Unit Kecil)</label>
-                        <input type="number" id="edit-obat-stok" class="form-control" required>
+                </div>
+
+                <!-- 2. Multi Satuan & Konversi -->
+                <div style="font-weight:700; font-size:13px; color:var(--text-main); margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">2. Multi Satuan (Maks 3 Tingkat) & Konversi</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <label style="font-weight:700; color:#166534; font-size:12px;">Satuan 1 (Terkecil) *</label>
+                        <input type="text" id="edit-obat-sat1" class="form-control" placeholder="Contoh: Tablet / Pcs" required>
+                        <small style="color:var(--text-muted); font-size:11px;">Dasar stok & transaksi</small>
                     </div>
-                    <div class="form-group">
-                        <label>Satuan 1 (Kecil)</label>
-                        <input type="text" id="edit-obat-sat1" class="form-control" placeholder="Pcs" required>
+                    <div>
+                        <label style="font-weight:700; color:#1e40af; font-size:12px;">Satuan 2 (Menengah)</label>
+                        <input type="text" id="edit-obat-sat2" class="form-control" placeholder="Contoh: Strip">
+                        <div style="margin-top:6px;">
+                            <label style="font-size:11px;">Isi ke Satuan 1:</label>
+                            <input type="number" id="edit-obat-isi2" class="form-control" value="0" placeholder="Contoh: 10" oninput="calcAutoBuyPricesEdit()">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Satuan 2 (Menengah)</label>
-                        <input type="text" id="edit-obat-sat2" class="form-control" placeholder="Strip">
-                    </div>
-                    <div class="form-group">
-                        <label>Satuan 3 (Besar)</label>
-                        <input type="text" id="edit-obat-sat3" class="form-control" placeholder="Box">
-                    </div>
-                    <div class="form-group">
-                        <label>Harga Beli Satuan 1</label>
-                        <input type="number" id="edit-obat-beli1" class="form-control" value="0" oninput="calcEditMargin()">
-                    </div>
-                    <div class="form-group">
-                        <label>Harga Jual L1 Satuan 1</label>
-                        <input type="number" id="edit-obat-l1s1" class="form-control" value="0" oninput="calcEditMargin()" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Margin Nominal (Rp)</label>
-                        <input type="number" id="edit-obat-margin-nom" class="form-control" value="0" placeholder="Contoh: 5000" oninput="calcEditPriceFromMarginNominal()">
-                    </div>
-                    <div class="form-group">
-                        <label>Margin Keuntungan (%)</label>
-                        <input type="number" step="0.1" id="edit-obat-margin" class="form-control" value="0" placeholder="Contoh: 20" oninput="calcEditPriceFromMargin()">
-                    </div>
-                    <div class="form-group">
-                        <label>Harga Jual L1 Satuan 2</label>
-                        <input type="number" id="edit-obat-l1s2" class="form-control" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label>Harga Jual L1 Satuan 3</label>
-                        <input type="number" id="edit-obat-l1s3" class="form-control" value="0">
+                    <div>
+                        <label style="font-weight:700; color:#854d0e; font-size:12px;">Satuan 3 (Terbesar)</label>
+                        <input type="text" id="edit-obat-sat3" class="form-control" placeholder="Contoh: Box">
+                        <div style="margin-top:6px;">
+                            <label style="font-size:11px;">Isi ke Satuan 2:</label>
+                            <input type="number" id="edit-obat-isi3" class="form-control" value="0" placeholder="Contoh: 10" oninput="calcAutoBuyPricesEdit()">
+                        </div>
                     </div>
                 </div>
+
+                <!-- 3. Harga Beli (HPP) -->
+                <div style="font-weight:700; font-size:13px; color:var(--text-main); margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">3. Harga Beli (HPP)</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label>Harga Beli Satuan 1 *</label>
+                        <input type="number" id="edit-obat-beli1" class="form-control" value="0" oninput="calcEditMargin(); calcAutoBuyPricesEdit();" required>
+                        <small style="color:var(--text-muted); font-size:11px;">Input HPP satuan terkecil</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Beli Satuan 2 <span style="font-size:10px; color:#0d9488; font-weight:700;">(Otomatis)</span></label>
+                        <input type="number" id="edit-obat-beli2" class="form-control" value="0" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:700; color:#334155;">
+                        <small style="color:var(--text-muted); font-size:11px;">= Beli Sat 1 × Isi Sat 2</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Beli Satuan 3 <span style="font-size:10px; color:#0d9488; font-weight:700;">(Otomatis)</span></label>
+                        <input type="number" id="edit-obat-beli3" class="form-control" value="0" readonly style="background:#f1f5f9; cursor:not-allowed; font-weight:700; color:#334155;">
+                        <small style="color:var(--text-muted); font-size:11px;">= Beli Sat 2 × Isi Sat 3</small>
+                    </div>
+                </div>
+
+                <!-- 4. 9 Kolom Harga Jual (3 Level Pelanggan x 3 Satuan) -->
+                <div style="font-weight:700; font-size:13px; color:var(--text-main); margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:4px;">4. Harga Jual Berjenjang (3 Level Pelanggan x 3 Satuan)</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <!-- Satuan 1 -->
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px;">
+                        <div style="font-weight:800; font-size:12px; color:#166534; margin-bottom:8px; text-align:center;">Harga Satuan 1 (Kecil)</div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 1 (Umum) *</label>
+                            <input type="number" id="edit-obat-l1s1" class="form-control" value="0" oninput="calcEditMargin()" required>
+                        </div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 2 (Member)</label>
+                            <input type="number" id="edit-obat-l2s1" class="form-control" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">Level 3 (Grosir/Apotek)</label>
+                            <input type="number" id="edit-obat-l3s1" class="form-control" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Satuan 2 -->
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px;">
+                        <div style="font-weight:800; font-size:12px; color:#1e40af; margin-bottom:8px; text-align:center;">Harga Satuan 2 (Sedang)</div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 1 (Umum)</label>
+                            <input type="number" id="edit-obat-l1s2" class="form-control" value="0">
+                        </div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 2 (Member)</label>
+                            <input type="number" id="edit-obat-l2s2" class="form-control" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">Level 3 (Grosir/Apotek)</label>
+                            <input type="number" id="edit-obat-l3s2" class="form-control" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Satuan 3 -->
+                    <div style="background:#fefce8; border:1px solid #fef08a; border-radius:8px; padding:10px;">
+                        <div style="font-weight:800; font-size:12px; color:#854d0e; margin-bottom:8px; text-align:center;">Harga Satuan 3 (Besar)</div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 1 (Umum)</label>
+                            <input type="number" id="edit-obat-l1s3" class="form-control" value="0">
+                        </div>
+                        <div class="form-group" style="margin-bottom:8px;">
+                            <label style="font-size:11px;">Level 2 (Member)</label>
+                            <input type="number" id="edit-obat-l2s3" class="form-control" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size:11px;">Level 3 (Grosir/Apotek)</label>
+                            <input type="number" id="edit-obat-l3s3" class="form-control" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Kalkulator Margin Satuan 1 -->
+                <div style="display:flex; gap:12px; background:#f8fafc; padding:10px; border-radius:8px; align-items:center;">
+                    <div class="form-group" style="flex:1; margin:0;">
+                        <label style="font-size:11px;">Margin Nominal (Rp)</label>
+                        <input type="number" id="edit-obat-margin-nom" class="form-control" value="0" placeholder="5000" oninput="calcEditPriceFromMarginNominal()">
+                    </div>
+                    <div class="form-group" style="flex:1; margin:0;">
+                        <label style="font-size:11px;">Margin Keuntungan (%)</label>
+                        <input type="number" step="0.1" id="edit-obat-margin" class="form-control" value="0" placeholder="20" oninput="calcEditPriceFromMargin()">
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-edit-obat')">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700;">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
