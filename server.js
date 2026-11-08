@@ -82,19 +82,25 @@ app.get('/api/obat', (req, res) => {
     try {
         const { q, limit = 50, offset = 0 } = req.query;
         let sql = 'SELECT * FROM master_obat';
+        let countSql = 'SELECT COUNT(*) as total FROM master_obat';
         let params = [];
+        let countParams = [];
         
         if (q) {
-            sql += ' WHERE id_obat LIKE ? OR nama_obat LIKE ? OR kategori LIKE ?';
+            const where = ' WHERE id_obat LIKE ? OR nama_obat LIKE ? OR kategori LIKE ?';
+            sql += where;
+            countSql += where;
             const wild = `%${q}%`;
             params = [wild, wild, wild];
+            countParams = [wild, wild, wild];
         }
         
         sql += ' ORDER BY nama_obat LIMIT ? OFFSET ?';
         params.push(Number(limit), Number(offset));
         
         const rows = queryAll(sql, params);
-        res.json({ success: true, data: rows });
+        const countRow = queryOne(countSql, countParams);
+        res.json({ success: true, data: rows, count: countRow ? countRow.total : rows.length });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

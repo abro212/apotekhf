@@ -243,6 +243,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                         <input type="text" id="global-search" placeholder="Cari data / menu...">
                     </div>
+                    <button type="button" class="btn" id="header-db-btn" onclick="openDatabaseConfigModal()" title="Status & Pengaturan Database Cloud" style="padding: 5px 12px; font-size: 11.5px; font-weight: 700; border-radius: 20px; background: #ecfdf5; color: #0d9488; border: 1px solid rgba(13, 148, 136, 0.2); display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <span id="header-db-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                        <span id="header-db-label">Database Cloud</span>
+                    </button>
                     <div class="user-badge" id="header-user-badge">
                         <span class="user-badge-avatar" id="header-avatar">?</span>
                         <span id="header-username">Guest</span>
@@ -2217,5 +2221,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="app.js"></script>
+
+    <!-- Modal Konfigurasi Database Supabase -->
+    <div id="modal-db-config" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px; border-radius: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                    🔌 Konfigurasi Database Cloud (Supabase)
+                </h3>
+                <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-db-config')">✕ Tutup</button>
+            </div>
+            
+            <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12.5px; line-height: 1.5; color: #9f1239;">
+                <strong>💡 Catatan Supabase Free Tier:</strong><br>
+                Jika data tidak keluar dan muncul <code>TypeError: Failed to fetch</code>, kemungkinan besar project Supabase Anda sedang <strong>Paused (Tidak Aktif)</strong> karena kebijakan free tier setelah 7 hari tidak ada traffic.<br>
+                Silakan buka <a href="https://supabase.com/dashboard" target="_blank" style="color: #0d9488; font-weight: 700; text-decoration: underline;">Supabase Dashboard</a> lalu klik tombol <strong>"Restore Project"</strong>.
+            </div>
+
+            <form onsubmit="handleSaveDbConfigModal(event)">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-weight: 700; font-size: 13px;">Supabase Project URL</label>
+                    <input type="text" id="modal-db-url" class="form-control" placeholder="https://xxxxxxxxxxxx.supabase.co" required>
+                    <small style="color: var(--text-muted); font-size: 11px;">Ditemukan di Supabase Dashboard → Settings → API → Project URL</small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label style="font-weight: 700; font-size: 13px;">Supabase Anon Public API Key</label>
+                    <input type="password" id="modal-db-key" class="form-control" placeholder="eyJhbGciOiJIUz..." required>
+                    <small style="color: var(--text-muted); font-size: 11px;">Ditemukan di Supabase Dashboard → Settings → API → anon public key</small>
+                </div>
+
+                <div id="modal-db-status-msg" style="margin-bottom: 14px; font-size: 12.5px; font-weight: 600; display: none;"></div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="testModalSupabaseConn()">🧪 Uji Koneksi</button>
+                    <button type="submit" class="btn btn-primary">💾 Simpan & Terapkan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </body>
 </html>
