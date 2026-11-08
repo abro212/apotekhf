@@ -238,24 +238,59 @@ function logout() {
     switchView('view-login');
 }
 
-// Load Users into Login Dropdown from Supabase
+const DEFAULT_STAFF_USERS = [
+    { id: '8.0', user: 'ADMIN', nama_staf: 'ADMIN', pin: '170845', role: 'ADMIN' },
+    { id: '1.0', user: 'PSA', nama_staf: 'PSA', pin: '170845', role: 'ADMIN' },
+    { id: '2.0', user: 'AYU', nama_staf: 'AYU', pin: '7594', role: 'KASIR' },
+    { id: '3.0', user: 'IRNA', nama_staf: 'IRNA', pin: '8452', role: 'KASIR' },
+    { id: '4.0', user: 'LINA', nama_staf: 'LINA', pin: '1279', role: 'KASIR' },
+    { id: '5.0', user: 'AYUIRNA', nama_staf: 'AYU IRNA', pin: '3826', role: 'KASIR' },
+    { id: '6.0', user: 'AYULINA', nama_staf: 'AYU LINA', pin: '6524', role: 'KASIR' },
+    { id: '7.0', user: 'IRNALINA', nama_staf: 'IRNA LINA', pin: '9584', role: 'KASIR' }
+];
+
+// Load Users into Login Dropdown (Supabase -> Local /api/users -> Default Fallback)
 async function loadLoginUsers() {
-    try {
-        if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('user_login').select('*');
-        const select = document.getElementById('login-user-select');
+    const select = document.getElementById('login-user-select');
+    if (!select) return;
+
+    function renderUsers(users) {
         select.innerHTML = '<option value="" disabled selected>Pilih Staf...</option>';
-        
-        if (!error && data) {
-            data.forEach(user => {
-                const opt = document.createElement('option');
-                opt.value = JSON.stringify(user);
-                opt.textContent = `${user.nama_staf} (${user.role})`;
-                select.appendChild(opt);
-            });
+        users.forEach(user => {
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify(user);
+            opt.textContent = `${user.nama_staf} (${user.role})`;
+            select.appendChild(opt);
+        });
+    }
+
+    try {
+        // 1. Try Supabase
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient.from('user_login').select('*');
+            if (!error && data && data.length > 0) {
+                renderUsers(data);
+                return;
+            }
         }
+
+        // 2. Try local API
+        try {
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const json = await res.json();
+                if (json.success && json.data && json.data.length > 0) {
+                    renderUsers(json.data);
+                    return;
+                }
+            }
+        } catch (_) {}
+
+        // 3. Fallback to default users
+        renderUsers(DEFAULT_STAFF_USERS);
     } catch (e) {
-        console.error('Error loading login users:', e);
+        console.warn('Fallback to default staff users:', e);
+        renderUsers(DEFAULT_STAFF_USERS);
     }
 }
 
