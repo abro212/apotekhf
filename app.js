@@ -4057,6 +4057,13 @@ async function loadPurchaseItemHistory(id_obat) {
         if (error || !logs || logs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:6px;">Belum ada riwayat pembelian untuk item ini.</td></tr>';
             if (badge) badge.textContent = '0 data';
+            const d1Input = document.getElementById('purchase-item-disc1');
+            const d2Input = document.getElementById('purchase-item-disc2');
+            const ppnInput = document.getElementById('purchase-item-ppn');
+            if (d1Input) d1Input.value = 0;
+            if (d2Input) d2Input.value = 0;
+            if (ppnInput) ppnInput.value = 0;
+            updatePurchaseSubtotalPreview();
             return;
         }
         
@@ -4066,34 +4073,73 @@ async function loadPurchaseItemHistory(id_obat) {
         const latest = logs[0];
         if (latest) {
             const satSelect = document.getElementById('purchase-item-satuan');
-            const selectedOpt = satSelect?.selectedOptions[0];
-            const currentSatName = selectedOpt?.dataset.name || '';
             
-            if (latest.harga_beli_item && parseFloat(latest.harga_beli_item) > 0) {
-                if (!latest.satuan_masuk || latest.satuan_masuk === currentSatName) {
-                    const priceInput = document.getElementById('purchase-item-price');
-                    if (priceInput) priceInput.value = parseFloat(latest.harga_beli_item);
+            // 1. Initial SATUAN MASUK: sesuaikan persis dengan satuan inputan pembelian terakhir
+            if (latest.satuan_masuk && satSelect) {
+                const targetSat = String(latest.satuan_masuk).trim().toLowerCase();
+                const matchedOpt = Array.from(satSelect.options).find(opt => {
+                    const optName = (opt.dataset.name || '').trim().toLowerCase();
+                    const optVal = (opt.value || '').trim().toLowerCase();
+                    return optName === targetSat || optVal === targetSat;
+                });
+                if (matchedOpt) {
+                    satSelect.value = matchedOpt.value;
+                    const mult = parseFloat(matchedOpt.dataset.multiplier || 1);
+                    const satName = matchedOpt.dataset.name || 'Pcs';
+                    const konvInput = document.getElementById('purchase-item-konversi');
+                    const descEl = document.getElementById('purchase-item-konversi-desc');
+                    if (konvInput) konvInput.value = mult;
+                    if (descEl && currentSelectedPurchaseObat) {
+                        descEl.textContent = `1 ${satName} = ${mult} ${currentSelectedPurchaseObat.satuan_1 || 'Pcs'}`;
+                    }
                 }
             }
             
-            // Initial Disc 1 & Disc 2
+            // 2. Initial HARGA BELI SATUAN: harga beli kotor sebelum diskon & PPN sesuai satuan masuk
+            const priceInput = document.getElementById('purchase-item-price');
+            if (priceInput) {
+                const lastGross = parseFloat(latest.harga_beli_item);
+                if (!isNaN(lastGross) && lastGross > 0) {
+                    priceInput.value = lastGross;
+                } else {
+                    const curOpt = satSelect?.selectedOptions[0];
+                    priceInput.value = parseFloat(curOpt?.dataset.price || 0);
+                }
+            }
+            
+            // Helper normalisasi persen (0.05 -> 5, 0.11 -> 11, '5%' -> 5)
+            const parseNormalizedPercent = (val) => {
+                if (val === null || val === undefined || val === '') return 0;
+                const cleaned = String(val).replace(/%/g, '').trim();
+                let num = parseFloat(cleaned);
+                if (isNaN(num) || num <= 0) return 0;
+                if (num > 0 && num <= 1) {
+                    num = Math.round(num * 10000) / 100;
+                }
+                return num;
+            };
+
+            // 3. Initial % Diskon 1 & % Diskon 2: ambil dari pembelian terakhir, jika tidak ada 0
             let d1 = 0, d2 = 0;
-            if (latest.diskon_item) {
-                const parts = String(latest.diskon_item).replace(/%/g, '').split('+');
-                d1 = parseFloat(parts[0]?.trim()) || 0;
-                d2 = parseFloat(parts[1]?.trim()) || 0;
+            if (latest.diskon_item !== null && latest.diskon_item !== undefined && String(latest.diskon_item).trim() !== '') {
+                const parts = String(latest.diskon_item).split('+');
+                d1 = parseNormalizedPercent(parts[0]);
+                d2 = parts.length > 1 ? parseNormalizedPercent(parts[1]) : 0;
             }
             const d1Input = document.getElementById('purchase-item-disc1');
             const d2Input = document.getElementById('purchase-item-disc2');
             if (d1Input) d1Input.value = d1;
             if (d2Input) d2Input.value = d2;
             
-            // Initial PPN
-            const ppnVal = latest.pajak_item !== null && latest.pajak_item !== undefined 
-                ? parseFloat(latest.pajak_item) 
-                : parseFloat(localStorage.getItem('last_purchase_ppn') || '11');
+            // 4. Initial PPN %: ambil dari inputan PPN % pada pembelian terakhir, jika tidak ada 0
+            let ppnVal = 0;
+            if (latest.pajak_item !== null && latest.pajak_item !== undefined && String(latest.pajak_item).trim() !== '') {
+                ppnVal = parseNormalizedPercent(latest.pajak_item);
+            }
             const ppnInput = document.getElementById('purchase-item-ppn');
-            if (ppnInput) ppnInput.value = isNaN(ppnVal) ? 11 : ppnVal;
+            if (ppnInput) ppnInput.value = ppnVal;
+            
+            updatePurchaseSubtotalPreview();
         }
         
         const fakturIds = logs.map(l => l.id_faktur).filter(Boolean);
@@ -4189,7 +4235,7 @@ function populatePurchaseSatuanOptions(o) {
     onPurchaseSatuanChanged();
 }
 
-function onPurchaseSatuanChanged() {
+function onPurchaseSatuanChanged(forceUpdatePrice = false) {
     const satSelect = document.getElementById('purchase-item-satuan');
     const selectedOpt = satSelect?.selectedOptions[0];
     const konvInput = document.getElementById('purchase-item-konversi');
@@ -4205,7 +4251,7 @@ function onPurchaseSatuanChanged() {
     if (descEl && currentSelectedPurchaseObat) {
         descEl.textContent = `1 ${satName} = ${mult} ${currentSelectedPurchaseObat.satuan_1 || 'Pcs'}`;
     }
-    if (priceInput && (!priceInput.value || parseFloat(priceInput.value) <= 0)) {
+    if (priceInput && (forceUpdatePrice || !priceInput.value || parseFloat(priceInput.value) <= 0)) {
         priceInput.value = initPrice;
     }
     
@@ -4373,6 +4419,9 @@ function resetPurchaseItemForm() {
     
     const d2Input = document.getElementById('purchase-item-disc2');
     if (d2Input) d2Input.value = 0;
+
+    const ppnInput = document.getElementById('purchase-item-ppn');
+    if (ppnInput) ppnInput.value = 0;
     
     if (document.getElementById('purchase-item-batch')) document.getElementById('purchase-item-batch').value = '';
     if (document.getElementById('purchase-item-exp')) document.getElementById('purchase-item-exp').value = '';
