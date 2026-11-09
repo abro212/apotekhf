@@ -2041,3 +2041,19 @@ body {
     box-shadow: none !important;
     white-space: nowrap !important;
 }
+
+
+/* Purchase Searchable Combobox */
+#purchase-combobox-list {
+    scrollbar-width: thin;
+}
+#purchase-combobox-list::-webkit-scrollbar {
+    width: 6px;
+}
+#purchase-combobox-list::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+.purchase-combobox-item:hover {
+    background-color: #f1f5f9 !important;
+}

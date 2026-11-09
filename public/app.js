@@ -3778,11 +3778,13 @@ async function initPembelian() {
     loadPurchaseSuppliers();
     
     if (medicinesList && medicinesList.length > 0) {
-        renderPurchaseObatDropdown(medicinesList);
+        renderPurchaseComboboxItems();
     } else {
-        const select = document.getElementById('purchase-item-obat');
-        if (select) select.innerHTML = '<option value="">Memuat data obat dari database...</option>';
+        const searchInput = document.getElementById('purchase-item-search');
+        if (searchInput) searchInput.placeholder = 'Memuat 2.600+ obat dari database...';
         await loadAllDropdowns();
+        if (searchInput) searchInput.placeholder = 'Ketik nama obat atau barcode untuk memilih...';
+        renderPurchaseComboboxItems();
     }
 
     const ppnInput = document.getElementById('purchase-item-ppn');
@@ -3817,52 +3819,147 @@ function loadPurchaseSuppliers(selectedId = '') {
     });
 }
 
-function renderPurchaseObatDropdown(list, selectedId = '') {
-    const select = document.getElementById('purchase-item-obat');
-    if (!select) return;
-    select.innerHTML = '<option value="">-- Pilih Obat (' + list.length + ' item) --</option>';
-    list.slice(0, 500).forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o.id_obat;
-        opt.textContent = `${o.id_obat} - ${o.nama_obat}`;
-        if (selectedId && o.id_obat === selectedId) opt.selected = true;
-        select.appendChild(opt);
+// --------------------------------------------------------------------------
+// UNIFIED SEARCHABLE COMBOBOX FOR PURCHASE MEDICINES
+// --------------------------------------------------------------------------
+function openPurchaseDropdownMenu() {
+    const list = document.getElementById('purchase-combobox-list');
+    if (!list) return;
+    const q = document.getElementById('purchase-item-search')?.value.trim() || '';
+    renderPurchaseComboboxItems(q);
+    list.style.display = 'block';
+}
+
+function closePurchaseDropdownMenu() {
+    const list = document.getElementById('purchase-combobox-list');
+    if (list) list.style.display = 'none';
+}
+
+function togglePurchaseDropdownMenu() {
+    const list = document.getElementById('purchase-combobox-list');
+    if (!list) return;
+    if (list.style.display === 'block') {
+        closePurchaseDropdownMenu();
+    } else {
+        openPurchaseDropdownMenu();
+    }
+}
+
+function filterPurchaseCombobox(query) {
+    const list = document.getElementById('purchase-combobox-list');
+    if (!list) return;
+    renderPurchaseComboboxItems(query);
+    list.style.display = 'block';
+}
+
+function renderPurchaseComboboxItems(query = '') {
+    const list = document.getElementById('purchase-combobox-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    // Action button row: + Daftarkan Item Baru
+    const addRow = document.createElement('div');
+    addRow.style.cssText = 'padding: 8px 12px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; cursor: pointer;';
+    addRow.onclick = () => {
+        closePurchaseDropdownMenu();
+        showAddObatModal();
+    };
+    addRow.innerHTML = `
+        <span style="font-weight: 700; color: #166534; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+            ➕ + Daftarkan Item Obat Baru...
+        </span>
+        <span class="badge" style="background:#22c55e; color:#fff; font-size:10px;">Master Obat</span>
+    `;
+    list.appendChild(addRow);
+
+    const q = (query || '').trim().toLowerCase();
+    let filtered = medicinesList;
+    if (q) {
+        filtered = medicinesList.filter(o => 
+            (o.nama_obat && o.nama_obat.toLowerCase().includes(q)) ||
+            (o.id_obat && o.id_obat.toLowerCase().includes(q)) ||
+            (o.barcode && o.barcode.toLowerCase().includes(q))
+        );
+    }
+
+    if (filtered.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px;';
+        emptyDiv.innerHTML = `
+            Obat "${escapeHtml(q)}" tidak ditemukan.<br>
+            <button type="button" class="btn btn-primary" style="margin-top: 8px; padding: 4px 12px; font-size: 11px;" onclick="closePurchaseDropdownMenu(); showAddObatModal();">
+                + Daftarkan Obat Baru
+            </button>
+        `;
+        list.appendChild(emptyDiv);
+        return;
+    }
+
+    filtered.slice(0, 150).forEach(o => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'purchase-combobox-item';
+        itemDiv.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;';
+        itemDiv.onmouseenter = () => itemDiv.style.background = '#f8fafc';
+        itemDiv.onmouseleave = () => itemDiv.style.background = '#ffffff';
+        itemDiv.onclick = () => selectPurchaseComboboxObat(o.id_obat);
+        
+        const sat1 = o.satuan_1 || 'Pcs';
+        const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
+
+        itemDiv.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(o.nama_obat)}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">${o.id_obat} • ${escapeHtml(o.kategori || 'OBAT')}</div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <span class="badge" style="background: #f0fdf4; color: #166534; font-weight: 700; font-size: 10.5px;">Stok: ${displayStok} ${sat1}</span>
+                <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">HPP: Rp ${formatMoney(o.harga_beli_sat_1 || 0)}</div>
+            </div>
+        `;
+        list.appendChild(itemDiv);
     });
+}
+
+function selectPurchaseComboboxObat(id_obat) {
+    const o = medicinesList.find(m => m.id_obat === id_obat);
+    if (!o) return;
+    const searchInput = document.getElementById('purchase-item-search');
+    const hiddenId = document.getElementById('purchase-item-obat');
+    if (searchInput) searchInput.value = o.nama_obat;
+    if (hiddenId) hiddenId.value = o.id_obat;
+    closePurchaseDropdownMenu();
+    onPurchaseObatSelected(o.id_obat);
+}
+
+// Backward compatibility helper
+function renderPurchaseObatDropdown(list, selectedId = '') {
+    renderPurchaseComboboxItems();
 }
 
 function filterPurchaseObatDropdown(query) {
-    const q = (query || '').trim().toLowerCase();
-    const select = document.getElementById('purchase-item-obat');
-    if (!select) return;
-    
-    if (!q) {
-        renderPurchaseObatDropdown(medicinesList);
-        return;
+    filterPurchaseCombobox(query);
+}
+
+function getHppChangeBadge(newHpp, oldHpp) {
+    if (!newHpp) return '';
+    if (oldHpp <= 0) {
+        return `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:10.5px;">🆕 HPP Baru</span>`;
     }
+    const diff = newHpp - oldHpp;
+    const pct = ((newHpp - oldHpp) / oldHpp) * 100;
+    const pctStr = pct % 1 === 0 ? pct.toString() : pct.toFixed(1);
     
-    const filtered = medicinesList.filter(o => 
-        (o.nama_obat && o.nama_obat.toLowerCase().includes(q)) ||
-        (o.id_obat && o.id_obat.toLowerCase().includes(q)) ||
-        (o.barcode && o.barcode.toLowerCase().includes(q))
-    );
-    
-    select.innerHTML = '<option value="">-- Ditemukan ' + filtered.length + ' obat --</option>';
-    filtered.slice(0, 200).forEach((o, idx) => {
-        const opt = document.createElement('option');
-        opt.value = o.id_obat;
-        opt.textContent = `${o.id_obat} - ${o.nama_obat}`;
-        if (idx === 0 && filtered.length === 1) opt.selected = true;
-        select.appendChild(opt);
-    });
-    
-    if (filtered.length === 1) {
-        onPurchaseObatSelected();
+    if (diff > 0) {
+        return `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:10.5px;" title="Harga Beli Bersih Naik Rp ${formatMoney(diff)}">🔺 Naik +Rp ${formatMoney(diff)} (+${pctStr}%)</span>`;
+    } else if (diff < 0) {
+        return `<span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; font-size:10.5px;" title="Harga Beli Bersih Turun Rp ${formatMoney(Math.abs(diff))}">🔻 Turun -Rp ${formatMoney(Math.abs(diff))} (${pctStr}%)</span>`;
+    } else {
+        return `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:600; font-size:10.5px;" title="Harga Beli Bersih Tetap">➖ Tetap</span>`;
     }
 }
 
-function onPurchaseObatSelected() {
-    const select = document.getElementById('purchase-item-obat');
-    const id = select?.value;
+async function onPurchaseObatSelected(overrideId = null) {
+    const id = overrideId || document.getElementById('purchase-item-obat')?.value;
     const infoCard = document.getElementById('purchase-item-info-card');
     const historyCard = document.getElementById('purchase-item-history-card');
     
@@ -3880,25 +3977,33 @@ function onPurchaseObatSelected() {
     if (!o) return;
     currentSelectedPurchaseObat = o;
     
-    // 1. Show baseline info (HPP, Jual L1, Stok)
+    // 1. Populate Satuan Masuk options from this medicine
+    populatePurchaseSatuanOptions(o);
+
+    // 2. Display baseline info (HPP, Jual L1, Jual L2/L3, Stok)
     if (infoCard) {
         infoCard.style.display = 'block';
         const hppEl = document.getElementById('purchase-info-hpp');
         const jualEl = document.getElementById('purchase-info-jual');
+        const levelsEl = document.getElementById('purchase-info-jual-levels');
         const stokEl = document.getElementById('purchase-info-stok');
         const sat1 = o.satuan_1 || 'Pcs';
-        if (hppEl) hppEl.textContent = `Rp ${formatMoney(o.harga_beli_sat_1 || 0)} / ${sat1}`;
-        if (jualEl) jualEl.textContent = `Rp ${formatMoney(o.harga_l1_s1 || 0)} / ${sat1}`;
+        const hpp1 = parseFloat(o.harga_beli_sat_1 || 0);
+        const l1 = parseFloat(o.harga_l1_s1 || 0);
+        const l2 = parseFloat(o.harga_l2_s1 || 0);
+        const l3 = parseFloat(o.harga_l3_s1 || 0);
+        const mgnL1 = (hpp1 > 0 && l1 > 0) ? (((l1 - hpp1) / hpp1) * 100).toFixed(1) : '0';
+        
+        if (hppEl) hppEl.textContent = `Rp ${formatMoney(hpp1)} / ${sat1}`;
+        if (jualEl) jualEl.textContent = `Rp ${formatMoney(l1)} / ${sat1} (+${mgnL1}%)`;
+        if (levelsEl) levelsEl.textContent = `L2: Rp ${formatMoney(l2)} | L3: Rp ${formatMoney(l3)}`;
         if (stokEl) stokEl.textContent = `${o.stok_unit_kecil || 0} ${sat1}`;
     }
     
-    // 2. Fetch & display 5 history purchases
-    loadPurchaseItemHistory(o.id_obat);
+    // 3. Fetch purchase history and apply initial values for price, disc1, disc2, ppn
+    await loadPurchaseItemHistory(o.id_obat);
     
-    // 3. Populate Satuan Masuk options from this medicine
-    populatePurchaseSatuanOptions(o);
-    
-    // 4. Update calculations
+    // 4. Update calculations preview
     updatePurchaseSubtotalPreview();
 }
 
@@ -3914,7 +4019,7 @@ async function loadPurchaseItemHistory(id_obat) {
     try {
         if (!supabaseClient) return;
         const { data: logs, error } = await supabaseClient.from('log_beli')
-            .select('tanggal_masuk, harga_beli_item, harga_netto, jumlah_masuk, satuan_masuk, id_faktur')
+            .select('tanggal_masuk, harga_beli_item, harga_netto, jumlah_masuk, satuan_masuk, id_faktur, diskon_item, pajak_item, update_harga_1')
             .eq('id_obat', id_obat)
             .eq('jenis_transaksi', 'PEMBELIAN')
             .order('tanggal_masuk', { ascending: false })
@@ -3927,6 +4032,40 @@ async function loadPurchaseItemHistory(id_obat) {
         }
         
         if (badge) badge.textContent = `${logs.length} data`;
+
+        // Apply initial values from latest purchase (logs[0])
+        const latest = logs[0];
+        if (latest) {
+            const satSelect = document.getElementById('purchase-item-satuan');
+            const selectedOpt = satSelect?.selectedOptions[0];
+            const currentSatName = selectedOpt?.dataset.name || '';
+            
+            if (latest.harga_beli_item && parseFloat(latest.harga_beli_item) > 0) {
+                if (!latest.satuan_masuk || latest.satuan_masuk === currentSatName) {
+                    const priceInput = document.getElementById('purchase-item-price');
+                    if (priceInput) priceInput.value = parseFloat(latest.harga_beli_item);
+                }
+            }
+            
+            // Initial Disc 1 & Disc 2
+            let d1 = 0, d2 = 0;
+            if (latest.diskon_item) {
+                const parts = String(latest.diskon_item).replace(/%/g, '').split('+');
+                d1 = parseFloat(parts[0]?.trim()) || 0;
+                d2 = parseFloat(parts[1]?.trim()) || 0;
+            }
+            const d1Input = document.getElementById('purchase-item-disc1');
+            const d2Input = document.getElementById('purchase-item-disc2');
+            if (d1Input) d1Input.value = d1;
+            if (d2Input) d2Input.value = d2;
+            
+            // Initial PPN
+            const ppnVal = latest.pajak_item !== null && latest.pajak_item !== undefined 
+                ? parseFloat(latest.pajak_item) 
+                : parseFloat(localStorage.getItem('last_purchase_ppn') || '11');
+            const ppnInput = document.getElementById('purchase-item-ppn');
+            if (ppnInput) ppnInput.value = isNaN(ppnVal) ? 11 : ppnVal;
+        }
         
         const fakturIds = logs.map(l => l.id_faktur).filter(Boolean);
         let supMap = {};
@@ -4024,7 +4163,7 @@ function onPurchaseSatuanChanged() {
     if (descEl && currentSelectedPurchaseObat) {
         descEl.textContent = `1 ${satName} = ${mult} ${currentSelectedPurchaseObat.satuan_1 || 'Pcs'}`;
     }
-    if (priceInput) {
+    if (priceInput && (!priceInput.value || parseFloat(priceInput.value) <= 0)) {
         priceInput.value = initPrice;
     }
     
@@ -4047,16 +4186,21 @@ function updatePurchaseSubtotalPreview() {
         totalKecilEl.textContent = `= ${totalKecil} ${sat1Name}`;
     }
     
+    // Subtotal Kotor (Harga Kotor * Qty)
+    const subtotalKotor = Math.round(price * qty);
+    const kotorDisplay = document.getElementById('purchase-item-kotor-display');
+    if (kotorDisplay) kotorDisplay.textContent = `Rp ${formatMoney(subtotalKotor)}`;
+
     // Diskon bertingkat (D1 lalu D2)
     const p1 = price * (1 - (d1 / 100));
     const p2 = p1 * (1 - (d2 / 100));
     const hargaNetto = Math.round(p2 * (1 + (ppn / 100)));
     
-    // Subtotal
-    const subtotal = Math.round(hargaNetto * qty);
+    // Subtotal Netto
+    const subtotalNetto = Math.round(hargaNetto * qty);
     
     // Update HPP Satuan Terkecil Baru
-    const hppBaruSat1 = totalKecil > 0 ? Math.round(subtotal / totalKecil) : (konv > 0 ? Math.round(hargaNetto / konv) : hargaNetto);
+    const hppBaruSat1 = totalKecil > 0 ? Math.round(subtotalNetto / totalKecil) : (konv > 0 ? Math.round(hargaNetto / konv) : hargaNetto);
     
     const nettoDisplay = document.getElementById('purchase-item-netto-display');
     if (nettoDisplay) nettoDisplay.textContent = `Rp ${formatMoney(hargaNetto)}`;
@@ -4066,10 +4210,17 @@ function updatePurchaseSubtotalPreview() {
         const sat1Name = currentSelectedPurchaseObat?.satuan_1 || 'Pcs';
         hppDisplay.textContent = `Rp ${formatMoney(hppBaruSat1)} / ${sat1Name}`;
     }
+
+    // Penanda Kenaikan / Penurunan HPP
+    const badgeContainer = document.getElementById('purchase-item-hpp-trend-badge');
+    if (badgeContainer) {
+        const oldHpp = currentSelectedPurchaseObat ? parseFloat(currentSelectedPurchaseObat.harga_beli_sat_1 || 0) : 0;
+        badgeContainer.innerHTML = getHppChangeBadge(hppBaruSat1, oldHpp);
+    }
     
     const previewEl = document.getElementById('purchase-item-preview-badge');
     if (previewEl) {
-        previewEl.textContent = `Subtotal: Rp ${formatMoney(subtotal)}`;
+        previewEl.textContent = `Subtotal Netto: Rp ${formatMoney(subtotalNetto)}`;
     }
 }
 
@@ -4097,23 +4248,28 @@ function addPurchaseItemToGrid() {
     
     // Calculate final clean numbers
     const totalKecil = Math.round(qty * konv * 100) / 100;
+    const subtotalKotor = Math.round(price * qty);
     const p1 = price * (1 - (d1 / 100));
     const p2 = p1 * (1 - (d2 / 100));
     const hargaNetto = Math.round(p2 * (1 + (ppn / 100)));
     const subtotal = Math.round(hargaNetto * qty);
     const hppBaruSat1 = totalKecil > 0 ? Math.round(subtotal / totalKecil) : (konv > 0 ? Math.round(hargaNetto / konv) : hargaNetto);
     
+    const oldHpp = parseFloat(o.harga_beli_sat_1 || 0);
+    const hppBadge = getHppChangeBadge(hppBaruSat1, oldHpp);
+
     // Save last PPN in localStorage
     localStorage.setItem('last_purchase_ppn', String(ppn));
     
     const batchVal = document.getElementById('purchase-item-batch')?.value.trim() || '';
     const expVal = document.getElementById('purchase-item-exp')?.value || '';
     
+    // Disc text representation
     let discText = '0%';
-    if (d1 > 0 && d2 > 0) discText = `${d1}%+${d2}%`;
+    if (d1 > 0 && d2 > 0) discText = `${d1}% + ${d2}%`;
     else if (d1 > 0) discText = `${d1}%`;
     else if (d2 > 0) discText = `${d2}%`;
-
+    
     purchaseItems.push({
         id_obat: o.id_obat,
         nama_obat: o.nama_obat,
@@ -4121,22 +4277,24 @@ function addPurchaseItemToGrid() {
         konversi: konv,
         jumlah: qty,
         total_unit_kecil: totalKecil,
-        harga_beli: price, // gross price
+        satuan_1_nama: o.satuan_1 || 'Pcs',
+        harga_beli: price,
+        subtotal_kotor: subtotalKotor,
         disc1: d1,
         disc2: d2,
         disc_text: discText,
         ppn: ppn,
         harga_netto: hargaNetto,
-        total: subtotal,
         subtotal: subtotal,
         hpp_sat_1_baru: hppBaruSat1,
-        satuan_1_nama: o.satuan_1 || 'Pcs',
-        satuan_2: o.satuan_2 || null,
-        isi2: parseFloat(o.isi_2_ke_1 || 1),
-        satuan_3: o.satuan_3 || null,
-        isi3: parseFloat(o.isi_3_ke_2 || 1),
+        old_hpp: oldHpp,
+        hpp_badge: hppBadge,
         no_batch: batchVal,
-        expired_date: expVal
+        expired_date: expVal,
+        satuan_2: o.satuan_2,
+        isi2: parseFloat(o.isi_2_ke_1 || 0),
+        satuan_3: o.satuan_3,
+        isi3: parseFloat(o.isi_3_ke_2 || 0)
     });
     
     resetPurchaseItemForm();
@@ -4148,11 +4306,10 @@ function resetPurchaseItemForm() {
     const searchInput = document.getElementById('purchase-item-search');
     if (searchInput) searchInput.value = '';
     
-    const obatSelect = document.getElementById('purchase-item-obat');
-    if (obatSelect) {
-        renderPurchaseObatDropdown(medicinesList);
-        obatSelect.value = '';
-    }
+    const hiddenId = document.getElementById('purchase-item-obat');
+    if (hiddenId) hiddenId.value = '';
+    
+    closePurchaseDropdownMenu();
     
     const satSelect = document.getElementById('purchase-item-satuan');
     if (satSelect) satSelect.innerHTML = '<option value="">-- Pilih Obat Dahulu --</option>';
@@ -4183,6 +4340,12 @@ function resetPurchaseItemForm() {
     
     const histCard = document.getElementById('purchase-item-history-card');
     if (histCard) histCard.style.display = 'none';
+
+    const kotorDisplay = document.getElementById('purchase-item-kotor-display');
+    if (kotorDisplay) kotorDisplay.textContent = 'Rp 0';
+
+    const badgeContainer = document.getElementById('purchase-item-hpp-trend-badge');
+    if (badgeContainer) badgeContainer.innerHTML = '';
     
     updatePurchaseSubtotalPreview();
 }
@@ -4195,7 +4358,7 @@ function renderPurchaseGrid() {
     let grandTotal = 0;
 
     if (purchaseItems.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding: 25px;">Belum ada item barang dalam faktur ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding: 25px;">Belum ada item barang dalam faktur ini.</td></tr>';
         if (mobileContainer) {
             mobileContainer.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px; font-size:13px;">Belum ada item barang dalam faktur ini.</div>';
         }
@@ -4204,9 +4367,10 @@ function renderPurchaseGrid() {
             grandTotal += item.subtotal;
             const tr = document.createElement('tr');
             
-            let extraInfo = '';
-            if (item.no_batch) extraInfo += `<span class="badge" style="background:#f1f5f9; color:#475569; font-size:10px; margin-right:4px;">B: ${escapeHtml(item.no_batch)}</span>`;
-            if (item.expired_date) extraInfo += `<span class="badge" style="background:#fef3c7; color:#b45309; font-size:10px;">ED: ${escapeHtml(item.expired_date)}</span>`;
+            const extraInfo = [
+                item.no_batch ? `Batch: ${item.no_batch}` : '',
+                item.expired_date ? `ED: ${item.expired_date}` : ''
+            ].filter(Boolean).join(' • ');
             
             const konvText = item.konversi > 1 ? `<div style="font-size:10px; color:var(--text-muted);">(= ${item.total_unit_kecil} ${item.satuan_1_nama})</div>` : '';
             
@@ -4218,11 +4382,15 @@ function renderPurchaseGrid() {
                 <td style="white-space:nowrap;"><span class="badge badge-info">${escapeHtml(item.satuan)}</span> ${konvText}</td>
                 <td style="text-align:center; font-weight:700;">${item.jumlah}</td>
                 <td style="text-align:right; white-space:nowrap;">Rp ${formatMoney(item.harga_beli)}</td>
+                <td style="text-align:right; white-space:nowrap; color:var(--text-muted);">Rp ${formatMoney(item.subtotal_kotor)}</td>
                 <td style="text-align:center; font-size:11px; white-space:nowrap;">${item.disc_text}</td>
                 <td style="text-align:center; font-size:11px; white-space:nowrap;">${item.ppn}%</td>
                 <td style="text-align:right; font-weight:700; color:#0f766e; white-space:nowrap;">Rp ${formatMoney(item.harga_netto)}</td>
                 <td style="text-align:right; font-weight:800; color:var(--primary-color); white-space:nowrap;">Rp ${formatMoney(item.subtotal)}</td>
-                <td style="text-align:right; font-weight:700; color:#1e40af; white-space:nowrap;">Rp ${formatMoney(item.hpp_sat_1_baru)} / ${escapeHtml(item.satuan_1_nama)}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                    <div style="font-weight:700; color:#1e40af;">Rp ${formatMoney(item.hpp_sat_1_baru)} / ${escapeHtml(item.satuan_1_nama)}</div>
+                    ${item.hpp_badge || ''}
+                </td>
                 <td style="text-align:center;"><button type="button" class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})" title="Hapus Item">✕</button></td>
             `;
             tbody.appendChild(tr);
@@ -4234,11 +4402,14 @@ function renderPurchaseGrid() {
                     <div class="price-card-header">
                         <div style="flex:1; min-width:0;">
                             <div class="price-card-title" style="font-size:13px; font-weight:700;">${escapeHtml(item.nama_obat)}</div>
-                            <div class="price-card-sub" style="font-size:11px;">${item.jumlah} ${item.satuan} @ Rp ${formatMoney(item.harga_beli)} (Disc: ${item.disc_text}, PPN: ${item.ppn}%)</div>
-                            <div style="font-size:11px; color:#0f766e; margin-top:2px;">Netto: <strong>Rp ${formatMoney(item.harga_netto)}</strong> / ${item.satuan}</div>
-                            <div style="font-size:11px; color:#1e40af;">HPP Baru: <strong>Rp ${formatMoney(item.hpp_sat_1_baru)}</strong> / ${item.satuan_1_nama} (Total ${item.total_unit_kecil} ${item.satuan_1_nama})</div>
+                            <div class="price-card-sub" style="font-size:11px;">${item.jumlah} ${item.satuan} @ Rp ${formatMoney(item.harga_beli)} (Kotor: Rp ${formatMoney(item.subtotal_kotor)})</div>
+                            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Disc: ${item.disc_text} • PPN: ${item.ppn}% • Netto: <strong>Rp ${formatMoney(item.harga_netto)}</strong></div>
+                            <div style="font-size:11px; color:#1e40af; margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                <span>HPP Baru: <strong>Rp ${formatMoney(item.hpp_sat_1_baru)}</strong> / ${item.satuan_1_nama}</span>
+                                ${item.hpp_badge || ''}
+                            </div>
                         </div>
-                        <div style="text-align:right;">
+                        <div style="text-align:right; flex-shrink:0;">
                             <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(item.subtotal)}</strong>
                             <div style="margin-top:6px;">
                                 <button type="button" class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button>
@@ -8077,3 +8248,11 @@ window.submitBayarKonsinyasi = async function(e) {
         alert('Gagal membukukan pembayaran konsinyasi: ' + err.message);
     }
 };
+
+// Close purchase combobox when clicking outside
+document.addEventListener('click', (e) => {
+    const container = document.getElementById('purchase-combobox-container');
+    if (container && !container.contains(e.target)) {
+        closePurchaseDropdownMenu();
+    }
+});

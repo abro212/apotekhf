@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css?v=20261109_09">
+    <link rel="stylesheet" href="style.css?v=20261109_10">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -730,20 +730,39 @@
                                     <span style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Lengkap Diskon & PPN</span>
                                 </h4>
                                 
-                                <!-- Search & Pilih Obat -->
+                                <!-- Search & Pilih Obat (Unified Combobox) -->
                                 <div class="form-group" style="margin-bottom: 10px;">
-                                    <label style="font-weight: 700;">Pilih Obat *</label>
-                                    <div style="position: relative; margin-bottom: 6px;">
-                                        <input type="text" id="purchase-item-search" class="form-control" placeholder="🔍 Ketik nama obat / barcode untuk mencari..." oninput="filterPurchaseObatDropdown(this.value)" autocomplete="off">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                        <label style="margin: 0; font-weight: 700;">Pilih Obat *</label>
+                                        <button type="button" class="btn btn-secondary" style="padding: 2px 10px; font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;" onclick="showAddObatModal()" title="Daftarkan Obat Baru ke Master Obat">
+                                            + Tambah Item Baru
+                                        </button>
                                     </div>
-                                    <select id="purchase-item-obat" class="form-control" style="width: 100%;" onchange="onPurchaseObatSelected()"></select>
+                                    <div style="position: relative;" id="purchase-combobox-container">
+                                        <div style="position: relative;">
+                                            <input type="text" id="purchase-item-search" class="form-control" placeholder="Ketik nama obat atau barcode untuk memilih..." onfocus="openPurchaseDropdownMenu()" oninput="filterPurchaseCombobox(this.value)" autocomplete="off" style="padding-left: 36px; padding-right: 32px; font-weight: 600; height: 38px; border-radius: 8px;">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            <span onclick="togglePurchaseDropdownMenu()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); padding: 4px; font-size: 11px;">▼</span>
+                                        </div>
+                                        <input type="hidden" id="purchase-item-obat" value="">
+                                        <div id="purchase-combobox-list" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 280px; overflow-y: auto;"></div>
+                                    </div>
                                     
-                                    <!-- Baseline Info HPP & Jual L1 -->
+                                    <!-- Baseline Info HPP & Harga Jual Terakhir Satuan Terkecil -->
                                     <div id="purchase-item-info-card" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 12px;">
-                                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">HPP Sat. 1 (Terakhir):</span><strong id="purchase-info-hpp" style="color: #166534; font-size: 12.5px;">-</strong></div>
-                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">Harga Jual L1 Sat. 1:</span><strong id="purchase-info-jual" style="color: #166534; font-size: 12.5px;">-</strong></div>
-                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">Stok Saat Ini:</span><strong id="purchase-info-stok" style="color: #0f766e; font-size: 12.5px;">-</strong></div>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px;">
+                                            <div>
+                                                <span style="color: var(--text-muted); font-size: 11px; display: block;">HPP Satuan Terkecil (Terakhir):</span>
+                                                <strong id="purchase-info-hpp" style="color: #166534; font-size: 13px;">-</strong>
+                                            </div>
+                                            <div>
+                                                <span style="color: var(--text-muted); font-size: 11px; display: block;">Harga Jual L1 Satuan Terkecil:</span>
+                                                <strong id="purchase-info-jual" style="color: #166534; font-size: 13px;">-</strong>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #bbf7d0; padding-top: 6px; font-size: 11.5px;">
+                                            <div id="purchase-info-jual-levels" style="color: #15803d; font-weight: 600;">L2: - | L3: -</div>
+                                            <div><span style="color: var(--text-muted);">Stok Saat Ini: </span><strong id="purchase-info-stok" style="color: #0f766e;">-</strong></div>
                                         </div>
                                     </div>
 
@@ -754,7 +773,7 @@
                                             <span id="purchase-history-badge" class="badge badge-info" style="font-size: 10px;">0 data</span>
                                         </div>
                                         <div style="max-height: 125px; overflow-y: auto;">
-                                            <table class="data-table" style="font-size: 11px; margin: 0;">
+                                            <table class="data-table" style="font-size: 11px; margin: 0; min-width: 100% !important;">
                                                 <thead>
                                                     <tr>
                                                         <th style="padding: 4px 6px;">Tanggal</th>
@@ -813,22 +832,29 @@
                                     </div>
                                 </div>
 
-                                <!-- Box Perhitungan Bersih (Netto, Subtotal, Update HPP) -->
+                                <!-- Box Perhitungan Kotor & Bersih (Netto, Subtotal, Update HPP + Penanda) -->
                                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: var(--text-muted); margin: 0;">Subtotal Kotor:</label>
+                                            <div id="purchase-item-kotor-display" style="font-size: 13.5px; font-weight: 700; color: var(--text-main);">Rp 0</div>
+                                            <small style="color: var(--text-muted); font-size: 10px;">Sebelum Disc & PPN</small>
+                                        </div>
                                         <div>
                                             <label style="font-size: 11px; font-weight: 700; color: #0d9488; margin: 0;">Harga Netto Satuan:</label>
-                                            <div id="purchase-item-netto-display" style="font-size: 14px; font-weight: 800; color: #0f766e;">Rp 0</div>
+                                            <div id="purchase-item-netto-display" style="font-size: 13.5px; font-weight: 800; color: #0f766e;">Rp 0</div>
                                             <small style="color: var(--text-muted); font-size: 10px;">Setelah Disc & PPN</small>
                                         </div>
+                                    </div>
+                                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
                                         <div>
-                                            <label style="font-size: 11px; font-weight: 700; color: #1e40af; margin: 0;">Update HPP Sat. 1:</label>
-                                            <div id="purchase-item-hpp-baru-display" style="font-size: 14px; font-weight: 800; color: #1e40af;">Rp 0</div>
-                                            <small style="color: var(--text-muted); font-size: 10px;">Auto update ke Master Obat</small>
+                                            <div style="font-size: 11px; font-weight: 700; color: #1e40af;">Update HPP Sat. 1 (Terkecil):</div>
+                                            <div id="purchase-item-hpp-baru-display" style="font-size: 13.5px; font-weight: 800; color: #1e40af;">Rp 0</div>
                                         </div>
+                                        <div id="purchase-item-hpp-trend-badge"></div>
                                     </div>
                                     <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
-                                        <span style="font-size: 12.5px; font-weight: 700; color: var(--text-main);">Subtotal Item:</span>
+                                        <span style="font-size: 12.5px; font-weight: 700; color: var(--text-main);">Subtotal Netto Item:</span>
                                         <span id="purchase-item-preview-badge" style="font-size: 16px; font-weight: 800; color: var(--primary-color);">Rp 0</span>
                                     </div>
                                 </div>
@@ -2822,7 +2848,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_09"></script>
+    <script src="app.js?v=20261109_10"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
