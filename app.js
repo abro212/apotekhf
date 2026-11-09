@@ -112,13 +112,44 @@ const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 // Supabase Configuration Management
 // --------------------------------------------------------------------------
 function checkSupabaseConfig() {
- const url = localStorage.getItem('supabaseUrl') || DEFAULT_SUPABASE_URL;
- const key = localStorage.getItem('supabaseAnonKey') || DEFAULT_SUPABASE_KEY;
+ let url = localStorage.getItem('supabaseUrl');
+ let key = localStorage.getItem('supabaseAnonKey');
+
+ // Auto-clean if invalid placeholder, corrupted, or empty
+ if (!url || url.includes('xxx') || !url.startsWith('https://') || url.includes('undefined') || url.includes('null')) {
+  url = DEFAULT_SUPABASE_URL;
+  localStorage.removeItem('supabaseUrl');
+ }
+ if (!key || key.includes('xxx') || key.length < 50 || key.includes('undefined') || key.includes('null')) {
+  key = DEFAULT_SUPABASE_KEY;
+  localStorage.removeItem('supabaseAnonKey');
+ }
+
  if (url && key && window.supabase) {
- supabaseClient = window.supabase.createClient(url, key);
- return true;
+  try {
+   supabaseClient = window.supabase.createClient(url, key);
+   return true;
+  } catch (e) {
+   console.error('Supabase initialization error:', e);
+  }
  }
  return false;
+}
+
+function resetDefaultDatabase() {
+ localStorage.removeItem('supabaseUrl');
+ localStorage.removeItem('supabaseAnonKey');
+ if (checkSupabaseConfig()) {
+  alert('Koneksi berhasil di-reset ke database Supabase Cloud utama!');
+  if (currentView === 'view-master-obat') loadMasterObat();
+  else if (currentView === 'view-kasir') initPOS();
+  else if (currentView === 'view-cek-harga') searchHarga();
+  else if (currentView === 'view-menu-pembelian') initPembelian();
+  else if (currentView === 'view-menu-penjualan') loadRiwayatPenjualan();
+  else switchView(currentView);
+ } else {
+  alert('Supabase JS library belum terhubung. Silakan periksa koneksi internet Anda atau refresh halaman.');
+ }
 }
 
 function showSupabaseConfigForm() {
@@ -1124,6 +1155,20 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
  const to = from + pageSize - 1;
 
  let { data, count, error } = await query.order('nama_obat', { ascending: true }).range(from, to);
+ if (error || !data) {
+  let altQuery = supabaseClient.from('master_obat').select('*', { count: 'exact' });
+  altQuery = altQuery.not('nama_obat', 'is', null);
+  if (q) {
+   const cleanQ = q.replace(/[%_,()]/g, '');
+   if (cleanQ) altQuery = altQuery.or(`id_obat.ilike.%${cleanQ}%,nama_obat.ilike.%${cleanQ}%,kategori.ilike.%${cleanQ}%`);
+  }
+  const altRes = await altQuery.order('nama_obat', { ascending: true }).range(from, to);
+  if (!altRes.error && altRes.data) {
+   data = altRes.data;
+   count = altRes.count;
+   error = null;
+  }
+ }
  const tbody = document.getElementById('cek-harga-table-body');
  const mobileList = document.getElementById('cek-harga-mobile-list');
  
@@ -1146,7 +1191,7 @@ async function searchHarga(page = currentCekHargaPage, pageSize = currentCekHarg
  if (mobileList) mobileList.innerHTML = '';
  
  if (error && !data) {
- tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">Gagal memuat data (Koneksi Supabase terputus). <button class="btn btn-secondary" style="padding:4px 10px; margin-left:8px; font-size:12px;" onclick="openDatabaseConfigModal()">Atur Database</button></td></tr>';
+ tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:30px; color:#ef4444;">Gagal memuat data (Koneksi Supabase terputus). <button class="btn btn-primary" style="padding:4px 10px; margin-left:6px; font-size:12px; background:#059669;" onclick="resetDefaultDatabase()">🔄 Reset Server</button> <button class="btn btn-secondary" style="padding:4px 10px; margin-left:6px; font-size:12px;" onclick="openDatabaseConfigModal()">Atur Database</button></td></tr>';
  return;
  }
 
@@ -1357,7 +1402,7 @@ async function posSearchObat(page = currentPOSPage, pageSize = currentPOSPageSiz
  results.innerHTML = '';
 
  if (error && !data) {
- results.innerHTML = '<div style="text-align:center; padding:20px; font-size:13px; color:#ef4444;">Gagal memuat katalog (Koneksi Supabase terputus). <button class="btn btn-secondary" style="padding:4px 10px; margin-left:8px; font-size:12px;" onclick="openDatabaseConfigModal()">Atur Database</button></div>';
+ results.innerHTML = '<div style="text-align:center; padding:20px; font-size:13px; color:#ef4444;">Gagal memuat katalog (Koneksi Supabase terputus). <button class="btn btn-primary" style="padding:4px 10px; margin-left:6px; font-size:12px; background:#059669;" onclick="resetDefaultDatabase()">🔄 Reset Server</button> <button class="btn btn-secondary" style="padding:4px 10px; margin-left:6px; font-size:12px;" onclick="openDatabaseConfigModal()">Atur Database</button></div>';
  return;
  }
  
@@ -3726,7 +3771,7 @@ function togglePurchaseTempoDate() {
 
 let currentSelectedPurchaseObat = null;
 
-function initPembelian() {
+async function initPembelian() {
     purchaseItems = [];
     renderPurchaseGrid();
     loadPurchaseSuppliers();
@@ -3734,7 +3779,9 @@ function initPembelian() {
     if (medicinesList && medicinesList.length > 0) {
         renderPurchaseObatDropdown(medicinesList);
     } else {
-        loadAllDropdowns();
+        const select = document.getElementById('purchase-item-obat');
+        if (select) select.innerHTML = '<option value="">Memuat data obat dari database...</option>';
+        await loadAllDropdowns();
     }
 
     const ppnInput = document.getElementById('purchase-item-ppn');
@@ -7083,11 +7130,31 @@ async function loadInfoStats() {
 // --------------------------------------------------------------------------
 async function loadAllDropdowns() {
  try {
- if (!supabaseClient) return;
- const { data } = await supabaseClient.from('master_obat').select('*').order('nama_obat').limit(500);
- medicinesList = data || [];
+  if (!supabaseClient) checkSupabaseConfig();
+  if (!supabaseClient) return;
+
+  const p1 = supabaseClient.from('master_obat').select('*').order('nama_obat', { ascending: true }).range(0, 999);
+  const p2 = supabaseClient.from('master_obat').select('*').order('nama_obat', { ascending: true }).range(1000, 1999);
+  const p3 = supabaseClient.from('master_obat').select('*').order('nama_obat', { ascending: true }).range(2000, 2999);
+
+  const [r1, r2, r3] = await Promise.all([p1, p2, p3]);
+  const all = [
+   ...(r1.data || []),
+   ...(r2.data || []),
+   ...(r3.data || [])
+  ].filter(o => o && o.nama_obat);
+
+  if (all.length > 0) {
+   medicinesList = all;
+   console.log(`Loaded ${medicinesList.length} master medicines.`);
+  }
+
+  const purchaseSelect = document.getElementById('purchase-item-obat');
+  if (purchaseSelect && medicinesList.length > 0) {
+   renderPurchaseObatDropdown(medicinesList);
+  }
  } catch (e) {
- console.error(e);
+  console.error('Failed to load medicines dropdowns:', e);
  }
 }
 
@@ -7766,9 +7833,9 @@ function handleSaveDbConfigModal(e) {
  closeModal('modal-db-config');
  alert('Pengaturan database berhasil disimpan! Memuat ulang data...');
  // Reload active view
- if (currentViewId === 'view-master-obat') loadMasterObat();
- else if (currentViewId === 'view-kasir') initPOS();
- else if (currentViewId === 'view-cek-harga') searchHarga();
+ if (currentView === 'view-master-obat') loadMasterObat();
+ else if (currentView === 'view-kasir') initPOS();
+ else if (currentView === 'view-cek-harga') searchHarga();
  } else {
  alert('Gagal menginisialisasi client Supabase dengan URL/Key tersebut.');
  }

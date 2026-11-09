@@ -2814,10 +2814,15 @@
 
     <!-- Supabase JS Client & Export Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        if (!window.supabase) {
+            document.write('<script src="https://unpkg.com/@supabase/supabase-js@2"><\/script>');
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_06"></script>
+    <script src="app.js?v=20261109_07"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
