@@ -3770,6 +3770,13 @@ function togglePurchaseTempoDate() {
     }
 }
 
+let suppliersMap = {};
+
+function getSupplierDisplayName(val) {
+    if (!val) return '-';
+    return suppliersMap[val] || val;
+}
+
 let currentSelectedPurchaseObat = null;
 
 async function initPembelian() {
@@ -4071,8 +4078,21 @@ async function loadPurchaseItemHistory(id_obat) {
         let supMap = {};
         if (fakturIds.length > 0) {
             const { data: fks } = await supabaseClient.from('faktur_beli').select('id_faktur, supplier').in('id_faktur', fakturIds);
-            if (fks) {
-                fks.forEach(f => { supMap[f.id_faktur] = f.supplier; });
+            if (fks && fks.length > 0) {
+                // Ensure all supplier codes in fks are resolved to actual names
+                const missingCodes = fks.map(f => f.supplier).filter(s => s && !suppliersMap[s]);
+                if (missingCodes.length > 0) {
+                    const { data: sups } = await supabaseClient.from('supplier').select('id_supplier, supplier').in('id_supplier', missingCodes);
+                    if (sups) {
+                        sups.forEach(s => {
+                            if (s.id_supplier) suppliersMap[s.id_supplier] = s.supplier;
+                            if (s.supplier) suppliersMap[s.supplier] = s.supplier;
+                        });
+                    }
+                }
+                fks.forEach(f => {
+                    supMap[f.id_faktur] = suppliersMap[f.supplier] || f.supplier || '-';
+                });
             }
         }
         
@@ -4080,7 +4100,7 @@ async function loadPurchaseItemHistory(id_obat) {
         logs.forEach(l => {
             const tr = document.createElement('tr');
             const tgl = (l.tanggal_masuk || '').substring(0, 10) || '-';
-            const sup = supMap[l.id_faktur] || l.id_faktur || '-';
+            const sup = supMap[l.id_faktur] || suppliersMap[l.id_faktur] || '-';
             const qtySat = `${l.jumlah_masuk || 0} ${l.satuan_masuk || ''}`;
             const hb = parseFloat(l.harga_beli_item || 0);
             const hn = parseFloat(l.harga_netto || hb);
