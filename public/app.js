@@ -4663,67 +4663,385 @@ async function submitPurchaseInvoice() {
 }
 
 // --------------------------------------------------------------------------
-// 7. STOK OPNAME
+// 7. STOK OPNAME & PENYESUAIAN FISIK
 // --------------------------------------------------------------------------
+let currentSelectedOpnameObat = null;
+
 async function initStokOpname() {
- populateObatDropdown('opname-obat-select');
- document.getElementById('opname-obat-select').onchange = (e) => {
- if (!e.target.value) return;
- const o = JSON.parse(e.target.value);
- document.getElementById('opname-current-stock').value = `${o.stok_unit_kecil || 0} ${o.label_satuan_kecil || 'Pcs'}`;
- };
- document.getElementById('opname-physical-stock').value = '';
- document.getElementById('opname-reason').value = '';
+    resetOpnameForm();
+    await loadStokOpnameHistory();
+}
+
+function openOpnameDropdownMenu() {
+    const list = document.getElementById('opname-combobox-list');
+    if (!list) return;
+    const q = document.getElementById('opname-item-search')?.value.trim() || '';
+    renderOpnameComboboxItems(q);
+    list.style.display = 'block';
+}
+
+function closeOpnameDropdownMenu() {
+    const list = document.getElementById('opname-combobox-list');
+    if (list) list.style.display = 'none';
+}
+
+function toggleOpnameDropdownMenu() {
+    const list = document.getElementById('opname-combobox-list');
+    if (!list) return;
+    if (list.style.display === 'block') {
+        closeOpnameDropdownMenu();
+    } else {
+        openOpnameDropdownMenu();
+    }
+}
+
+function filterOpnameObatOptions(query) {
+    const list = document.getElementById('opname-combobox-list');
+    if (!list) return;
+    renderOpnameComboboxItems(query);
+    list.style.display = 'block';
+}
+
+function renderOpnameComboboxItems(query = '') {
+    const list = document.getElementById('opname-combobox-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const q = (query || '').trim().toLowerCase();
+    let filtered = medicinesList;
+    if (q) {
+        filtered = medicinesList.filter(o => 
+            (o.nama_obat && o.nama_obat.toLowerCase().includes(q)) ||
+            (o.id_obat && o.id_obat.toLowerCase().includes(q)) ||
+            (o.barcode && o.barcode.toLowerCase().includes(q))
+        );
+    }
+
+    if (filtered.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.style.cssText = 'padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px;';
+        emptyDiv.innerHTML = 'Obat "' + escapeHtml(q) + '" tidak ditemukan.';
+        list.appendChild(emptyDiv);
+        return;
+    }
+
+    filtered.slice(0, 100).forEach(o => {
+        const itemDiv = document.createElement('div');
+        itemDiv.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;';
+        itemDiv.onmouseenter = () => itemDiv.style.background = '#f8fafc';
+        itemDiv.onmouseleave = () => itemDiv.style.background = '#ffffff';
+        itemDiv.onclick = () => selectOpnameComboboxObat(o.id_obat);
+
+        const sat1 = o.satuan_1 || o.label_satuan_kecil || 'Pcs';
+        const displayStok = o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0);
+
+        itemDiv.innerHTML = `
+            <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(o.nama_obat)}</div>
+                <div style="font-size: 11px; color: var(--text-muted);">${o.id_obat} • Rak: ${escapeHtml(o.rak || '-')}</div>
+            </div>
+            <div style="text-align: right; flex-shrink: 0;">
+                <span class="badge" style="background: #f0fdf4; color: #166534; font-weight: 700; font-size: 10.5px;">Stok: ${displayStok} ${sat1}</span>
+            </div>
+        `;
+        list.appendChild(itemDiv);
+    });
+}
+
+async function selectOpnameComboboxObat(id_obat) {
+    closeOpnameDropdownMenu();
+    await onOpnameObatSelected(id_obat);
+}
+
+async function onOpnameObatSelected(id_obat) {
+    const o = medicinesList.find(m => m.id_obat === id_obat);
+    if (!o) return;
+    currentSelectedOpnameObat = o;
+
+    const searchInput = document.getElementById('opname-item-search');
+    const hiddenId = document.getElementById('opname-item-obat');
+    if (searchInput) searchInput.value = o.nama_obat;
+    if (hiddenId) hiddenId.value = o.id_obat;
+
+    const infoBox = document.getElementById('opname-selected-info');
+    if (infoBox) {
+        infoBox.style.display = 'block';
+        const nameEl = document.getElementById('opname-info-name');
+        const idEl = document.getElementById('opname-info-id');
+        const catEl = document.getElementById('opname-info-cat');
+        const satEl = document.getElementById('opname-info-sat');
+        const rakEl = document.getElementById('opname-info-rak');
+        if (nameEl) nameEl.textContent = o.nama_obat;
+        if (idEl) idEl.textContent = o.id_obat;
+        if (catEl) catEl.textContent = o.kategori || 'OBAT';
+        if (satEl) satEl.textContent = o.satuan_1 || o.label_satuan_kecil || 'Pcs';
+        if (rakEl) rakEl.textContent = o.rak || '-';
+    }
+
+    // Query realtime stock from view_stok_realtime for utmost accuracy
+    let liveStock = parseFloat(o.stok_realtime !== null && o.stok_realtime !== undefined ? o.stok_realtime : (o.stok_unit_kecil || 0));
+    try {
+        if (supabaseClient) {
+            const { data } = await supabaseClient.from('view_stok_realtime').select('stok_realtime, stok_unit_kecil').eq('id_obat', id_obat).limit(1);
+            if (data && data.length > 0) {
+                liveStock = parseFloat(data[0].stok_realtime !== null && data[0].stok_realtime !== undefined ? data[0].stok_realtime : (data[0].stok_unit_kecil || 0));
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching live stock for opname:', e);
+    }
+
+    const satLabel = o.satuan_1 || o.label_satuan_kecil || 'Pcs';
+    const currentStockInput = document.getElementById('opname-current-stock');
+    const currentStockVal = document.getElementById('opname-current-stock-val');
+    if (currentStockInput) currentStockInput.value = liveStock + ' ' + satLabel;
+    if (currentStockVal) currentStockVal.value = liveStock;
+
+    const satBadge = document.getElementById('opname-item-satuan');
+    if (satBadge) satBadge.textContent = satLabel;
+
+    const physInput = document.getElementById('opname-physical-stock');
+    if (physInput) {
+        physInput.value = '';
+        physInput.focus();
+    }
+    updateOpnameDiffPreview();
+}
+
+function updateOpnameDiffPreview() {
+    const currentStockVal = document.getElementById('opname-current-stock-val');
+    const physicalInput = document.getElementById('opname-physical-stock');
+    const diffDisplay = document.getElementById('opname-diff-display');
+    const hiddenId = document.getElementById('opname-item-obat')?.value;
+
+    if (!diffDisplay) return;
+
+    if (!hiddenId) {
+        diffDisplay.innerHTML = '<span style="color:var(--text-muted); font-size:12px;">Pilih obat terlebih dahulu.</span>';
+        return;
+    }
+
+    const physicalVal = physicalInput?.value;
+    if (physicalVal === '' || physicalVal === null || isNaN(parseFloat(physicalVal))) {
+        diffDisplay.innerHTML = '<span style="color:var(--text-muted); font-size:12px;">Masukkan stok fisik untuk menghitung selisih.</span>';
+        return;
+    }
+
+    const currentStock = parseFloat(currentStockVal?.value || 0);
+    const physicalStock = parseFloat(physicalVal);
+    const diff = Math.round((physicalStock - currentStock) * 100) / 100;
+    const satName = document.getElementById('opname-item-satuan')?.textContent || 'Unit';
+
+    if (diff > 0) {
+        diffDisplay.innerHTML = `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:700; font-size:12.5px; padding:6px 12px;">🔺 Selisih: +${diff} ${satName} (Surplus / Stok Sistem Bertambah)</span>`;
+    } else if (diff < 0) {
+        diffDisplay.innerHTML = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:12.5px; padding:6px 12px;">🔻 Selisih: ${diff} ${satName} (Defisit / Stok Sistem Berkurang)</span>`;
+    } else {
+        diffDisplay.innerHTML = `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; font-size:12.5px; padding:6px 12px;">➖ Selisih: 0 ${satName} (Stok Fisik Sesuai Dengan Sistem)</span>`;
+    }
+}
+
+function resetOpnameForm() {
+    currentSelectedOpnameObat = null;
+    const searchInput = document.getElementById('opname-item-search');
+    const hiddenId = document.getElementById('opname-item-obat');
+    const currentStock = document.getElementById('opname-current-stock');
+    const currentStockVal = document.getElementById('opname-current-stock-val');
+    const physInput = document.getElementById('opname-physical-stock');
+    const reasonInput = document.getElementById('opname-reason');
+    const infoBox = document.getElementById('opname-selected-info');
+    const diffDisplay = document.getElementById('opname-diff-display');
+
+    if (searchInput) searchInput.value = '';
+    if (hiddenId) hiddenId.value = '';
+    if (currentStock) currentStock.value = '-';
+    if (currentStockVal) currentStockVal.value = '0';
+    if (physInput) physInput.value = '';
+    if (reasonInput) reasonInput.value = '';
+    if (infoBox) infoBox.style.display = 'none';
+    if (diffDisplay) diffDisplay.innerHTML = '<span style="color:var(--text-muted); font-size:12px;">Pilih obat dan tentukan stok fisik untuk menghitung selisih.</span>';
+    closeOpnameDropdownMenu();
 }
 
 async function submitStokOpname() {
- const select = document.getElementById('opname-obat-select');
- const physical = document.getElementById('opname-physical-stock').value;
- const reason = document.getElementById('opname-reason').value.trim();
- 
- if (!select.value || !physical) {
- alert('Pilih obat dan tentukan jumlah stok fisik!');
- return;
- }
- 
- const o = JSON.parse(select.value);
- const physicalStock = parseFloat(physical);
- const currentStock = getEffectiveStock(o);
- const difference = physicalStock - currentStock;
- 
- try {
- if (!supabaseClient) return;
- 
- // 1. Update master_obat
- const { error: opnErr } = await supabaseClient.from('master_obat').update({ stok_unit_kecil: String(physicalStock) }).eq('id_obat', o.id_obat);
- if (opnErr) throw opnErr;
+    const hiddenId = document.getElementById('opname-item-obat');
+    const id_obat = hiddenId?.value;
+    const physicalInput = document.getElementById('opname-physical-stock');
+    const reasonInput = document.getElementById('opname-reason');
+    const physicalStr = physicalInput?.value;
+    const reason = reasonInput?.value.trim() || 'Penyesuaian Stok Opname';
 
- // 2. Log in log_beli as STOK OPNAME
- const id_beli = 'SO' + Math.random().toString(36).substring(2, 8).toUpperCase();
- const dateStr = new Date().toISOString().split('T')[0];
+    if (!id_obat || physicalStr === '' || physicalStr === null || isNaN(parseFloat(physicalStr))) {
+        alert('Pilih obat dan tentukan jumlah stok fisik yang valid!');
+        return;
+    }
 
- const { error: logErr } = await supabaseClient.from('log_beli').insert([{
- id_beli: id_beli,
- tanggal_masuk: dateStr,
- id_obat: o.id_obat,
- satuan_masuk: o.label_satuan_kecil || 'Pcs',
- harga_beli_item: '0',
- jumlah_masuk: String(difference),
- konversi_masuk: '1.0',
- total_harga: '0.0',
- jenis_transaksi: 'STOK OPNAME',
- alasan_retur: reason || 'Penyesuaian Stok Opname',
- user: currentUser?.nama_staf || 'cashier'
- }]);
+    const physicalStock = parseFloat(physicalStr);
+    if (physicalStock < 0) {
+        alert('Stok fisik tidak boleh bernilai negatif!');
+        return;
+    }
 
- if (logErr) throw logErr;
+    const btn = document.getElementById('btn-submit-opname');
+    if (btn) { btn.disabled = true; btn.textContent = 'Menyimpan...'; }
 
- alert('Penyesuaian stok opname berhasil disimpan!');
- initStokOpname();
- } catch (e) {
- console.error(e);
- alert('Gagal memproses penyesuaian stok opname.');
- }
+    try {
+        if (!supabaseClient) return;
+
+        // 1. Fetch live stock from view_stok_realtime for accuracy
+        let currentStock = 0;
+        let medInfo = medicinesList.find(m => m.id_obat === id_obat);
+        
+        const { data: vData, error: vErr } = await supabaseClient
+            .from('view_stok_realtime')
+            .select('*')
+            .eq('id_obat', id_obat)
+            .limit(1);
+
+        if (!vErr && vData && vData.length > 0) {
+            const v = vData[0];
+            currentStock = parseFloat(v.stok_realtime !== null && v.stok_realtime !== undefined ? v.stok_realtime : (v.stok_unit_kecil || 0));
+            medInfo = v;
+        } else if (medInfo) {
+            currentStock = parseFloat(medInfo.stok_unit_kecil || 0);
+        }
+
+        const difference = Math.round((physicalStock - currentStock) * 100) / 100;
+        const satName = medInfo?.satuan_1 || medInfo?.label_satuan_kecil || 'Pcs';
+
+        // 2. Update master_obat
+        const { error: opnErr } = await supabaseClient
+            .from('master_obat')
+            .update({ stok_unit_kecil: String(physicalStock) })
+            .eq('id_obat', id_obat);
+
+        if (opnErr) throw opnErr;
+
+        // 3. Log in log_beli as STOK OPNAME with exact difference in konversi_masuk & jumlah_masuk
+        const id_beli = 'SO' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const dateStr = new Date().toISOString().split('T')[0];
+
+        const { error: logErr } = await supabaseClient.from('log_beli').insert([{
+            id_beli: id_beli,
+            tanggal_masuk: dateStr,
+            id_obat: id_obat,
+            satuan_masuk: satName,
+            harga_beli_item: '0',
+            jumlah_masuk: String(difference),
+            konversi_masuk: String(difference),
+            stok_fisik_saat_ini: String(physicalStock),
+            total_harga: '0.0',
+            jenis_transaksi: 'STOK OPNAME',
+            alasan_retur: reason,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        if (logErr) throw logErr;
+
+        // 4. Update in-memory cache
+        if (medicinesList && medicinesList.length > 0) {
+            const found = medicinesList.find(m => m.id_obat === id_obat);
+            if (found) {
+                found.stok_unit_kecil = String(physicalStock);
+                found.stok_realtime = physicalStock;
+            }
+        }
+
+        const sign = difference >= 0 ? '+' : '';
+        alert('Penyesuaian stok opname berhasil disimpan!\nItem: ' + (medInfo?.nama_obat || id_obat) + '\nStok Fisik Baru: ' + physicalStock + ' ' + satName + '\nSelisih Disesuaikan: ' + sign + difference + ' ' + satName);
+
+        resetOpnameForm();
+        await loadStokOpnameHistory();
+        loadAllDropdowns(); // background refresh
+
+    } catch (e) {
+        console.error('Error submitting stok opname:', e);
+        alert('Gagal memproses penyesuaian stok opname: ' + (e.message || 'Terjadi kesalahan'));
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Update Penyesuaian Stok'; }
+    }
+}
+
+async function loadStokOpnameHistory() {
+    const tbody = document.getElementById('opname-history-table-body');
+    const mobileContainer = document.getElementById('opname-history-mobile');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color:var(--text-muted);">Memuat riwayat stok opname...</td></tr>';
+    if (mobileContainer) mobileContainer.innerHTML = '<div style="text-align:center; padding: 15px; color:var(--text-muted);">Memuat...</div>';
+
+    try {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+            .from('log_beli')
+            .select('id_beli, tanggal_masuk, id_obat, satuan_masuk, jumlah_masuk, konversi_masuk, stok_fisik_saat_ini, alasan_retur, user')
+            .eq('jenis_transaksi', 'STOK OPNAME')
+            .order('tanggal_masuk', { ascending: false })
+            .limit(25);
+
+        if (error || !data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color:var(--text-muted);">Belum ada riwayat stok opname.</td></tr>';
+            if (mobileContainer) mobileContainer.innerHTML = '<div style="text-align:center; padding: 15px; color:var(--text-muted);">Belum ada riwayat stok opname.</div>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        if (mobileContainer) mobileContainer.innerHTML = '';
+
+        data.forEach(item => {
+            const med = medicinesList.find(m => m.id_obat === item.id_obat);
+            const namaObat = med ? med.nama_obat : (item.id_obat || '-');
+            const sat = item.satuan_masuk || med?.satuan_1 || 'Pcs';
+            const diff = parseFloat(item.konversi_masuk || item.jumlah_masuk || 0);
+            const fisik = item.stok_fisik_saat_ini !== null && item.stok_fisik_saat_ini !== undefined ? (item.stok_fisik_saat_ini + ' ' + sat) : '-';
+            const tgl = (item.tanggal_masuk || '').substring(0, 10) || '-';
+            const user = item.user || 'Staf';
+            const alasan = item.alasan_retur || 'Penyesuaian Fisik';
+
+            let diffBadge = '';
+            if (diff > 0) {
+                diffBadge = '<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:700;">+' + diff + ' ' + sat + '</span>';
+            } else if (diff < 0) {
+                diffBadge = '<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700;">' + diff + ' ' + sat + '</span>';
+            } else {
+                diffBadge = '<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:600;">0 ' + sat + '</span>';
+            }
+
+            // Desktop Row
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="white-space:nowrap; padding: 8px 10px; font-size:12.5px;">${tgl}</td>
+                <td style="padding: 8px 10px;">
+                    <strong>${escapeHtml(namaObat)}</strong>
+                    <div style="font-size:11px; color:var(--text-muted);">${item.id_obat || ''}</div>
+                </td>
+                <td style="white-space:nowrap; padding: 8px 10px; font-weight:600;">${fisik}</td>
+                <td style="white-space:nowrap; padding: 8px 10px;">${diffBadge}</td>
+                <td style="padding: 8px 10px; font-size:12px; color:var(--text-muted);">${escapeHtml(alasan)}</td>
+                <td style="white-space:nowrap; padding: 8px 10px; font-size:12px;">${escapeHtml(user)}</td>
+            `;
+            tbody.appendChild(tr);
+
+            // Mobile Card
+            if (mobileContainer) {
+                const card = document.createElement('div');
+                card.style.cssText = 'background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:8px;';
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <span style="font-size:11px; color:var(--text-muted);">${tgl} • ${escapeHtml(user)}</span>
+                        ${diffBadge}
+                    </div>
+                    <div style="font-weight:700; font-size:13px; color:var(--text-main);">${escapeHtml(namaObat)}</div>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">Fisik: <strong>${fisik}</strong> • ${escapeHtml(alasan)}</div>
+                `;
+                mobileContainer.appendChild(card);
+            }
+        });
+
+    } catch (e) {
+        console.error('Error loading opname history:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 15px; color:var(--danger-color);">Gagal memuat riwayat.</td></tr>';
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -8340,11 +8658,15 @@ window.submitBayarKonsinyasi = async function(e) {
     }
 };
 
-// Close purchase combobox when clicking outside
+// Close purchase and opname combobox when clicking outside
 document.addEventListener('click', (e) => {
     const container = document.getElementById('purchase-combobox-container');
     if (container && !container.contains(e.target)) {
         closePurchaseDropdownMenu();
+    }
+    const opnameContainer = document.getElementById('opname-combobox-container');
+    if (opnameContainer && !opnameContainer.contains(e.target)) {
+        closeOpnameDropdownMenu();
     }
 });
 

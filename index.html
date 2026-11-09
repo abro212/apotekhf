@@ -972,26 +972,118 @@
                     </div>
                 </section>
 
-                <!-- 7. VIEW: STOK OPNAME -->
+                <!-- 7. VIEW: STOK OPNAME & PENYESUAIAN FISIK -->
                 <section id="view-menu-stok-opname" class="hidden">
-                    <div class="view-card" style="max-width: 500px; margin: 0 auto;">
-                        <div class="form-group">
-                            <label>Pilih Obat</label>
-                            <select id="opname-obat-select" class="form-control" style="width: 100%;"></select>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="font-size: 18px; font-weight: 800; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="m9 14 2 2 4-4"></path></svg>
+                            Modul Stok Opname & Penyesuaian Fisik
+                        </h3>
+                        <button class="btn btn-secondary" onclick="initStokOpname()" style="font-size: 12px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px;">
+                            🔄 Refresh Riwayat
+                        </button>
+                    </div>
+
+                    <div class="pembelian-layout">
+                        <!-- Form Stok Opname (Left) -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; gap: 8px;">
+                                Form Penyesuaian Stok Fisik
+                            </h3>
+
+                            <!-- Searchable Combobox Obat -->
+                            <div id="opname-combobox-container" class="form-group" style="position: relative;">
+                                <label style="font-weight: 700;">Pilih Obat *</label>
+                                <div style="position: relative; display: flex; align-items: center;">
+                                    <input type="text" id="opname-item-search" class="form-control" placeholder="Cari Nama Obat, ID, atau Barcode..." autocomplete="off" onfocus="openOpnameDropdownMenu()" oninput="filterOpnameObatOptions(this.value)">
+                                    <span onclick="toggleOpnameDropdownMenu()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: var(--text-muted); padding: 4px; font-size: 11px;">▼</span>
+                                </div>
+                                <input type="hidden" id="opname-item-obat" value="">
+                                <div id="opname-combobox-list" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); max-height: 280px; overflow-y: auto;"></div>
+                            </div>
+
+                            <!-- Detail Info Obat Terpilih -->
+                            <div id="opname-selected-info" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; margin-bottom: 15px; font-size: 12px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+                                    <div>
+                                        <strong id="opname-info-name" style="color: var(--text-main); font-size: 13.5px;">-</strong>
+                                        <div style="color: var(--text-muted); font-size: 11px; margin-top: 2px;">
+                                            ID: <span id="opname-info-id">-</span> • Kategori: <span id="opname-info-cat">-</span> • Rak: <span id="opname-info-rak">-</span>
+                                        </div>
+                                    </div>
+                                    <span id="opname-item-satuan" class="badge badge-info" style="font-size: 11px;">Pcs</span>
+                                </div>
+                            </div>
+
+                            <div class="pembelian-form-row">
+                                <div class="form-group">
+                                    <label style="font-weight: 700;">Stok Saat Ini (Sistem)</label>
+                                    <input type="text" id="opname-current-stock" class="form-control" readonly value="-" style="background: #f1f5f9; cursor: not-allowed; font-weight: 700; color: #0f766e;">
+                                    <input type="hidden" id="opname-current-stock-val" value="0">
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-weight: 700;">Stok Fisik Sebenarnya *</label>
+                                    <input type="number" id="opname-physical-stock" class="form-control" placeholder="Contoh: 25" min="0" step="any" oninput="updateOpnameDiffPreview()" style="font-weight: 700;">
+                                </div>
+                            </div>
+
+                            <!-- Kolom Selisih Stok Preview -->
+                            <div class="form-group">
+                                <label style="font-weight: 700; margin-bottom: 4px;">Selisih Stok</label>
+                                <div id="opname-diff-display" style="padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; min-height: 42px; display: flex; align-items: center;">
+                                    <span style="color: var(--text-muted); font-size: 12px;">Pilih obat dan masukkan stok fisik untuk menghitung selisih.</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label style="font-weight: 700;">Alasan Penyesuaian</label>
+                                <input type="text" id="opname-reason" class="form-control" placeholder="Contoh: Selisih hitung fisik, obat rusak/pecah, dll...">
+                                <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+                                    <span class="badge" style="cursor: pointer; background: #f1f5f9; color: var(--text-main);" onclick="document.getElementById('opname-reason').value='Selisih hitung berkala';">Selisih hitung</span>
+                                    <span class="badge" style="cursor: pointer; background: #f1f5f9; color: var(--text-main);" onclick="document.getElementById('opname-reason').value='Obat rusak / pecah / bocor';">Obat rusak/pecah</span>
+                                    <span class="badge" style="cursor: pointer; background: #f1f5f9; color: var(--text-main);" onclick="document.getElementById('opname-reason').value='Barang susut / hilang';">Barang susut</span>
+                                    <span class="badge" style="cursor: pointer; background: #f1f5f9; color: var(--text-main);" onclick="document.getElementById('opname-reason').value='Koreksi input faktur lama';">Koreksi faktur</span>
+                                </div>
+                            </div>
+
+                            <button id="btn-submit-opname" class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 12px; font-weight: 700;" onclick="submitStokOpname()">
+                                Update Penyesuaian Stok
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label>Stok Saat Ini (Sistem)</label>
-                            <input type="text" id="opname-current-stock" class="form-control" readonly value="-">
+
+                        <!-- Tabel Riwayat Inputan Stok Opname (Right) -->
+                        <div class="view-card" style="margin-bottom: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h3 style="font-size: 15px; font-weight: 700; margin: 0; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                                    📋 Riwayat Inputan Stok Opname
+                                </h3>
+                                <span class="badge badge-info" style="font-size: 11px;">25 Terakhir</span>
+                            </div>
+
+                            <!-- Desktop View Table -->
+                            <div class="table-responsive desktop-only" style="max-height: 460px; overflow-y: auto;">
+                                <table class="table" style="font-size: 12px; width: 100%;">
+                                    <thead style="position: sticky; top: 0; background: var(--bg-card); z-index: 5;">
+                                        <tr>
+                                            <th style="white-space: nowrap;">Tanggal</th>
+                                            <th>Nama Obat</th>
+                                            <th style="white-space: nowrap;">Stok Fisik</th>
+                                            <th style="white-space: nowrap;">Selisih Stok</th>
+                                            <th>Alasan</th>
+                                            <th style="white-space: nowrap;">User</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="opname-history-table-body">
+                                        <tr><td colspan="6" style="text-align:center; padding: 20px; color:var(--text-muted);">Memuat riwayat...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Mobile View Cards -->
+                            <div id="opname-history-mobile" class="mobile-only">
+                                <div style="text-align: center; color: var(--text-muted); padding: 15px;">Memuat riwayat...</div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Stok Fisik Sebenarnya</label>
-                            <input type="number" id="opname-physical-stock" class="form-control" placeholder="Masukkan jumlah fisik...">
-                        </div>
-                        <div class="form-group">
-                            <label>Alasan Penyesuaian</label>
-                            <input type="text" id="opname-reason" class="form-control" placeholder="Contoh: Obat rusak, selisih hitung...">
-                        </div>
-                        <button class="btn btn-primary" style="width: 100%;" onclick="submitStokOpname()">Update Penyesuaian Stok</button>
                     </div>
                 </section>
 
@@ -2893,7 +2985,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_14"></script>
+    <script src="app.js?v=20261109_15"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
