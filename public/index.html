@@ -1361,7 +1361,12 @@
                     <div class="view-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap;">
                             <input type="text" id="tagihan-search-input" class="form-control" style="max-width: 380px;" placeholder="Cari berdasarkan ID Nota atau Nama..." oninput="loadTagihanData()">
-                            <span class="badge badge-info" id="tagihan-count-badge">0 Data</span>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button type="button" class="btn btn-primary" id="btn-bayar-multi-faktur" style="display: none; font-size: 12px; font-weight: 700; padding: 6px 14px;" onclick="openMultiFakturModal()">
+                                    💳 Bayar Multi-Faktur Supplier
+                                </button>
+                                <span class="badge badge-info" id="tagihan-count-badge">0 Data</span>
+                            </div>
                         </div>
 
                         <!-- Desktop Table -->
@@ -2573,6 +2578,12 @@
                     <strong id="bayar-calc-remaining" style="font-size: 15px; color: #1e40af; font-weight: 800;">Rp 0</strong>
                 </div>
 
+                <div class="form-group" id="group-bayar-potongan" style="display: none;">
+                    <label style="font-weight: 700;">Potongan / Diskon Pembulatan (Rp)</label>
+                    <input type="number" id="bayar-tagihan-potongan" class="form-control" min="0" value="0" placeholder="0" oninput="calculateTagihanRemainingDisplay()" style="font-size: 15px; font-weight: 700;">
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Potongan diskon pelunasan cepat atau selisih pembulatan sen.</div>
+                </div>
+
                 <div class="form-group">
                     <label style="font-weight: 700;">Metode Pembayaran</label>
                     <select id="bayar-tagihan-metode" class="form-control">
@@ -2989,7 +3000,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_16"></script>
+    <script src="app.js?v=20261109_17"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
@@ -3193,6 +3204,7 @@
                 <table class="data-table" style="font-size: 11.5px; margin: 0; min-width: 100%;">
                     <thead>
                         <tr>
+                            <th style="padding: 4px 6px; width: 30px; text-align: center;"><input type="checkbox" id="konsi-modal-check-all" checked onchange="toggleAllKonsiCheckboxes(this.checked)"></th>
                             <th style="padding: 4px 6px;">Nama Obat</th>
                             <th style="padding: 4px 6px; text-align: center;">Qty Laku</th>
                             <th style="padding: 4px 6px; text-align: right;">HPP Satuan</th>
@@ -3227,5 +3239,143 @@
         </div>
     </div>
 
+
+    <!-- Modal Pelunasan Multi-Faktur Supplier -->
+    <div id="modal-multi-faktur" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 780px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--primary-color);">💳 Pembayaran Hutang Multi-Faktur Supplier</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeModal('modal-multi-faktur')">✕</button>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; font-size: 12px; color: var(--text-muted); line-height: 1.4;">
+                Pilih supplier distributor, centang faktur-faktur yang akan dilunasi sekaligus dalam satu transaksi kas keluar, dan masukkan nominal serta potongan/diskon pembulatan per faktur.
+            </div>
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label style="font-weight: 700;">Pilih Supplier Distributor *</label>
+                <select id="multi-faktur-supplier-select" class="form-control" style="font-weight: 700;" onchange="loadMultiFakturBySupplier()">
+                    <option value="">-- Pilih Supplier --</option>
+                </select>
+            </div>
+            <div class="table-container" style="max-height: 240px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 12px;">
+                <table class="data-table" style="font-size: 11.5px; margin: 0; min-width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 6px 8px; width: 36px; text-align: center;"><input type="checkbox" id="multi-faktur-check-all" onchange="toggleAllMultiFakturCheckboxes(this.checked)"></th>
+                            <th style="padding: 6px 8px;">No. Faktur</th>
+                            <th style="padding: 6px 8px;">Tgl Masuk</th>
+                            <th style="padding: 6px 8px;">Jatuh Tempo</th>
+                            <th style="padding: 6px 8px; text-align: right;">Sisa Hutang</th>
+                            <th style="padding: 6px 8px; text-align: right; width: 135px;">Nominal Bayar (Rp)</th>
+                            <th style="padding: 6px 8px; text-align: right; width: 115px;">Potongan (Rp)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="multi-faktur-table-body">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Silakan pilih supplier distributor di atas.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+                    <span>Faktur Terpilih:</span>
+                    <strong id="multi-faktur-count-display">0 Faktur</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+                    <span>Total Nominal Bayar:</span>
+                    <strong id="multi-faktur-total-bayar-display" style="color: #dc2626;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+                    <span>Total Potongan / Pembulatan:</span>
+                    <strong id="multi-faktur-total-potongan-display" style="color: #047857;">Rp 0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 6px; margin-top: 6px;">
+                    <span style="font-weight: 700;">Total Kas Keluar Apotek:</span>
+                    <strong id="multi-faktur-kas-keluar-display" style="font-size: 16px; font-weight: 800; color: var(--primary-color);">Rp 0</strong>
+                </div>
+            </div>
+            <div class="pembelian-form-row">
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Metode Pembayaran</label>
+                    <select id="multi-faktur-metode" class="form-control">
+                        <option value="TRANSFER">TRANSFER BANK</option>
+                        <option value="CASH">CASH (Tunai)</option>
+                        <option value="GIRO">GIRO / CEK</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Sumber Laci Kas Keluar</label>
+                    <select id="multi-faktur-sumber-kas" class="form-control">
+                        <option value="Laci Kasir">Laci Kasir (Kas Operasional)</option>
+                        <option value="Rekening Bank">Rekening Bank (BCA / Mandiri)</option>
+                        <option value="Kas Besar">Kas Besar (Brankas)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="font-weight: 700; font-size: 12px;">Catatan Pelunasan Multi-Faktur</label>
+                <input type="text" id="multi-faktur-catatan" class="form-control" placeholder="Contoh: Pembayaran 3 faktur distributor Anugrah via Transfer BCA...">
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-multi-faktur')">Batal</button>
+                <button type="button" class="btn btn-primary" style="font-weight: 700;" onclick="submitMultiFakturPayment()">Simpan & Lunasi Faktur Terpilih</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Kartu Piutang Pelanggan (Customer Ledger Card) -->
+    <div id="modal-kartu-piutang" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--primary-color);">📋 Kartu Piutang Pelanggan</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeModal('modal-kartu-piutang')">✕</button>
+            </div>
+            <div id="kartu-piutang-print-area">
+                <div style="background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12.5px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">No. Nota Penjualan:</span>
+                        <strong id="kartu-piutang-id-jual" style="font-family: monospace; color: var(--primary-color);">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">Nama Pelanggan:</span>
+                        <strong id="kartu-piutang-nama">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">Tanggal Transaksi / Jatuh Tempo:</span>
+                        <span id="kartu-piutang-tgl">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">Total Nilai Belanja:</span>
+                        <strong id="kartu-piutang-total">Rp 0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed var(--border-color); padding-top: 6px; margin-top: 6px;">
+                        <span style="font-weight: 700;">Sisa Piutang Saat Ini:</span>
+                        <strong id="kartu-piutang-sisa" style="font-size: 15px; font-weight: 800; color: #dc2626;">Rp 0</strong>
+                    </div>
+                </div>
+                <h4 style="font-size: 13px; font-weight: 700; margin: 0 0 8px 0; color: var(--text-main);">Riwayat Pembayaran & Cicilan:</h4>
+                <div class="table-container" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 14px;">
+                    <table class="data-table" style="font-size: 12px; margin: 0; min-width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 6px 8px; width: 35px; text-align: center;">No</th>
+                                <th style="padding: 6px 8px;">Tgl Bayar</th>
+                                <th style="padding: 6px 8px; text-align: right;">Jumlah Bayar</th>
+                                <th style="padding: 6px 8px; text-align: center;">Metode</th>
+                                <th style="padding: 6px 8px;">Kasir / Staf</th>
+                                <th style="padding: 6px 8px;">Catatan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kartu-piutang-table-body">
+                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 15px;">Memuat riwayat cicilan...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="printKartuPiutang()">🖨️ Cetak Kartu Piutang</button>
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-kartu-piutang')">Tutup</button>
+            </div>
+        </div>
+    </div>
+    
 </body>
 </html>

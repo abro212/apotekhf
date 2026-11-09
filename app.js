@@ -3268,6 +3268,7 @@ async function previewObat(encodedId, e) {
    `;
    tbody.appendChild(tr3);
  }
+ if (typeof loadPreviewObatBatches === 'function') loadPreviewObatBatches(item.id_obat);
  } catch (err) {
  console.error(err);
  alert('Gagal menampilkan detail preview obat.');
@@ -4571,8 +4572,8 @@ async function submitPurchaseInvoice() {
             supplier: supplier,
             nominal_bayar: String(grandTotalFaktur),
             jatuh_tempo: tempoDate,
-            jenis_transaksi: 'PEMBELIAN',
-            metode_bayar: metode_bayar,
+            jenis_transaksi: (metode_bayar === 'KONSINYASI') ? 'KONSINYASI' : 'PEMBELIAN',
+            metode_bayar: (metode_bayar === 'KONSINYASI') ? 'KONSINYASI' : metode_bayar,
             user: currentUser?.nama_staf || 'cashier'
         }]);
 
@@ -4621,7 +4622,7 @@ async function submitPurchaseInvoice() {
                 update_harga_1: String(item.hpp_sat_1_baru || item.harga_beli),
                 no_batch: item.no_batch || null,
                 expired_date: item.expired_date || null,
-                jenis_transaksi: 'PEMBELIAN',
+                jenis_transaksi: (metode_bayar === 'KONSINYASI') ? 'KONSINYASI MASUK' : 'PEMBELIAN',
                 user: currentUser?.nama_staf || 'cashier'
             }]);
 
@@ -5062,7 +5063,19 @@ async function initCekKesehatan() {
  // Load patients
  try {
  if (!supabaseClient) return;
- const { data } = await supabaseClient.from('pasien').select('*').order('nama_pasien');
+ // Query legacy daftar_pasien or modern pasien
+        let { data } = await supabaseClient.from('daftar_pasien').select('*').order('nama');
+        if (data && data.length > 0) {
+            data = data.map(p => ({
+                id_pasien: p.id || p.id_pasien,
+                nama_pasien: p.nama || p.nama_pasien,
+                alamat: p.alamat || '-',
+                whatsapp: p.whatsapp || '-'
+            }));
+        } else {
+            const { data: p2 } = await supabaseClient.from('pasien').select('*').order('nama_pasien');
+            data = p2 || [];
+        }
  allPasienList = data || [];
  const searchInput = document.getElementById('checkup-pasien-search');
  if (searchInput) searchInput.value = '';
@@ -5135,10 +5148,32 @@ async function checkupChangePasien() {
  
  try {
  if (!supabaseClient) return;
- const { data, error } = await supabaseClient.from('rekam_kesehatan')
- .select('*')
- .eq('id_pasien', id_pasien)
- .order('tanggal', { ascending: false });
+ // Query legacy kontrol_pasien or rekam_kesehatan
+        let { data, error } = await supabaseClient.from('kontrol_pasien')
+            .select('*')
+            .eq('id', id_pasien)
+            .order('tgl', { ascending: false });
+
+        if (data && data.length > 0) {
+            data = data.map(k => ({
+                id_rekam: k.id_trans,
+                id_pasien: k.id,
+                tanggal: k.tgl ? (k.tgl + (k.jam ? ' ' + k.jam : '')) : '-',
+                tensi: k.tensi,
+                gula_darah: k.gula,
+                asam_urat: k.asam_urat,
+                kolesterol: k.kolesterol,
+                rekomendasi_obat: k.obat,
+                keterangan: k.keterangan,
+                user: k.nama
+            }));
+        } else {
+            const { data: rk } = await supabaseClient.from('rekam_kesehatan')
+                .select('*')
+                .eq('id_pasien', id_pasien)
+                .order('tanggal', { ascending: false });
+            data = rk || [];
+        }
  
  currentPatientCheckupData = data || [];
  filterCheckupHistoryList();
@@ -5384,7 +5419,33 @@ async function submitCheckup() {
 
  try {
  if (!supabaseClient) return;
- const { error } = await supabaseClient.from('rekam_kesehatan').insert([rekam]);
+ // Insert into legacy kontrol_pasien as primary AppSheet record
+        const dateObjNow = new Date();
+        const dateStrNow = dateObjNow.toISOString().split('T')[0];
+        const timeStrNow = String(dateObjNow.getHours()).padStart(2, '0') + '.' + String(dateObjNow.getMinutes()).padStart(2, '0');
+        const selPas = document.getElementById('checkup-pasien-select');
+        const patName = selPas && selPas.selectedIndex >= 0 ? selPas.options[selPas.selectedIndex].text.split('(')[0].trim() : '';
+
+        const kpRecord = {
+            tgl: dateStrNow,
+            jam: timeStrNow,
+            id_trans: 'KP-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+            id: rekam.id_pasien,
+            nama: patName,
+            tensi: rekam.tensi || '-',
+            gula: rekam.gula_darah || '-',
+            asam_urat: rekam.asam_urat || '-',
+            kolesterol: rekam.kolesterol || '-',
+            obat: rekam.rekomendasi_obat || '-',
+            keterangan: rekam.keterangan || '-'
+        };
+        try {
+            await supabaseClient.from('kontrol_pasien').insert([kpRecord]);
+        } catch(eKp) {
+            console.warn('kontrol_pasien sync note:', eKp);
+        }
+
+        const { error } = await supabaseClient.from('rekam_kesehatan').insert([rekam]);
  if (error) throw error;
  alert('Rekam kontrol kesehatan berhasil disimpan!');
  document.getElementById('checkup-tensi').value = '';
@@ -5413,12 +5474,23 @@ async function submitAddPasien(e) {
  try {
  if (!supabaseClient) return;
  const id_pasien = 'P' + Math.random().toString(36).substring(2, 8).toUpperCase();
- const { error } = await supabaseClient.from('pasien').insert([{
- id_pasien,
- nama_pasien: nama,
- alamat,
- whatsapp
- }]);
+ // Insert into daftar_pasien
+        try {
+            await supabaseClient.from('daftar_pasien').insert([{
+                id: id_pasien,
+                nama: nama,
+                alamat: alamat,
+                whatsapp: whatsapp
+            }]);
+        } catch(eDp) {
+            console.warn('daftar_pasien insert note:', eDp);
+        }
+        const { error } = await supabaseClient.from('pasien').insert([{
+            id_pasien,
+            nama_pasien: nama,
+            alamat,
+            whatsapp
+        }]);
  
  if (error) throw error;
  alert('Pasien baru berhasil didaftarkan!');
@@ -6501,24 +6573,36 @@ function exportLaporanXLSX() {
 let currentTagihanTab = 'piutang'; // 'piutang' or 'hutang'
 
 function switchTagihanTab(tab) {
- currentTagihanTab = tab;
- const btnPiutang = document.getElementById('tagihan-tab-piutang');
- const btnHutang = document.getElementById('tagihan-tab-hutang');
- 
- if (tab === 'piutang') {
- btnPiutang.className = 'btn btn-primary';
- btnHutang.className = 'btn btn-secondary';
- document.getElementById('tagihan-summary-label1').textContent = 'Total Piutang Outstanding';
- document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Nota Piutang Belum Lunas';
- document.getElementById('tagihan-summary-label3').textContent = 'Total Piutang Terbayar';
- } else {
- btnPiutang.className = 'btn btn-secondary';
- btnHutang.className = 'btn btn-primary';
- document.getElementById('tagihan-summary-label1').textContent = 'Total Hutang Outstanding';
- document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Faktur Hutang Belum Lunas';
- document.getElementById('tagihan-summary-label3').textContent = 'Total Hutang Terbayar';
- }
- loadTagihanData();
+    currentTagihanTab = tab;
+    const btnPiutang = document.getElementById('tagihan-tab-piutang');
+    const btnHutang = document.getElementById('tagihan-tab-hutang');
+    const btnKonsi = document.getElementById('tagihan-tab-konsinyasi');
+    const btnMulti = document.getElementById('btn-bayar-multi-faktur');
+
+    if (btnPiutang) btnPiutang.className = (tab === 'piutang') ? 'btn btn-primary' : 'btn btn-secondary';
+    if (btnHutang) btnHutang.className = (tab === 'hutang') ? 'btn btn-primary' : 'btn btn-secondary';
+    if (btnKonsi) btnKonsi.className = (tab === 'konsinyasi') ? 'btn btn-primary' : 'btn btn-secondary';
+
+    if (btnMulti) {
+        btnMulti.style.display = (tab === 'hutang') ? 'inline-block' : 'none';
+    }
+
+    if (tab === 'piutang') {
+        document.getElementById('tagihan-summary-label1').textContent = 'Total Piutang Outstanding';
+        document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Nota Piutang Belum Lunas';
+        document.getElementById('tagihan-summary-label3').textContent = 'Total Piutang Terbayar';
+        loadTagihanData();
+    } else if (tab === 'konsinyasi') {
+        document.getElementById('tagihan-summary-label1').textContent = 'Total Kewajiban Konsinyasi Laku';
+        document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Mitra Supplier Konsinyasi';
+        document.getElementById('tagihan-summary-label3').textContent = 'Metode Pembayaran Konsinyasi';
+        loadTagihanKonsinyasi();
+    } else {
+        document.getElementById('tagihan-summary-label1').textContent = 'Total Hutang Outstanding';
+        document.getElementById('tagihan-summary-label2').textContent = 'Jumlah Faktur Hutang Belum Lunas';
+        document.getElementById('tagihan-summary-label3').textContent = 'Total Hutang Terbayar';
+        loadTagihanData();
+    }
 }
 
 let currentTagihanPage = 1;
@@ -6680,7 +6764,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
  }
  const { data: fkList, count, error } = await query.range(from, to);
 
- const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('id_faktur, nomor_faktur, nominal_bayar').eq('metode_bayar', 'TEMPO');
+ const { data: allTempoFk } = await supabaseClient.from('faktur_beli').select('id_faktur, nomor_faktur, nominal_bayar, jenis_transaksi').eq('metode_bayar', 'TEMPO').neq('jenis_transaksi', 'KONSINYASI');
  const { data: hLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('*');
  
  const paidHutangMap = {};
@@ -6890,36 +6974,47 @@ async function submitBayarTagihan(e) {
  alert('Pelunasan piutang pelanggan berhasil dicatat!');
 
  } else {
- // Log into detail_pelunasan_hutang for Supplier
- const id_detail = 'DH' + Math.random().toString(36).substring(2, 8).toUpperCase();
- const id_pelunasan = 'PH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+ // Log into pelunasan_hutang & detail_pelunasan_hutang for Supplier
+        const id_detail = 'DH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const id_pelunasan = 'PH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        const potongan = parseFloat(document.getElementById('bayar-tagihan-potongan')?.value || 0);
+        const supplierName = document.getElementById('bayar-info-sisa')?.dataset?.supplierName || id;
 
- // Insert into detail_pelunasan_hutang
- try {
- await supabaseClient.from('detail_pelunasan_hutang').insert([{
- id_detail: id_detail,
- id_pelunasan: id_pelunasan,
- no_faktur: id,
- nominal_dibayar: String(nominal),
- potongan_pembulatan: 0
- }]);
- } catch(e2) {
- console.log('detail_pelunasan_hutang insert note:', e2);
- }
+        try {
+            // 1. Insert parent pelunasan_hutang record
+            await supabaseClient.from('pelunasan_hutang').insert([{
+                id_pelunasan: id_pelunasan,
+                tanggal_bayar: dateStr,
+                supplier: supplierName,
+                metode_bayar: metode,
+                catatan: catatan || `Pelunasan Faktur ${id}` + (potongan > 0 ? ` (Potongan Rp ${formatMoney(potongan)})` : '')
+            }]);
 
- // Log into kas as KELUAR for Hutang
- await supabaseClient.from('kas').insert([{
- id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
- tanggal: dateStr,
- jenis_kas: 'KELUAR',
- kategori: 'Pembayaran Hutang Supplier',
- jumlah: String(nominal),
- keterangan: `Pembayaran Faktur ${id} (${catatan || 'CASH'})`,
- user: currentUser?.nama_staf || 'cashier'
- }]);
+            // 2. Insert detail_pelunasan_hutang
+            await supabaseClient.from('detail_pelunasan_hutang').insert([{
+                id_detail: id_detail,
+                id_pelunasan: id_pelunasan,
+                no_faktur: id,
+                nominal_dibayar: String(nominal),
+                potongan_pembulatan: potongan
+            }]);
+        } catch(e2) {
+            console.log('pelunasan_hutang insert note:', e2);
+        }
 
- alert('Pembayaran hutang supplier berhasil dicatat!');
- }
+        // Log into kas as KELUAR for Hutang
+        await supabaseClient.from('kas').insert([{
+            id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            tanggal: dateStr,
+            jenis_kas: 'KELUAR',
+            kategori: 'Pembayaran Hutang Supplier',
+            jumlah: String(nominal),
+            keterangan: `Pembayaran Faktur ${id} (${supplierName}) - ${metode}` + (potongan > 0 ? ` [Disc Rp ${formatMoney(potongan)}]` : ''),
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        alert('Pembayaran hutang supplier berhasil dicatat!');
+    }
 
  closeModal('modal-bayar-tagihan');
  document.getElementById('form-bayar-tagihan').reset();
@@ -9336,9 +9431,12 @@ function openBayarKonsinyasiModal(encSup, encItems, total) {
         const tbody = document.getElementById('konsi-modal-items-body');
         if (tbody) {
             tbody.innerHTML = '';
-            activeKonsiItemsToPay.forEach(it => {
+            activeKonsiItemsToPay.forEach((it, idx) => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td style="padding: 4px 6px; text-align: center;">
+                        <input type="checkbox" class="konsi-check-item" data-index="${idx}" data-subtotal="${it.subtotal}" checked onchange="calcKonsiModalTotal()">
+                    </td>
                     <td>${escapeHtml(it.nama_obat)}</td>
                     <td style="text-align: center; font-weight: 700;">${it.qty_unpaid}</td>
                     <td style="text-align: right;">Rp ${formatMoney(it.hpp)}</td>
@@ -9383,7 +9481,14 @@ async function submitBayarKonsinyasi() {
         if (bkErr) throw bkErr;
 
         // 2. Insert detail rows into detail_bayar_konsi
-        const details = activeKonsiItemsToPay.map(it => ({
+        const checkedBoxes = document.querySelectorAll('.konsi-check-item:checked');
+        const checkedIndices = Array.from(checkedBoxes).map(cb => parseInt(cb.dataset.index));
+        const itemsPaying = activeKonsiItemsToPay.filter((_, i) => checkedIndices.includes(i));
+        if (itemsPaying.length === 0) {
+            alert('Pilih minimal 1 item konsinyasi untuk dibayarkan!');
+            return;
+        }
+        const details = itemsPaying.map(it => ({
             id_detail: 'DBK-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
             id_bayar: id_bayar,
             id_obat: it.id_obat,
@@ -9578,3 +9683,412 @@ document.addEventListener('DOMContentLoaded', () => {
     update4LaciDashboard();
     updateShiftBarUI();
 });
+
+// --------------------------------------------------------------------------
+// MULTI-FAKTUR PELUNASAN SUPPLIER & KARTU PIUTANG PELANGGAN
+// --------------------------------------------------------------------------
+let multiFakturActiveInvoices = [];
+
+async function openMultiFakturModal() {
+    if (!supabaseClient) return;
+    const modal = document.getElementById('modal-multi-faktur');
+    const select = document.getElementById('multi-faktur-supplier-select');
+    if (!modal || !select) return;
+
+    select.innerHTML = '<option value="">-- Memuat Supplier... --</option>';
+    document.getElementById('multi-faktur-table-body').innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Silakan pilih supplier distributor di atas.</td></tr>';
+    document.getElementById('multi-faktur-count-display').textContent = '0 Faktur';
+    document.getElementById('multi-faktur-total-bayar-display').textContent = 'Rp 0';
+    document.getElementById('multi-faktur-total-potongan-display').textContent = 'Rp 0';
+    document.getElementById('multi-faktur-kas-keluar-display').textContent = 'Rp 0';
+
+    modal.classList.remove('hidden');
+
+    try {
+        // Fetch distinct suppliers that have tempo invoices
+        const { data: fkList } = await supabaseClient.from('faktur_beli')
+            .select('supplier, nomor_faktur, id_faktur, nominal_bayar')
+            .eq('metode_bayar', 'TEMPO')
+            .neq('jenis_transaksi', 'KONSINYASI');
+
+        const { data: paidLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('no_faktur, nominal_dibayar, potongan_pembulatan');
+        const paidMap = {};
+        if (paidLogs) {
+            paidLogs.forEach(l => {
+                const k = l.no_faktur;
+                const tot = parseFloat(l.nominal_dibayar || 0) + parseFloat(l.potongan_pembulatan || 0);
+                paidMap[k] = (paidMap[k] || 0) + tot;
+            });
+        }
+
+        const supMap = {};
+        if (fkList) {
+            fkList.forEach(f => {
+                const tot = parseFloat(f.nominal_bayar || 0);
+                const pd = paidMap[f.nomor_faktur] || paidMap[f.id_faktur] || 0;
+                if (tot - pd > 10) {
+                    const sup = f.supplier || 'Tanpa Supplier';
+                    supMap[sup] = (supMap[sup] || 0) + 1;
+                }
+            });
+        }
+
+        select.innerHTML = '<option value="">-- Pilih Supplier Distributor --</option>';
+        Object.keys(supMap).sort().forEach(sup => {
+            const opt = document.createElement('option');
+            opt.value = sup;
+            opt.textContent = `${getSupplierDisplayName(sup)} (${supMap[sup]} Faktur Belum Lunas)`;
+            select.appendChild(opt);
+        });
+
+    } catch (e) {
+        console.error('Error opening multi-faktur modal:', e);
+        select.innerHTML = '<option value="">Gagal memuat supplier</option>';
+    }
+}
+
+async function loadMultiFakturBySupplier() {
+    const supplier = document.getElementById('multi-faktur-supplier-select')?.value;
+    const tbody = document.getElementById('multi-faktur-table-body');
+    if (!tbody) return;
+
+    if (!supplier) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Silakan pilih supplier distributor di atas.</td></tr>';
+        calcMultiFakturSummary();
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Mengambil daftar faktur tempo...</td></tr>';
+
+    try {
+        const { data: fks } = await supabaseClient.from('faktur_beli')
+            .select('*')
+            .eq('supplier', supplier)
+            .eq('metode_bayar', 'TEMPO')
+            .neq('jenis_transaksi', 'KONSINYASI')
+            .order('tanggal_masuk', { ascending: true });
+
+        const { data: paidLogs } = await supabaseClient.from('detail_pelunasan_hutang').select('no_faktur, nominal_dibayar, potongan_pembulatan');
+        const paidMap = {};
+        if (paidLogs) {
+            paidLogs.forEach(l => {
+                const k = l.no_faktur;
+                const tot = parseFloat(l.nominal_dibayar || 0) + parseFloat(l.potongan_pembulatan || 0);
+                paidMap[k] = (paidMap[k] || 0) + tot;
+            });
+        }
+
+        multiFakturActiveInvoices = [];
+        if (fks) {
+            fks.forEach(f => {
+                const tot = parseFloat(f.nominal_bayar || 0);
+                const pd = paidMap[f.nomor_faktur] || paidMap[f.id_faktur] || 0;
+                const sisa = Math.max(0, tot - pd);
+                if (sisa > 10) {
+                    multiFakturActiveInvoices.push({
+                        id_faktur: f.id_faktur,
+                        nomor_faktur: f.nomor_faktur || f.id_faktur,
+                        tanggal_masuk: f.tanggal_masuk || '-',
+                        jatuh_tempo: f.jatuh_tempo || '-',
+                        total: tot,
+                        sisa: sisa
+                    });
+                }
+            });
+        }
+
+        if (multiFakturActiveInvoices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #16a34a; font-weight: 700; padding: 16px;">✅ Seluruh faktur supplier ini sudah lunas!</td></tr>';
+            calcMultiFakturSummary();
+            return;
+        }
+
+        tbody.innerHTML = '';
+        multiFakturActiveInvoices.forEach((inv, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 6px 8px; text-align: center;">
+                    <input type="checkbox" class="mf-check-item" data-index="${idx}" onchange="calcMultiFakturSummary()">
+                </td>
+                <td style="padding: 6px 8px; font-weight: 700; font-family: monospace;">${escapeHtml(inv.nomor_faktur)}</td>
+                <td style="padding: 6px 8px; color: var(--text-muted);">${inv.tanggal_masuk}</td>
+                <td style="padding: 6px 8px; color: #dc2626; font-weight: 600;">${inv.jatuh_tempo}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 700;">Rp ${formatMoney(inv.sisa)}</td>
+                <td style="padding: 6px 8px; text-align: right;">
+                    <input type="number" class="form-control mf-input-bayar" data-index="${idx}" min="0" max="${inv.sisa}" value="${inv.sisa}" style="font-size: 11.5px; font-weight: 700; text-align: right; height: 30px; padding: 2px 6px;" oninput="calcMultiFakturSummary()">
+                </td>
+                <td style="padding: 6px 8px; text-align: right;">
+                    <input type="number" class="form-control mf-input-potongan" data-index="${idx}" min="0" value="0" placeholder="0" style="font-size: 11.5px; font-weight: 700; text-align: right; height: 30px; padding: 2px 6px; color: #047857;" oninput="calcMultiFakturSummary()">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const checkAll = document.getElementById('multi-faktur-check-all');
+        if (checkAll) checkAll.checked = false;
+        calcMultiFakturSummary();
+
+    } catch (e) {
+        console.error('Error loading multi-faktur invoices:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #dc2626; padding: 16px;">Gagal memuat faktur supplier.</td></tr>';
+    }
+}
+
+function toggleAllMultiFakturCheckboxes(checked) {
+    document.querySelectorAll('.mf-check-item').forEach(cb => {
+        cb.checked = checked;
+    });
+    calcMultiFakturSummary();
+}
+
+function calcMultiFakturSummary() {
+    const checkboxes = document.querySelectorAll('.mf-check-item');
+    let countChecked = 0;
+    let sumBayar = 0;
+    let sumPotongan = 0;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            countChecked++;
+            const idx = parseInt(cb.dataset.index);
+            const bayarInput = document.querySelector(`.mf-input-bayar[data-index="${idx}"]`);
+            const potInput = document.querySelector(`.mf-input-potongan[data-index="${idx}"]`);
+            const bVal = parseFloat(bayarInput?.value || 0);
+            const pVal = parseFloat(potInput?.value || 0);
+            sumBayar += bVal;
+            sumPotongan += pVal;
+        }
+    });
+
+    document.getElementById('multi-faktur-count-display').textContent = `${countChecked} Faktur`;
+    document.getElementById('multi-faktur-total-bayar-display').textContent = `Rp ${formatMoney(sumBayar)}`;
+    document.getElementById('multi-faktur-total-potongan-display').textContent = `Rp ${formatMoney(sumPotongan)}`;
+    document.getElementById('multi-faktur-kas-keluar-display').textContent = `Rp ${formatMoney(sumBayar)}`;
+}
+
+async function submitMultiFakturPayment() {
+    const supplier = document.getElementById('multi-faktur-supplier-select')?.value;
+    if (!supplier) {
+        alert('Pilih supplier distributor terlebih dahulu!');
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll('.mf-check-item:checked');
+    if (checkboxes.length === 0) {
+        alert('Centang minimal 1 faktur yang akan dilunasi!');
+        return;
+    }
+
+    const itemsToPay = [];
+    let totalKasKeluar = 0;
+    let totalPotongan = 0;
+
+    checkboxes.forEach(cb => {
+        const idx = parseInt(cb.dataset.index);
+        const inv = multiFakturActiveInvoices[idx];
+        const bayarInput = document.querySelector(`.mf-input-bayar[data-index="${idx}"]`);
+        const potInput = document.querySelector(`.mf-input-potongan[data-index="${idx}"]`);
+        const bVal = parseFloat(bayarInput?.value || 0);
+        const pVal = parseFloat(potInput?.value || 0);
+
+        if (bVal > 0 || pVal > 0) {
+            itemsToPay.push({
+                no_faktur: inv.nomor_faktur,
+                nominal_dibayar: bVal,
+                potongan_pembulatan: pVal
+            });
+            totalKasKeluar += bVal;
+            totalPotongan += pVal;
+        }
+    });
+
+    if (itemsToPay.length === 0) {
+        alert('Masukkan nominal pembayaran untuk faktur terpilih!');
+        return;
+    }
+
+    const metode = document.getElementById('multi-faktur-metode')?.value || 'TRANSFER';
+    const sumberKas = document.getElementById('multi-faktur-sumber-kas')?.value || 'Rekening Bank';
+    const catatan = document.getElementById('multi-faktur-catatan')?.value.trim();
+
+    const confirmMsg = `Konfirmasi Pembayaran Multi-Faktur:\n\n` +
+        `• Supplier: ${supplier}\n` +
+        `• Jumlah Faktur: ${itemsToPay.length} Faktur\n` +
+        `• Total Kas Keluar: Rp ${formatMoney(totalKasKeluar)}\n` +
+        `• Total Potongan/Diskon: Rp ${formatMoney(totalPotongan)}\n` +
+        `• Metode: ${metode} (${sumberKas})\n\n` +
+        `Lanjutkan proses pelunasan?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        if (!supabaseClient) throw new Error('Database Supabase tidak terhubung');
+        const id_pelunasan = 'PHM-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+
+        // 1. Insert parent into pelunasan_hutang
+        const { error: phErr } = await supabaseClient.from('pelunasan_hutang').insert([{
+            id_pelunasan: id_pelunasan,
+            tanggal_bayar: dateStr,
+            supplier: supplier,
+            metode_bayar: `${metode} (${sumberKas})`,
+            catatan: catatan || `Pelunasan Multi-Faktur ${itemsToPay.length} faktur (${supplier})`
+        }]);
+        if (phErr) console.warn('pelunasan_hutang insert warning:', phErr);
+
+        // 2. Insert detail rows into detail_pelunasan_hutang
+        const details = itemsToPay.map(it => ({
+            id_detail: 'DH-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            id_pelunasan: id_pelunasan,
+            no_faktur: it.no_faktur,
+            nominal_dibayar: String(it.nominal_dibayar),
+            potongan_pembulatan: it.potongan_pembulatan
+        }));
+        const { error: dtlErr } = await supabaseClient.from('detail_pelunasan_hutang').insert(details);
+        if (dtlErr) throw dtlErr;
+
+        // 3. Record Kas Outflow
+        if (totalKasKeluar > 0) {
+            await supabaseClient.from('kas').insert([{
+                id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                tanggal: dateStr,
+                jenis_kas: 'KELUAR',
+                kategori: 'Pembayaran Hutang Supplier',
+                jumlah: String(totalKasKeluar),
+                keterangan: `Pelunasan Multi-Faktur ${itemsToPay.length} faktur ${supplier} via ${metode}` + (totalPotongan > 0 ? ` [Disc Rp ${formatMoney(totalPotongan)}]` : ''),
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
+        }
+
+        closeModal('modal-multi-faktur');
+        alert(`✅ Pelunasan Multi-Faktur berhasil disimpan!\n\nTotal ${itemsToPay.length} faktur ${supplier} telah dilunasi dengan kas keluar Rp ${formatMoney(totalKasKeluar)}.`);
+        loadTagihanData();
+
+    } catch (e) {
+        console.error('Error submitting multi-faktur payment:', e);
+        alert('Gagal memproses pembayaran multi-faktur: ' + (e.message || e));
+    }
+}
+
+// --------------------------------------------------------------------------
+// KARTU PIUTANG PELANGGAN
+// --------------------------------------------------------------------------
+async function openKartuPiutangModal(id_jual, encCustomer, total, sisa, encTgl) {
+    const modal = document.getElementById('modal-kartu-piutang');
+    if (!modal) return;
+
+    const customerName = decodeURIComponent(encCustomer);
+    const tgl = decodeURIComponent(encTgl);
+
+    document.getElementById('kartu-piutang-id-jual').textContent = id_jual;
+    document.getElementById('kartu-piutang-nama').textContent = customerName;
+    document.getElementById('kartu-piutang-tgl').textContent = tgl;
+    document.getElementById('kartu-piutang-total').textContent = `Rp ${formatMoney(total)}`;
+    
+    const sisaEl = document.getElementById('kartu-piutang-sisa');
+    sisaEl.textContent = `Rp ${formatMoney(sisa)}`;
+    sisaEl.style.color = sisa <= 0 ? '#16a34a' : '#dc2626';
+
+    const tbody = document.getElementById('kartu-piutang-table-body');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 15px;">Memuat riwayat cicilan...</td></tr>';
+
+    modal.classList.remove('hidden');
+
+    try {
+        if (!supabaseClient) return;
+        const { data: logs, error } = await supabaseClient.from('log_pelunasan_jual')
+            .select('*')
+            .eq('id_jual', id_jual)
+            .order('tanggal_bayar', { ascending: true });
+
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 15px;">Belum ada catatan pembayaran cicilan untuk nota ini.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        let runningTotal = 0;
+        logs.forEach((l, idx) => {
+            const jml = parseFloat(l.jumlah_bayar || 0);
+            runningTotal += jml;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 6px 8px; text-align: center;">${idx + 1}</td>
+                <td style="padding: 6px 8px;">${l.tanggal_bayar || '-'}</td>
+                <td style="padding: 6px 8px; text-align: right; font-weight: 700; color: #16a34a;">Rp ${formatMoney(jml)}</td>
+                <td style="padding: 6px 8px; text-align: center;"><span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">${l.metode_bayar || 'CASH'}</span></td>
+                <td style="padding: 6px 8px;">${escapeHtml(l.user || '-')}</td>
+                <td style="padding: 6px 8px; color: var(--text-muted); font-size: 11px;">${escapeHtml(l.catatan || '-')}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (e) {
+        console.error('Error loading kartu piutang:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #dc2626; padding: 15px;">Gagal memuat histori pelunasan.</td></tr>';
+    }
+}
+
+function printKartuPiutang() {
+    const printArea = document.getElementById('kartu-piutang-print-area');
+    if (!printArea) return;
+    const printWindow = window.open('', '_blank');
+    const appName = localStorage.getItem('app_name') || 'APOTEK HF';
+    const appAddress = localStorage.getItem('app_address') || 'Jl. Raya No. 12';
+
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Kartu Piutang Pelanggan - ${appName}</title>
+            <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; font-size: 12px; color: #1e293b; }
+                .header { text-align: center; border-bottom: 2px solid #0f766e; padding-bottom: 10px; margin-bottom: 15px; }
+                .header h2 { margin: 0; color: #0f766e; font-size: 18px; }
+                .header p { margin: 2px 0 0; color: #64748b; font-size: 11px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                th, td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11.5px; }
+                th { background: #f1f5f9; text-align: left; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h2>${appName}</h2>
+                <p>${appAddress}</p>
+                <h3 style="margin-top: 8px; font-size: 14px;">KARTU RIWAYAT PIUTANG PELANGGAN</h3>
+            </div>
+            ${printArea.innerHTML}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+}
+
+// --------------------------------------------------------------------------
+// SETTLEMENT KONSINYASI ITEM CHECKBOX RE-CALCULATOR
+// --------------------------------------------------------------------------
+function toggleAllKonsiCheckboxes(checked) {
+    document.querySelectorAll('.konsi-check-item').forEach(cb => {
+        cb.checked = checked;
+    });
+    calcKonsiModalTotal();
+}
+
+function calcKonsiModalTotal() {
+    const checkboxes = document.querySelectorAll('.konsi-check-item');
+    let total = 0;
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            const sub = parseFloat(cb.dataset.subtotal || 0);
+            total += sub;
+        }
+    });
+
+    const display = document.getElementById('konsi-modal-total-display');
+    if (display) {
+        display.value = `Rp ${formatMoney(total)}`;
+        display.dataset.rawTotal = total;
+    }
+}
