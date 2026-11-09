@@ -1994,14 +1994,14 @@ body {
     background: #0f766e !important;
 }
 
-/* Ensure data-table has minimum width so all columns fit and slide horizontally */
-.data-table {
+/* Ensure Master Obat data-table has minimum width so all 17 columns fit and slide horizontally */
+#view-master-obat .data-table {
     min-width: 1750px !important;
 }
 
-/* Sticky first column (ID Obat) so user never loses context while sliding */
-.data-table th:first-child,
-.data-table td:first-child {
+/* Sticky first column (ID Obat) so user never loses context while sliding in Master Obat */
+#view-master-obat .data-table th:first-child,
+#view-master-obat .data-table td:first-child {
     position: sticky !important;
     left: 0 !important;
     background-color: #ffffff !important;
@@ -2009,14 +2009,14 @@ body {
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05) !important;
 }
 
-.data-table th:first-child {
+#view-master-obat .data-table th:first-child {
     background-color: #fafbfc !important;
     z-index: 5 !important;
 }
 
-/* Sticky last column (Aksi / Actions) so buttons are NEVER hidden or lost off-screen */
-.data-table th:last-child,
-.data-table td:last-child {
+/* Sticky last column (Aksi / Actions) so buttons are NEVER hidden or lost off-screen in Master Obat */
+#view-master-obat .data-table th:last-child,
+#view-master-obat .data-table td:last-child {
     position: sticky !important;
     right: 0 !important;
     background-color: #ffffff !important;
@@ -2024,7 +2024,20 @@ body {
     box-shadow: -3px 0 6px rgba(0, 0, 0, 0.08) !important;
 }
 
-.data-table th:last-child {
+#view-master-obat .data-table th:last-child {
     background-color: #fafbfc !important;
     z-index: 5 !important;
+}
+
+/* Modal tables: clear sticky overlap and enforce clean auto-layout */
+.modal-content .data-table {
+    min-width: 100% !important;
+    width: 100% !important;
+}
+
+.modal-content .data-table th,
+.modal-content .data-table td {
+    position: static !important;
+    box-shadow: none !important;
+    white-space: nowrap !important;
 }

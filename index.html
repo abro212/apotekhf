@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css?v=20261109_04">
+    <link rel="stylesheet" href="style.css?v=20261109_09">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -2096,7 +2096,7 @@
 
     <!-- Preview Detail Obat Modal -->
     <div id="modal-preview-obat" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 650px;">
+        <div class="modal-content" style="max-width: 780px; width: 95%;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 15px;">
                 <h3 id="preview-obat-title" style="margin: 0; font-size: 18px; font-weight: 800; color: var(--primary-color);">Detail Obat</h3>
                 <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="closeModal('modal-preview-obat')">Tutup</button>
@@ -2120,15 +2120,15 @@
             </div>
 
             <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-main);">Daftar Satuan & Rincian Harga</h4>
-            <div class="table-container">
-                <table class="data-table" style="font-size: 12px;">
+            <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid var(--border-color);">
+                <table class="data-table" style="width: 100%; min-width: 580px; font-size: 12px; margin: 0;">
                     <thead>
                         <tr>
-                            <th>Satuan</th>
-                            <th>Harga Jual (Level 1)</th>
-                            <th>Harga Jual (Level 2)</th>
-                            <th>Harga Jual (Level 3)</th>
-                            <th>Harga Beli</th>
+                            <th style="min-width: 130px;">Satuan</th>
+                            <th style="min-width: 110px; text-align: right;">Harga Jual L1</th>
+                            <th style="min-width: 110px; text-align: right;">Harga Jual L2</th>
+                            <th style="min-width: 110px; text-align: right;">Harga Jual L3</th>
+                            <th style="min-width: 100px; text-align: right;">Harga Beli</th>
                         </tr>
                     </thead>
                     <tbody id="preview-obat-prices-body"></tbody>
@@ -2822,7 +2822,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_08"></script>
+    <script src="app.js?v=20261109_09"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">

@@ -3197,18 +3197,18 @@ async function previewObat(encodedId, e) {
 
  const previewCell = (val, cost) => {
    const n = parseFloat(val || 0);
-   if (n <= 0) return '<div style="color:#cbd5e1;">-</div>';
-   return `<div><strong>Rp ${formatMoney(n)}</strong></div>${getMarginBadgeHtml(n, cost)}`;
+   if (n <= 0) return '<div style="color:#cbd5e1; text-align:right;">-</div>';
+   return `<div style="text-align:right;"><strong>Rp ${formatMoney(n)}</strong></div><div style="display:flex; justify-content:flex-end;">${getMarginBadgeHtml(n, cost)}</div>`;
  };
 
  // Row for Satuan 1
  const tr1 = document.createElement('tr');
  tr1.innerHTML = `
-   <td><strong>${item.satuan_1 || 'Pcs'}</strong> (Satuan 1)</td>
+   <td><strong>${item.satuan_1 || 'Pcs'}</strong> <span style="font-size:11px; color:var(--text-muted);">(Satuan 1)</span></td>
    <td>${previewCell(item.harga_l1_s1, pBeli1)}</td>
    <td>${previewCell(item.harga_l2_s1, pBeli1)}</td>
    <td>${previewCell(item.harga_l3_s1, pBeli1)}</td>
-   <td>Rp ${formatMoney(pBeli1)}</td>
+   <td style="text-align:right; font-weight:600;">Rp ${formatMoney(pBeli1)}</td>
  `;
  tbody.appendChild(tr1);
 
@@ -3216,11 +3216,11 @@ async function previewObat(encodedId, e) {
  if (item.satuan_2) {
    const tr2 = document.createElement('tr');
    tr2.innerHTML = `
-     <td><strong>${item.satuan_2}</strong> (Isi: ${item.isi_2_ke_1 || 0})</td>
+     <td><strong>${item.satuan_2}</strong> <span style="font-size:11px; color:var(--text-muted);">(Isi: ${item.isi_2_ke_1 || 0})</span></td>
      <td>${previewCell(item.harga_l1_s2, pBeli2)}</td>
      <td>${previewCell(item.harga_l2_s2, pBeli2)}</td>
      <td>${previewCell(item.harga_l3_s2, pBeli2)}</td>
-     <td>Rp ${formatMoney(pBeli2)}</td>
+     <td style="text-align:right; font-weight:600;">Rp ${formatMoney(pBeli2)}</td>
    `;
    tbody.appendChild(tr2);
  }
@@ -3229,11 +3229,11 @@ async function previewObat(encodedId, e) {
  if (item.satuan_3) {
    const tr3 = document.createElement('tr');
    tr3.innerHTML = `
-     <td><strong>${item.satuan_3}</strong> (Isi: ${item.isi_3_ke_2 || 0})</td>
+     <td><strong>${item.satuan_3}</strong> <span style="font-size:11px; color:var(--text-muted);">(Isi: ${item.isi_3_ke_2 || 0})</span></td>
      <td>${previewCell(item.harga_l1_s3, pBeli3)}</td>
      <td>${previewCell(item.harga_l2_s3, pBeli3)}</td>
      <td>${previewCell(item.harga_l3_s3, pBeli3)}</td>
-     <td>Rp ${formatMoney(pBeli3)}</td>
+     <td style="text-align:right; font-weight:600;">Rp ${formatMoney(pBeli3)}</td>
    `;
    tbody.appendChild(tr3);
  }
