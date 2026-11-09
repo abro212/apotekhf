@@ -496,6 +496,7 @@ function switchView(viewId) {
  if (viewId === 'view-cek-kesehatan') initCekKesehatan();
  if (viewId === 'view-kas') loadKasLedger();
  if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
+        loadPurchaseSuppliers(id_supplier);
  if (viewId === 'view-info') loadInfoStats();
     setTimeout(initTableDragToScroll, 100);
 }
@@ -3723,237 +3724,632 @@ function togglePurchaseTempoDate() {
     }
 }
 
+let currentSelectedPurchaseObat = null;
+
 function initPembelian() {
- purchaseItems = [];
- renderPurchaseGrid();
- populateObatDropdown('purchase-item-obat');
- 
- // Load suppliers dropdown
- try {
- if (!supabaseClient) return;
- supabaseClient.from('supplier').select('*').order('supplier').then(({ data }) => {
- const select = document.getElementById('purchase-supplier-select');
- select.innerHTML = '';
- if (data) {
- data.forEach(s => {
- const opt = document.createElement('option');
- opt.value = s.id_supplier;
- opt.textContent = s.supplier;
- select.appendChild(opt);
- });
- }
- });
- } catch (e) {
- console.error(e);
- }
+    purchaseItems = [];
+    renderPurchaseGrid();
+    loadPurchaseSuppliers();
+    
+    if (medicinesList && medicinesList.length > 0) {
+        renderPurchaseObatDropdown(medicinesList);
+    } else {
+        loadAllDropdowns();
+    }
+
+    const ppnInput = document.getElementById('purchase-item-ppn');
+    if (ppnInput) {
+        ppnInput.value = localStorage.getItem('last_purchase_ppn') || '11';
+    }
+
+    resetPurchaseItemForm();
+}
+
+function loadPurchaseSuppliers(selectedId = '') {
+    if (!supabaseClient) return;
+    supabaseClient.from('supplier').select('*').order('supplier').then(({ data }) => {
+        const select = document.getElementById('purchase-supplier-select');
+        if (!select) return;
+        select.innerHTML = '<option value="">-- Pilih Mitra Supplier --</option>';
+        if (data && data.length > 0) {
+            data.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id_supplier || s.supplier;
+                opt.textContent = `${s.supplier} (${s.id_supplier})`;
+                if (selectedId && (s.id_supplier === selectedId || s.supplier === selectedId)) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+        }
+        const newOpt = document.createElement('option');
+        newOpt.value = '__NEW__';
+        newOpt.textContent = '➕ + Tambah Supplier Baru...';
+        select.appendChild(newOpt);
+    });
+}
+
+function renderPurchaseObatDropdown(list, selectedId = '') {
+    const select = document.getElementById('purchase-item-obat');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Pilih Obat (' + list.length + ' item) --</option>';
+    list.slice(0, 500).forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.id_obat;
+        opt.textContent = `${o.id_obat} - ${o.nama_obat}`;
+        if (selectedId && o.id_obat === selectedId) opt.selected = true;
+        select.appendChild(opt);
+    });
+}
+
+function filterPurchaseObatDropdown(query) {
+    const q = (query || '').trim().toLowerCase();
+    const select = document.getElementById('purchase-item-obat');
+    if (!select) return;
+    
+    if (!q) {
+        renderPurchaseObatDropdown(medicinesList);
+        return;
+    }
+    
+    const filtered = medicinesList.filter(o => 
+        (o.nama_obat && o.nama_obat.toLowerCase().includes(q)) ||
+        (o.id_obat && o.id_obat.toLowerCase().includes(q)) ||
+        (o.barcode && o.barcode.toLowerCase().includes(q))
+    );
+    
+    select.innerHTML = '<option value="">-- Ditemukan ' + filtered.length + ' obat --</option>';
+    filtered.slice(0, 200).forEach((o, idx) => {
+        const opt = document.createElement('option');
+        opt.value = o.id_obat;
+        opt.textContent = `${o.id_obat} - ${o.nama_obat}`;
+        if (idx === 0 && filtered.length === 1) opt.selected = true;
+        select.appendChild(opt);
+    });
+    
+    if (filtered.length === 1) {
+        onPurchaseObatSelected();
+    }
+}
+
+function onPurchaseObatSelected() {
+    const select = document.getElementById('purchase-item-obat');
+    const id = select?.value;
+    const infoCard = document.getElementById('purchase-item-info-card');
+    const historyCard = document.getElementById('purchase-item-history-card');
+    
+    if (!id) {
+        currentSelectedPurchaseObat = null;
+        if (infoCard) infoCard.style.display = 'none';
+        if (historyCard) historyCard.style.display = 'none';
+        const satSelect = document.getElementById('purchase-item-satuan');
+        if (satSelect) satSelect.innerHTML = '<option value="">-- Pilih Obat Dahulu --</option>';
+        updatePurchaseSubtotalPreview();
+        return;
+    }
+    
+    const o = medicinesList.find(m => m.id_obat === id);
+    if (!o) return;
+    currentSelectedPurchaseObat = o;
+    
+    // 1. Show baseline info (HPP, Jual L1, Stok)
+    if (infoCard) {
+        infoCard.style.display = 'block';
+        const hppEl = document.getElementById('purchase-info-hpp');
+        const jualEl = document.getElementById('purchase-info-jual');
+        const stokEl = document.getElementById('purchase-info-stok');
+        const sat1 = o.satuan_1 || 'Pcs';
+        if (hppEl) hppEl.textContent = `Rp ${formatMoney(o.harga_beli_sat_1 || 0)} / ${sat1}`;
+        if (jualEl) jualEl.textContent = `Rp ${formatMoney(o.harga_l1_s1 || 0)} / ${sat1}`;
+        if (stokEl) stokEl.textContent = `${o.stok_unit_kecil || 0} ${sat1}`;
+    }
+    
+    // 2. Fetch & display 5 history purchases
+    loadPurchaseItemHistory(o.id_obat);
+    
+    // 3. Populate Satuan Masuk options from this medicine
+    populatePurchaseSatuanOptions(o);
+    
+    // 4. Update calculations
+    updatePurchaseSubtotalPreview();
+}
+
+async function loadPurchaseItemHistory(id_obat) {
+    const historyCard = document.getElementById('purchase-item-history-card');
+    const tbody = document.getElementById('purchase-history-table-body');
+    const badge = document.getElementById('purchase-history-badge');
+    if (!historyCard || !tbody) return;
+    
+    historyCard.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:6px;">Memuat riwayat...</td></tr>';
+    
+    try {
+        if (!supabaseClient) return;
+        const { data: logs, error } = await supabaseClient.from('log_beli')
+            .select('tanggal_masuk, harga_beli_item, harga_netto, jumlah_masuk, satuan_masuk, id_faktur')
+            .eq('id_obat', id_obat)
+            .eq('jenis_transaksi', 'PEMBELIAN')
+            .order('tanggal_masuk', { ascending: false })
+            .limit(5);
+            
+        if (error || !logs || logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:6px;">Belum ada riwayat pembelian untuk item ini.</td></tr>';
+            if (badge) badge.textContent = '0 data';
+            return;
+        }
+        
+        if (badge) badge.textContent = `${logs.length} data`;
+        
+        const fakturIds = logs.map(l => l.id_faktur).filter(Boolean);
+        let supMap = {};
+        if (fakturIds.length > 0) {
+            const { data: fks } = await supabaseClient.from('faktur_beli').select('id_faktur, supplier').in('id_faktur', fakturIds);
+            if (fks) {
+                fks.forEach(f => { supMap[f.id_faktur] = f.supplier; });
+            }
+        }
+        
+        tbody.innerHTML = '';
+        logs.forEach(l => {
+            const tr = document.createElement('tr');
+            const tgl = (l.tanggal_masuk || '').substring(0, 10) || '-';
+            const sup = supMap[l.id_faktur] || l.id_faktur || '-';
+            const qtySat = `${l.jumlah_masuk || 0} ${l.satuan_masuk || ''}`;
+            const hb = parseFloat(l.harga_beli_item || 0);
+            const hn = parseFloat(l.harga_netto || hb);
+            tr.innerHTML = `
+                <td style="padding: 4px 6px; white-space:nowrap;">${tgl}</td>
+                <td style="padding: 4px 6px; font-weight:600;">${escapeHtml(sup)}</td>
+                <td style="padding: 4px 6px; white-space:nowrap;">${qtySat}</td>
+                <td style="padding: 4px 6px; text-align:right; white-space:nowrap;">Rp ${formatMoney(hb)}</td>
+                <td style="padding: 4px 6px; text-align:right; font-weight:700; color:#0f766e; white-space:nowrap;">Rp ${formatMoney(hn)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.warn('Error loading purchase history:', e);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#dc2626; padding:6px;">Gagal memuat riwayat.</td></tr>';
+    }
+}
+
+function populatePurchaseSatuanOptions(o) {
+    const satSelect = document.getElementById('purchase-item-satuan');
+    if (!satSelect) return;
+    satSelect.innerHTML = '';
+    
+    const sat1 = o.satuan_1 || 'Pcs';
+    const sat2 = o.satuan_2;
+    const isi2 = parseFloat(o.isi_2_ke_1 || 1);
+    const sat3 = o.satuan_3;
+    const isi3 = parseFloat(o.isi_3_ke_2 || 1);
+    
+    // Satuan 1 (Terkecil)
+    const opt1 = document.createElement('option');
+    opt1.value = 'satuan_1';
+    opt1.textContent = `${sat1} (Satuan 1 - Terkecil)`;
+    opt1.dataset.name = sat1;
+    opt1.dataset.multiplier = '1';
+    opt1.dataset.price = o.harga_beli_sat_1 || 0;
+    satSelect.appendChild(opt1);
+    
+    // Satuan 2
+    if (sat2 && isi2 > 0) {
+        const opt2 = document.createElement('option');
+        opt2.value = 'satuan_2';
+        opt2.textContent = `${sat2} (1 ${sat2} = ${isi2} ${sat1})`;
+        opt2.dataset.name = sat2;
+        opt2.dataset.multiplier = String(isi2);
+        const p2 = parseFloat(o.harga_beli_sat_2 || 0) || Math.round(parseFloat(o.harga_beli_sat_1 || 0) * isi2);
+        opt2.dataset.price = String(p2);
+        satSelect.appendChild(opt2);
+    }
+    
+    // Satuan 3
+    if (sat3 && isi3 > 0) {
+        const mult3 = isi3 * isi2;
+        const opt3 = document.createElement('option');
+        opt3.value = 'satuan_3';
+        opt3.textContent = `${sat3} (1 ${sat3} = ${isi3} ${sat2 || 'Sat 2'} / ${mult3} ${sat1})`;
+        opt3.dataset.name = sat3;
+        opt3.dataset.multiplier = String(mult3);
+        const p3 = parseFloat(o.harga_beli_sat_3 || 0) || Math.round(parseFloat(o.harga_beli_sat_1 || 0) * mult3);
+        opt3.dataset.price = String(p3);
+        satSelect.appendChild(opt3);
+    }
+    
+    onPurchaseSatuanChanged();
+}
+
+function onPurchaseSatuanChanged() {
+    const satSelect = document.getElementById('purchase-item-satuan');
+    const selectedOpt = satSelect?.selectedOptions[0];
+    const konvInput = document.getElementById('purchase-item-konversi');
+    const descEl = document.getElementById('purchase-item-konversi-desc');
+    const priceInput = document.getElementById('purchase-item-price');
+    
+    if (!selectedOpt) return;
+    const mult = parseFloat(selectedOpt.dataset.multiplier || 1);
+    const satName = selectedOpt.dataset.name || 'Pcs';
+    const initPrice = parseFloat(selectedOpt.dataset.price || 0);
+    
+    if (konvInput) konvInput.value = mult;
+    if (descEl && currentSelectedPurchaseObat) {
+        descEl.textContent = `1 ${satName} = ${mult} ${currentSelectedPurchaseObat.satuan_1 || 'Pcs'}`;
+    }
+    if (priceInput) {
+        priceInput.value = initPrice;
+    }
+    
+    updatePurchaseSubtotalPreview();
 }
 
 function updatePurchaseSubtotalPreview() {
- const qty = parseFloat(document.getElementById('purchase-item-qty').value) || 0;
- const price = parseFloat(document.getElementById('purchase-item-price').value) || 0;
- const subtotal = qty * price;
- const previewEl = document.getElementById('purchase-item-preview-badge');
- if (previewEl) {
- previewEl.textContent = `Subtotal: Rp ${formatMoney(subtotal)}`;
- }
+    const qty = parseFloat(document.getElementById('purchase-item-qty')?.value) || 0;
+    const price = parseFloat(document.getElementById('purchase-item-price')?.value) || 0;
+    const konv = parseFloat(document.getElementById('purchase-item-konversi')?.value) || 1;
+    const d1 = parseFloat(document.getElementById('purchase-item-disc1')?.value) || 0;
+    const d2 = parseFloat(document.getElementById('purchase-item-disc2')?.value) || 0;
+    const ppn = parseFloat(document.getElementById('purchase-item-ppn')?.value) || 0;
+    
+    // Total Satuan Terkecil
+    const totalKecil = Math.round(qty * konv * 100) / 100;
+    const totalKecilEl = document.getElementById('purchase-item-total-kecil');
+    if (totalKecilEl) {
+        const sat1Name = currentSelectedPurchaseObat?.satuan_1 || 'Unit Kecil';
+        totalKecilEl.textContent = `= ${totalKecil} ${sat1Name}`;
+    }
+    
+    // Diskon bertingkat (D1 lalu D2)
+    const p1 = price * (1 - (d1 / 100));
+    const p2 = p1 * (1 - (d2 / 100));
+    const hargaNetto = Math.round(p2 * (1 + (ppn / 100)));
+    
+    // Subtotal
+    const subtotal = Math.round(hargaNetto * qty);
+    
+    // Update HPP Satuan Terkecil Baru
+    const hppBaruSat1 = totalKecil > 0 ? Math.round(subtotal / totalKecil) : (konv > 0 ? Math.round(hargaNetto / konv) : hargaNetto);
+    
+    const nettoDisplay = document.getElementById('purchase-item-netto-display');
+    if (nettoDisplay) nettoDisplay.textContent = `Rp ${formatMoney(hargaNetto)}`;
+    
+    const hppDisplay = document.getElementById('purchase-item-hpp-baru-display');
+    if (hppDisplay) {
+        const sat1Name = currentSelectedPurchaseObat?.satuan_1 || 'Pcs';
+        hppDisplay.textContent = `Rp ${formatMoney(hppBaruSat1)} / ${sat1Name}`;
+    }
+    
+    const previewEl = document.getElementById('purchase-item-preview-badge');
+    if (previewEl) {
+        previewEl.textContent = `Subtotal: Rp ${formatMoney(subtotal)}`;
+    }
 }
 
 function addPurchaseItemToGrid() {
- const obatSelect = document.getElementById('purchase-item-obat');
- if (!obatSelect.value) {
- alert('Pilih obat terlebih dahulu!');
- return;
- }
- 
- const o = JSON.parse(obatSelect.value);
- const sat = document.getElementById('purchase-item-satuan').value;
- const konv = parseFloat(document.getElementById('purchase-item-konversi').value) || 1;
- const qty = parseFloat(document.getElementById('purchase-item-qty').value) || 0;
- const price = parseFloat(document.getElementById('purchase-item-price').value) || 0;
- 
- if (qty <= 0) {
- alert('Masukkan jumlah Qty masuk yang valid!');
- return;
- }
+    if (!currentSelectedPurchaseObat) {
+        alert('Pilih obat terlebih dahulu!');
+        return;
+    }
+    
+    const o = currentSelectedPurchaseObat;
+    const satSelect = document.getElementById('purchase-item-satuan');
+    const selectedOpt = satSelect?.selectedOptions[0];
+    const satName = selectedOpt?.dataset.name || o.satuan_1 || 'Pcs';
+    const konv = parseFloat(document.getElementById('purchase-item-konversi')?.value) || 1;
+    const qty = parseFloat(document.getElementById('purchase-item-qty')?.value) || 0;
+    const price = parseFloat(document.getElementById('purchase-item-price')?.value) || 0;
+    const d1 = parseFloat(document.getElementById('purchase-item-disc1')?.value) || 0;
+    const d2 = parseFloat(document.getElementById('purchase-item-disc2')?.value) || 0;
+    const ppn = parseFloat(document.getElementById('purchase-item-ppn')?.value) || 0;
+    
+    if (qty <= 0) {
+        alert('Masukkan jumlah Qty masuk yang valid (minimal 1)!');
+        return;
+    }
+    
+    // Calculate final clean numbers
+    const totalKecil = Math.round(qty * konv * 100) / 100;
+    const p1 = price * (1 - (d1 / 100));
+    const p2 = p1 * (1 - (d2 / 100));
+    const hargaNetto = Math.round(p2 * (1 + (ppn / 100)));
+    const subtotal = Math.round(hargaNetto * qty);
+    const hppBaruSat1 = totalKecil > 0 ? Math.round(subtotal / totalKecil) : (konv > 0 ? Math.round(hargaNetto / konv) : hargaNetto);
+    
+    // Save last PPN in localStorage
+    localStorage.setItem('last_purchase_ppn', String(ppn));
+    
+    const batchVal = document.getElementById('purchase-item-batch')?.value.trim() || '';
+    const expVal = document.getElementById('purchase-item-exp')?.value || '';
+    
+    let discText = '0%';
+    if (d1 > 0 && d2 > 0) discText = `${d1}%+${d2}%`;
+    else if (d1 > 0) discText = `${d1}%`;
+    else if (d2 > 0) discText = `${d2}%`;
 
- const batchVal = document.getElementById('purchase-item-batch')?.value.trim() || '';
- const expVal = document.getElementById('purchase-item-exp')?.value || '';
+    purchaseItems.push({
+        id_obat: o.id_obat,
+        nama_obat: o.nama_obat,
+        satuan: satName,
+        konversi: konv,
+        jumlah: qty,
+        total_unit_kecil: totalKecil,
+        harga_beli: price, // gross price
+        disc1: d1,
+        disc2: d2,
+        disc_text: discText,
+        ppn: ppn,
+        harga_netto: hargaNetto,
+        total: subtotal,
+        subtotal: subtotal,
+        hpp_sat_1_baru: hppBaruSat1,
+        satuan_1_nama: o.satuan_1 || 'Pcs',
+        satuan_2: o.satuan_2 || null,
+        isi2: parseFloat(o.isi_2_ke_1 || 1),
+        satuan_3: o.satuan_3 || null,
+        isi3: parseFloat(o.isi_3_ke_2 || 1),
+        no_batch: batchVal,
+        expired_date: expVal
+    });
+    
+    resetPurchaseItemForm();
+    renderPurchaseGrid();
+}
 
- purchaseItems.push({
- id_obat: o.id_obat,
- nama_obat: o.nama_obat,
- satuan: sat,
- konversi: konv,
- jumlah: qty,
- harga_beli: price,
- total: qty * price,
- no_batch: batchVal,
- expired_date: expVal
- });
- 
- // Reset item inputs
- document.getElementById('purchase-item-qty').value = 1;
- document.getElementById('purchase-item-price').value = 0;
- if (document.getElementById('purchase-item-batch')) document.getElementById('purchase-item-batch').value = '';
- if (document.getElementById('purchase-item-exp')) document.getElementById('purchase-item-exp').value = '';
- updatePurchaseSubtotalPreview();
- 
- renderPurchaseGrid();
+function resetPurchaseItemForm() {
+    currentSelectedPurchaseObat = null;
+    const searchInput = document.getElementById('purchase-item-search');
+    if (searchInput) searchInput.value = '';
+    
+    const obatSelect = document.getElementById('purchase-item-obat');
+    if (obatSelect) {
+        renderPurchaseObatDropdown(medicinesList);
+        obatSelect.value = '';
+    }
+    
+    const satSelect = document.getElementById('purchase-item-satuan');
+    if (satSelect) satSelect.innerHTML = '<option value="">-- Pilih Obat Dahulu --</option>';
+    
+    const konvInput = document.getElementById('purchase-item-konversi');
+    if (konvInput) konvInput.value = 1;
+    
+    const descEl = document.getElementById('purchase-item-konversi-desc');
+    if (descEl) descEl.textContent = '1 Unit = 1 Satuan 1';
+    
+    const qtyInput = document.getElementById('purchase-item-qty');
+    if (qtyInput) qtyInput.value = 1;
+    
+    const priceInput = document.getElementById('purchase-item-price');
+    if (priceInput) priceInput.value = 0;
+    
+    const d1Input = document.getElementById('purchase-item-disc1');
+    if (d1Input) d1Input.value = 0;
+    
+    const d2Input = document.getElementById('purchase-item-disc2');
+    if (d2Input) d2Input.value = 0;
+    
+    if (document.getElementById('purchase-item-batch')) document.getElementById('purchase-item-batch').value = '';
+    if (document.getElementById('purchase-item-exp')) document.getElementById('purchase-item-exp').value = '';
+    
+    const infoCard = document.getElementById('purchase-item-info-card');
+    if (infoCard) infoCard.style.display = 'none';
+    
+    const histCard = document.getElementById('purchase-item-history-card');
+    if (histCard) histCard.style.display = 'none';
+    
+    updatePurchaseSubtotalPreview();
 }
 
 function renderPurchaseGrid() {
- const tbody = document.getElementById('purchase-items-body');
- const mobileContainer = document.getElementById('purchase-items-mobile');
- tbody.innerHTML = '';
- if (mobileContainer) mobileContainer.innerHTML = '';
- let grandTotal = 0;
+    const tbody = document.getElementById('purchase-items-body');
+    const mobileContainer = document.getElementById('purchase-items-mobile');
+    tbody.innerHTML = '';
+    if (mobileContainer) mobileContainer.innerHTML = '';
+    let grandTotal = 0;
 
- if (purchaseItems.length === 0) {
- tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 20px;">Belum ada item barang dalam faktur ini.</td></tr>';
- if (mobileContainer) {
- mobileContainer.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px; font-size:13px;">Belum ada item barang dalam faktur ini.</div>';
- }
- } else {
- purchaseItems.forEach((item, idx) => {
- grandTotal += item.total;
- const tr = document.createElement('tr');
- tr.innerHTML = `
- <td><strong>${item.nama_obat}</strong></td>
- <td><span class="badge badge-info">${item.satuan}</span></td>
- <td>${item.jumlah}</td>
- <td>Rp ${formatMoney(item.harga_beli)}</td>
- <td><strong>Rp ${formatMoney(item.total)}</strong></td>
- <td><button type="button" class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button></td>
- `;
- tbody.appendChild(tr);
+    if (purchaseItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-muted); padding: 25px;">Belum ada item barang dalam faktur ini.</td></tr>';
+        if (mobileContainer) {
+            mobileContainer.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding: 20px; font-size:13px;">Belum ada item barang dalam faktur ini.</div>';
+        }
+    } else {
+        purchaseItems.forEach((item, idx) => {
+            grandTotal += item.subtotal;
+            const tr = document.createElement('tr');
+            
+            let extraInfo = '';
+            if (item.no_batch) extraInfo += `<span class="badge" style="background:#f1f5f9; color:#475569; font-size:10px; margin-right:4px;">B: ${escapeHtml(item.no_batch)}</span>`;
+            if (item.expired_date) extraInfo += `<span class="badge" style="background:#fef3c7; color:#b45309; font-size:10px;">ED: ${escapeHtml(item.expired_date)}</span>`;
+            
+            const konvText = item.konversi > 1 ? `<div style="font-size:10px; color:var(--text-muted);">(= ${item.total_unit_kecil} ${item.satuan_1_nama})</div>` : '';
+            
+            tr.innerHTML = `
+                <td style="white-space:nowrap;">
+                    <strong>${escapeHtml(item.nama_obat)}</strong>
+                    <div style="font-size:10.5px; color:var(--text-muted);">${item.id_obat} ${extraInfo}</div>
+                </td>
+                <td style="white-space:nowrap;"><span class="badge badge-info">${escapeHtml(item.satuan)}</span> ${konvText}</td>
+                <td style="text-align:center; font-weight:700;">${item.jumlah}</td>
+                <td style="text-align:right; white-space:nowrap;">Rp ${formatMoney(item.harga_beli)}</td>
+                <td style="text-align:center; font-size:11px; white-space:nowrap;">${item.disc_text}</td>
+                <td style="text-align:center; font-size:11px; white-space:nowrap;">${item.ppn}%</td>
+                <td style="text-align:right; font-weight:700; color:#0f766e; white-space:nowrap;">Rp ${formatMoney(item.harga_netto)}</td>
+                <td style="text-align:right; font-weight:800; color:var(--primary-color); white-space:nowrap;">Rp ${formatMoney(item.subtotal)}</td>
+                <td style="text-align:right; font-weight:700; color:#1e40af; white-space:nowrap;">Rp ${formatMoney(item.hpp_sat_1_baru)} / ${escapeHtml(item.satuan_1_nama)}</td>
+                <td style="text-align:center;"><button type="button" class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})" title="Hapus Item">✕</button></td>
+            `;
+            tbody.appendChild(tr);
 
- if (mobileContainer) {
- const card = document.createElement('div');
- card.className = 'price-card-mobile';
- card.innerHTML = `
- <div class="price-card-header">
- <div style="flex:1; min-width:0;">
- <div class="price-card-title" style="font-size:13px;">${item.nama_obat}</div>
- <div class="price-card-sub">${item.jumlah} x Rp ${formatMoney(item.harga_beli)} (${item.satuan})</div>
- </div>
- <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(item.total)}</strong>
- </div>
- <div style="display:flex; justify-content:flex-end; margin-top:6px;">
- <button type="button" class="btn btn-danger" style="padding:4px 10px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button>
- </div>
- `;
- mobileContainer.appendChild(card);
- }
- });
- }
+            if (mobileContainer) {
+                const card = document.createElement('div');
+                card.className = 'price-card-mobile';
+                card.innerHTML = `
+                    <div class="price-card-header">
+                        <div style="flex:1; min-width:0;">
+                            <div class="price-card-title" style="font-size:13px; font-weight:700;">${escapeHtml(item.nama_obat)}</div>
+                            <div class="price-card-sub" style="font-size:11px;">${item.jumlah} ${item.satuan} @ Rp ${formatMoney(item.harga_beli)} (Disc: ${item.disc_text}, PPN: ${item.ppn}%)</div>
+                            <div style="font-size:11px; color:#0f766e; margin-top:2px;">Netto: <strong>Rp ${formatMoney(item.harga_netto)}</strong> / ${item.satuan}</div>
+                            <div style="font-size:11px; color:#1e40af;">HPP Baru: <strong>Rp ${formatMoney(item.hpp_sat_1_baru)}</strong> / ${item.satuan_1_nama} (Total ${item.total_unit_kecil} ${item.satuan_1_nama})</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <strong style="color:var(--primary-color); font-size:14px; white-space:nowrap;">Rp ${formatMoney(item.subtotal)}</strong>
+                            <div style="margin-top:6px;">
+                                <button type="button" class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="removePurchaseItem(${idx})">Hapus</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                mobileContainer.appendChild(card);
+            }
+        });
+    }
 
- const countBadge = document.getElementById('purchase-item-count-badge');
- if (countBadge) countBadge.textContent = `${purchaseItems.length} Item`;
+    const countBadge = document.getElementById('purchase-item-count-badge');
+    if (countBadge) countBadge.textContent = `${purchaseItems.length} Item`;
 
- const grandTotalEl = document.getElementById('purchase-grand-total');
- if (grandTotalEl) grandTotalEl.textContent = `Rp ${formatMoney(grandTotal)}`;
+    const grandTotalEl = document.getElementById('purchase-grand-total');
+    if (grandTotalEl) grandTotalEl.textContent = `Rp ${formatMoney(grandTotal)}`;
 }
 
 function removePurchaseItem(idx) {
- purchaseItems.splice(idx, 1);
- renderPurchaseGrid();
+    purchaseItems.splice(idx, 1);
+    renderPurchaseGrid();
 }
 
 async function submitPurchaseInvoice() {
- const nomor_faktur = document.getElementById('purchase-faktur-no').value.trim();
- const supplier = document.getElementById('purchase-supplier-select').value;
- const metode_bayar = document.getElementById('purchase-pay-method').value;
- 
- if (!nomor_faktur || purchaseItems.length === 0) {
- alert('Isi nomor faktur dan masukkan minimal 1 barang!');
- return;
- }
- 
- try {
- if (!supabaseClient) return;
- const id_faktur = Math.random().toString(36).substring(2, 10);
- const dateStr = new Date().toISOString().split('T')[0];
+    const nomor_faktur = document.getElementById('purchase-faktur-no').value.trim();
+    const supplier = document.getElementById('purchase-supplier-select').value;
+    const metode_bayar = document.getElementById('purchase-pay-method').value;
+    
+    if (!nomor_faktur) {
+        alert('Isi nomor faktur supplier terlebih dahulu!');
+        document.getElementById('purchase-faktur-no').focus();
+        return;
+    }
+    if (!supplier) {
+        alert('Pilih mitra supplier terlebih dahulu!');
+        document.getElementById('purchase-supplier-select').focus();
+        return;
+    }
+    if (purchaseItems.length === 0) {
+        alert('Masukkan minimal 1 barang ke dalam faktur!');
+        return;
+    }
+    
+    try {
+        if (!supabaseClient) return;
+        const id_faktur = Math.random().toString(36).substring(2, 10);
+        const dateStr = new Date().toISOString().split('T')[0];
 
- let grandTotalFaktur = 0;
- purchaseItems.forEach(i => { grandTotalFaktur += i.total; });
+        let grandTotalFaktur = 0;
+        purchaseItems.forEach(i => { grandTotalFaktur += (i.subtotal || i.total || 0); });
 
- // 1. Insert into faktur_beli (nominal_bayar & optional jatuh_tempo)
- const tempoDate = (metode_bayar === 'TEMPO') ? (document.getElementById('purchase-jatuh-tempo')?.value || null) : null;
- const { error: fkErr } = await supabaseClient.from('faktur_beli').insert([{
- id_faktur: id_faktur,
- nomor_faktur: nomor_faktur,
- tanggal_masuk: dateStr,
- supplier: supplier,
- nominal_bayar: String(grandTotalFaktur),
- jatuh_tempo: tempoDate,
- jenis_transaksi: 'PEMBELIAN',
- metode_bayar: metode_bayar,
- user: currentUser?.nama_staf || 'cashier'
- }]);
+        // 1. Insert into faktur_beli (nominal_bayar & optional jatuh_tempo)
+        const tempoDate = (metode_bayar === 'TEMPO') ? (document.getElementById('purchase-jatuh-tempo')?.value || null) : null;
+        const { error: fkErr } = await supabaseClient.from('faktur_beli').insert([{
+            id_faktur: id_faktur,
+            nomor_faktur: nomor_faktur,
+            tanggal_masuk: dateStr,
+            supplier: supplier,
+            nominal_bayar: String(grandTotalFaktur),
+            jatuh_tempo: tempoDate,
+            jenis_transaksi: 'PEMBELIAN',
+            metode_bayar: metode_bayar,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
 
- if (fkErr) throw fkErr;
+        if (fkErr) throw fkErr;
 
- // Record cash expense if paid CASH
- if (metode_bayar === 'CASH') {
-   try {
-     await supabaseClient.from('kas').insert([{
-       id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-       tanggal: dateStr,
-       jenis_kas: 'KELUAR',
-       kategori: 'Pembelian Stok Obat',
-       jumlah: String(grandTotalFaktur),
-       keterangan: `Pembelian Faktur ${nomor_faktur} (${supplier})`,
-       user: currentUser?.nama_staf || 'cashier'
-     }]);
-   } catch (kasErr) {
-     console.warn('Kas purchase log warning:', kasErr);
-   }
- }
+        // Record cash expense if paid CASH
+        if (metode_bayar === 'CASH') {
+            try {
+                await supabaseClient.from('kas').insert([{
+                    id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+                    tanggal: dateStr,
+                    jenis_kas: 'KELUAR',
+                    kategori: 'Pembelian Stok Obat',
+                    jumlah: String(grandTotalFaktur),
+                    keterangan: `Pembelian Faktur ${nomor_faktur} (${supplier})`,
+                    user: currentUser?.nama_staf || 'cashier'
+                }]);
+            } catch (kasErr) {
+                console.warn('Kas purchase log warning:', kasErr);
+            }
+        }
 
- // 2. Insert detail logs, Batch/ED & Update Stocks
- for (const item of purchaseItems) {
- const id_beli = 'B' + Math.random().toString(36).substring(2, 8).toUpperCase();
- const total_harga = item.harga_beli * item.jumlah;
- 
- // Fetch current stock to add
- const { data: currentMed } = await supabaseClient.from('master_obat').select('stok_unit_kecil').eq('id_obat', item.id_obat).single();
- const currentStock = currentMed ? parseFloat(currentMed.stok_unit_kecil || 0) : 0;
- const newStock = currentStock + (item.jumlah * item.konversi);
+        // 2. Insert detail logs, Batch/ED, Stock update & Auto-update HPP in master_obat
+        for (const item of purchaseItems) {
+            const id_beli = 'B' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            // Fetch current stock to add
+            const { data: currentMed } = await supabaseClient.from('master_obat').select('stok_unit_kecil').eq('id_obat', item.id_obat).single();
+            const currentStock = currentMed ? parseFloat(currentMed.stok_unit_kecil || 0) : 0;
+            const newStock = currentStock + (item.total_unit_kecil || (item.jumlah * item.konversi));
 
- // Log Beli with Batch & ED
- const { error: logErr } = await supabaseClient.from('log_beli').insert([{
- id_beli: id_beli,
- tanggal_masuk: dateStr,
- id_obat: item.id_obat,
- satuan_masuk: item.satuan,
- harga_beli_item: String(item.harga_beli),
- jumlah_masuk: String(item.jumlah),
- konversi_masuk: String(item.jumlah * item.konversi),
- id_faktur: id_faktur,
- total_harga: String(total_harga),
- no_batch: item.no_batch || null,
- expired_date: item.expired_date || null,
- jenis_transaksi: 'PEMBELIAN',
- user: currentUser?.nama_staf || 'cashier'
- }]);
+            // Log Beli with full details
+            const { error: logErr } = await supabaseClient.from('log_beli').insert([{
+                id_beli: id_beli,
+                tanggal_masuk: dateStr,
+                id_obat: item.id_obat,
+                satuan_masuk: item.satuan,
+                harga_beli_item: String(item.harga_beli),
+                jumlah_masuk: String(item.jumlah),
+                konversi_masuk: String(item.total_unit_kecil || (item.jumlah * item.konversi)),
+                id_faktur: id_faktur,
+                total_harga: String(item.subtotal || item.total),
+                diskon_item: item.disc_text || '0%',
+                pajak_item: String(item.ppn || 0),
+                harga_netto: String(item.harga_netto || item.harga_beli),
+                update_harga_1: String(item.hpp_sat_1_baru || item.harga_beli),
+                no_batch: item.no_batch || null,
+                expired_date: item.expired_date || null,
+                jenis_transaksi: 'PEMBELIAN',
+                user: currentUser?.nama_staf || 'cashier'
+            }]);
 
- if (logErr) throw logErr;
+            if (logErr) throw logErr;
 
- // Update master_obat stock and expired_date if provided
- const updatePayload = { stok_unit_kecil: String(newStock) };
- if (item.expired_date) {
-   updatePayload.tanggal_kadaluarsa = item.expired_date;
-   updatePayload.expired_date = item.expired_date;
- }
- await supabaseClient.from('master_obat').update(updatePayload).eq('id_obat', item.id_obat);
- }
+            // Auto-update master_obat: stock, new HPP sat 1, sat 2, sat 3, and ED
+            const updatePayload = {
+                stok_unit_kecil: String(newStock)
+            };
+            if (item.hpp_sat_1_baru && item.hpp_sat_1_baru > 0) {
+                updatePayload.harga_beli_sat_1 = item.hpp_sat_1_baru;
+                if (item.satuan_2 && item.isi2 > 0) {
+                    updatePayload.harga_beli_sat_2 = Math.round(item.hpp_sat_1_baru * item.isi2);
+                }
+                if (item.satuan_3 && item.isi3 > 0) {
+                    const mult3 = item.isi3 * (item.isi2 || 1);
+                    updatePayload.harga_beli_sat_3 = Math.round(item.hpp_sat_1_baru * mult3);
+                }
+            }
+            if (item.expired_date) {
+                updatePayload.tanggal_kadaluarsa = item.expired_date;
+                updatePayload.expired_date = item.expired_date;
+            }
+            await supabaseClient.from('master_obat').update(updatePayload).eq('id_obat', item.id_obat);
+            
+            // In-memory cache update
+            const cacheItem = medicinesList.find(m => m.id_obat === item.id_obat);
+            if (cacheItem) {
+                cacheItem.stok_unit_kecil = newStock;
+                if (item.hpp_sat_1_baru) cacheItem.harga_beli_sat_1 = item.hpp_sat_1_baru;
+                if (updatePayload.harga_beli_sat_2) cacheItem.harga_beli_sat_2 = updatePayload.harga_beli_sat_2;
+                if (updatePayload.harga_beli_sat_3) cacheItem.harga_beli_sat_3 = updatePayload.harga_beli_sat_3;
+                if (item.expired_date) cacheItem.expired_date = item.expired_date;
+            }
+        }
 
- alert('Faktur Pembelian Stok Berhasil Disimpan!');
- initPembelian();
- } catch (e) {
- console.error(e);
- alert(`Gagal menyimpan faktur: ${e.message}`);
- }
+        alert(`Faktur ${nomor_faktur} berhasil disimpan!\n• Stok obat telah ditambahkan ke gudang.\n• HPP satuan terkecil otomatis diperbarui di Data Master Obat.`);
+        
+        document.getElementById('purchase-faktur-no').value = '';
+        purchaseItems = [];
+        renderPurchaseGrid();
+        resetPurchaseItemForm();
+        loadAllDropdowns();
+    } catch (e) {
+        console.error(e);
+        alert(`Gagal menyimpan faktur: ${e.message}`);
+    }
 }
 
 // --------------------------------------------------------------------------

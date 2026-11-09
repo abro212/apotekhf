@@ -695,8 +695,13 @@
                             
                             <div class="pembelian-form-row">
                                 <div class="form-group">
-                                    <label>Mitra Supplier</label>
-                                    <select id="purchase-supplier-select" class="form-control"></select>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <label style="margin: 0; font-weight: 700;">Mitra Supplier *</label>
+                                        <button type="button" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" onclick="showAddSupplierModal()" title="Tambah Supplier Baru">
+                                            + Supplier Baru
+                                        </button>
+                                    </div>
+                                    <select id="purchase-supplier-select" class="form-control" onchange="if(this.value==='__NEW__'){showAddSupplierModal(); this.value='';}"></select>
                                 </div>
                                 <div class="form-group">
                                     <label>Metode Bayar</label>
@@ -720,41 +725,115 @@
 
                             <!-- Inner Box: Add Item Section -->
                             <div style="background-color: var(--bg-main); padding: 16px; border-radius: 10px; border: 1px dashed var(--border-color); margin-top: 15px;">
-                                <h4 style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
-                                    Tambah Item Obat
+                                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                                    <span>Tambah Item Obat</span>
+                                    <span style="font-size: 11px; font-weight: 600; color: var(--text-muted);">Lengkap Diskon & PPN</span>
                                 </h4>
                                 
-                                <div class="form-group">
-                                    <label>Pilih Obat</label>
-                                    <select id="purchase-item-obat" class="form-control" style="width: 100%;" onchange="updatePurchaseSubtotalPreview()"></select>
+                                <!-- Search & Pilih Obat -->
+                                <div class="form-group" style="margin-bottom: 10px;">
+                                    <label style="font-weight: 700;">Pilih Obat *</label>
+                                    <div style="position: relative; margin-bottom: 6px;">
+                                        <input type="text" id="purchase-item-search" class="form-control" placeholder="🔍 Ketik nama obat / barcode untuk mencari..." oninput="filterPurchaseObatDropdown(this.value)" autocomplete="off">
+                                    </div>
+                                    <select id="purchase-item-obat" class="form-control" style="width: 100%;" onchange="onPurchaseObatSelected()"></select>
+                                    
+                                    <!-- Baseline Info HPP & Jual L1 -->
+                                    <div id="purchase-item-info-card" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px; margin-top: 8px; font-size: 12px;">
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">HPP Sat. 1 (Terakhir):</span><strong id="purchase-info-hpp" style="color: #166534; font-size: 12.5px;">-</strong></div>
+                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">Harga Jual L1 Sat. 1:</span><strong id="purchase-info-jual" style="color: #166534; font-size: 12.5px;">-</strong></div>
+                                            <div><span style="color: var(--text-muted); font-size: 11px; display: block;">Stok Saat Ini:</span><strong id="purchase-info-stok" style="color: #0f766e; font-size: 12.5px;">-</strong></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 5 Riwayat Pembelian Terakhir -->
+                                    <div id="purchase-item-history-card" style="display: none; background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; margin-top: 8px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                            <span style="font-size: 11.5px; font-weight: 700; color: var(--text-main);">⏱️ 5 Riwayat Pembelian Terakhir</span>
+                                            <span id="purchase-history-badge" class="badge badge-info" style="font-size: 10px;">0 data</span>
+                                        </div>
+                                        <div style="max-height: 125px; overflow-y: auto;">
+                                            <table class="data-table" style="font-size: 11px; margin: 0;">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="padding: 4px 6px;">Tanggal</th>
+                                                        <th style="padding: 4px 6px;">Supplier</th>
+                                                        <th style="padding: 4px 6px;">Qty</th>
+                                                        <th style="padding: 4px 6px;">Hrg Beli</th>
+                                                        <th style="padding: 4px 6px;">Hrg Netto</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="purchase-history-table-body"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
                                 
+                                <!-- Satuan Masuk & Konversi Unit -->
                                 <div class="pembelian-form-row">
                                     <div class="form-group">
-                                        <label>Satuan Masuk</label>
-                                        <select id="purchase-item-satuan" class="form-control">
-                                            <option value="Satuan 1">Satuan 1 (Besar)</option>
-                                            <option value="Satuan 2">Satuan 2 (Sedang)</option>
-                                            <option value="Satuan 3">Satuan 3 (Kecil)</option>
-                                        </select>
+                                        <label style="font-weight: 700;">Satuan Masuk *</label>
+                                        <select id="purchase-item-satuan" class="form-control" onchange="onPurchaseSatuanChanged()"></select>
                                     </div>
                                     <div class="form-group">
-                                        <label>Isi Konversi Unit</label>
-                                        <input type="number" id="purchase-item-konversi" class="form-control" value="1" min="1" oninput="updatePurchaseSubtotalPreview()">
+                                        <label style="font-weight: 700;">Isi Konversi Satuan 1</label>
+                                        <input type="number" id="purchase-item-konversi" class="form-control" value="1" min="1" readonly style="background:#f1f5f9; cursor:not-allowed;" title="Faktor pengali ke satuan terkecil">
+                                        <small id="purchase-item-konversi-desc" style="color:var(--text-muted); font-size:11px;">1 Unit = 1 Satuan 1</small>
                                     </div>
                                 </div>
 
+                                <!-- Qty & Harga Beli Kotor -->
                                 <div class="pembelian-form-row">
                                     <div class="form-group">
-                                        <label>Jumlah (Qty) Masuk</label>
+                                        <label style="font-weight: 700;">Jumlah (Qty) Masuk *</label>
                                         <input type="number" id="purchase-item-qty" class="form-control" value="1" min="1" oninput="updatePurchaseSubtotalPreview()">
+                                        <small id="purchase-item-total-kecil" style="color:#166534; font-weight:700; font-size:11px;">= 1 Unit Kecil</small>
                                     </div>
                                     <div class="form-group">
-                                        <label>Harga Beli Satuan (Rp)</label>
+                                        <label style="font-weight: 700;">Harga Beli Satuan (Rp) *</label>
                                         <input type="number" id="purchase-item-price" class="form-control" value="0" min="0" oninput="updatePurchaseSubtotalPreview()">
+                                        <small style="color:var(--text-muted); font-size:11px;">Harga kotor sebelum disc/ppn</small>
                                     </div>
                                 </div>
 
+                                <!-- Diskon 1, Diskon 2, PPN % -->
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 11.5px; font-weight: 700;">% Diskon 1</label>
+                                        <input type="number" id="purchase-item-disc1" class="form-control" value="0" min="0" max="100" step="0.1" placeholder="0" oninput="updatePurchaseSubtotalPreview()">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 11.5px; font-weight: 700;">% Diskon 2</label>
+                                        <input type="number" id="purchase-item-disc2" class="form-control" value="0" min="0" max="100" step="0.1" placeholder="0" oninput="updatePurchaseSubtotalPreview()">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label style="font-size: 11.5px; font-weight: 700;">PPN %</label>
+                                        <input type="number" id="purchase-item-ppn" class="form-control" value="11" min="0" max="100" step="0.1" placeholder="11" oninput="updatePurchaseSubtotalPreview()">
+                                    </div>
+                                </div>
+
+                                <!-- Box Perhitungan Bersih (Netto, Subtotal, Update HPP) -->
+                                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px;">
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #0d9488; margin: 0;">Harga Netto Satuan:</label>
+                                            <div id="purchase-item-netto-display" style="font-size: 14px; font-weight: 800; color: #0f766e;">Rp 0</div>
+                                            <small style="color: var(--text-muted); font-size: 10px;">Setelah Disc & PPN</small>
+                                        </div>
+                                        <div>
+                                            <label style="font-size: 11px; font-weight: 700; color: #1e40af; margin: 0;">Update HPP Sat. 1:</label>
+                                            <div id="purchase-item-hpp-baru-display" style="font-size: 14px; font-weight: 800; color: #1e40af;">Rp 0</div>
+                                            <small style="color: var(--text-muted); font-size: 10px;">Auto update ke Master Obat</small>
+                                        </div>
+                                    </div>
+                                    <div style="border-top: 1px dashed #cbd5e1; padding-top: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 12.5px; font-weight: 700; color: var(--text-main);">Subtotal Item:</span>
+                                        <span id="purchase-item-preview-badge" style="font-size: 16px; font-weight: 800; color: var(--primary-color);">Rp 0</span>
+                                    </div>
+                                </div>
+
+                                <!-- No Batch & Expired Date -->
                                 <div class="pembelian-form-row">
                                     <div class="form-group">
                                         <label>No. Batch (Opsional)</label>
@@ -766,11 +845,8 @@
                                     </div>
                                 </div>
 
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px;">
-                                    <div id="purchase-item-preview-badge" style="font-size: 13px; font-weight: 700; color: var(--primary-color);">
-                                        Subtotal: Rp 0
-                                    </div>
-                                    <button type="button" class="btn btn-primary" onclick="addPurchaseItemToGrid()" style="padding: 8px 16px;">
+                                <div style="margin-top: 10px;">
+                                    <button type="button" class="btn btn-primary" onclick="addPurchaseItemToGrid()" style="width: 100%; padding: 10px; font-size: 13.5px; font-weight: 700;">
                                         + Tambah ke Faktur
                                     </button>
                                 </div>
@@ -787,15 +863,19 @@
 
                                 <!-- Desktop table -->
                                 <div class="table-container desktop-only-table" style="max-height: 320px; overflow-y: auto;">
-                                    <table class="data-table">
+                                    <table class="data-table" style="font-size: 11.5px;">
                                         <thead>
                                             <tr>
-                                                <th>Nama Obat</th>
-                                                <th>Satuan</th>
-                                                <th>Qty</th>
-                                                <th>Harga Beli</th>
-                                                <th>Subtotal</th>
-                                                <th>Aksi</th>
+                                                <th style="white-space: nowrap;">Nama Obat</th>
+                                                <th style="white-space: nowrap;">Satuan Masuk</th>
+                                                <th style="white-space: nowrap; text-align: center;">Qty</th>
+                                                <th style="white-space: nowrap; text-align: right;">Hrg Beli Gross</th>
+                                                <th style="white-space: nowrap; text-align: center;">Diskon</th>
+                                                <th style="white-space: nowrap; text-align: center;">PPN</th>
+                                                <th style="white-space: nowrap; text-align: right;">Hrg Netto</th>
+                                                <th style="white-space: nowrap; text-align: right;">Subtotal</th>
+                                                <th style="white-space: nowrap; text-align: right;">Update HPP Sat 1</th>
+                                                <th style="white-space: nowrap; text-align: center;">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody id="purchase-items-body"></tbody>
@@ -2737,7 +2817,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_05"></script>
+    <script src="app.js?v=20261109_06"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
