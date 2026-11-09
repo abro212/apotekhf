@@ -145,6 +145,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span>Kasir POS</span>
                 </a>
+                <a href="#" class="nav-link" onclick="openShiftKasirModal(); return false;" title="Buka atau Tutup Shift Kasir">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>Buka / Tutup Kasir</span>
+                </a>
                 <a href="#" class="nav-link" data-target="view-cek-harga">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     <span>Cek Harga Obat</span>
@@ -461,7 +465,7 @@
                                     <span style="font-weight: 700; color: #166534;" id="pos-shift-status-badge">🟢 Shift: Belum Buka</span>
                                     <span style="color: #15803d; font-size: 11.5px;" id="pos-shift-info-text">Modal: Rp 0 | Kasir: -</span>
                                 </div>
-                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; font-weight: 700; background: #ffffff; border-radius: 6px;" onclick="openShiftKasirModal()">
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; font-weight: 700; background: #ffffff; border-radius: 6px;" id="pos-shift-btn-action" onclick="openShiftKasirModal()">
                                     📋 Shift Kasir (Buka / Tutup)
                                 </button>
                             </div>
@@ -2985,7 +2989,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_15"></script>
+    <script src="app.js?v=20261109_16"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
@@ -3043,24 +3047,29 @@
 
             <!-- Form Buka Shift -->
             <div id="shift-pane-open">
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 12px; color: #166534;">
-                    Masukkan modal uang kembalian di laci kasir saat awal shift kerja dimulai.
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 14px; font-size: 12.5px; color: #166534; line-height: 1.4;">
+                    <strong>Buka Shift Kasir:</strong> Masukkan modal uang kembalian di laci kasir saat awal shift kerja dimulai untuk memulai transaksi POS.
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label style="font-weight: 700; font-size: 12px;">Pilih Shift Kerja *</label>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-weight: 700; font-size: 12.5px;">Pilih Shift Kerja *</label>
                     <select id="shift-input-jenis" class="form-control" style="font-weight: 600;">
                         <option value="PAGI">Shift 1 (PAGI)</option>
                         <option value="SORE">Shift 2 (SORE)</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin-bottom: 10px;">
-                    <label style="font-weight: 700; font-size: 12px;">Nama Kasir Bertugas *</label>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-weight: 700; font-size: 12.5px;">Nama Kasir Bertugas *</label>
                     <input type="text" id="shift-input-nama" class="form-control" placeholder="Nama Kasir..." style="font-weight: 600;">
                 </div>
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label style="font-weight: 700; font-size: 12px;">Modal Awal Uang di Laci (Rp) *</label>
-                    <input type="number" id="shift-input-modal" class="form-control" placeholder="Contoh: 300000" style="font-size: 15px; font-weight: 800; color: #047857;" value="300000">
-                    <small style="color: var(--text-muted); font-size: 10.5px;">Uang pecahan untuk kembalian awal</small>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-weight: 700; font-size: 12.5px;">Modal Awal Uang di Laci (Rp) *</label>
+                    <input type="number" id="shift-input-modal" class="form-control" placeholder="Contoh: 300000" style="font-size: 16px; font-weight: 800; color: #047857;" value="300000">
+                    <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+                        <span class="badge" style="cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 600;" onclick="document.getElementById('shift-input-modal').value=100000;">Rp 100.000</span>
+                        <span class="badge" style="cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 600;" onclick="document.getElementById('shift-input-modal').value=200000;">Rp 200.000</span>
+                        <span class="badge" style="cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 600;" onclick="document.getElementById('shift-input-modal').value=300000;">Rp 300.000</span>
+                        <span class="badge" style="cursor: pointer; background: #e0f2fe; color: #0369a1; font-weight: 600;" onclick="document.getElementById('shift-input-modal').value=500000;">Rp 500.000</span>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shift-kasir')">Batal</button>
@@ -3070,39 +3079,52 @@
 
             <!-- Form Tutup Shift (Closing) -->
             <div id="shift-pane-close" style="display: none;">
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 12.5px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+                        <span style="font-weight: 700; color: var(--text-main);">Shift Aktif:</span>
+                        <strong id="shift-close-name-display" style="color: var(--primary-color);">-</strong>
+                    </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                         <span style="color: var(--text-muted);">Modal Awal Shift:</span>
                         <strong id="shift-close-modal-display">Rp 0</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="color: #047857;">Penjualan Tunai Shift Ini:</span>
+                        <span style="color: #047857;">Penjualan Tunai (Cash):</span>
                         <strong id="shift-close-tunai-display" style="color: #047857;">Rp 0</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="color: #0369a1;">Penjualan QRIS (Bypass Bank):</span>
+                        <span style="color: #0369a1;">Penjualan Non-Tunai (QRIS/Transfer):</span>
                         <strong id="shift-close-qris-display" style="color: #0369a1;">Rp 0</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed #cbd5e1; padding-top: 5px; margin-top: 5px;">
-                        <span style="font-weight: 700; color: var(--text-main);">Ekspektasi Uang Fisik di Laci:</span>
-                        <strong id="shift-close-target-display" style="font-size: 14px; font-weight: 800; color: var(--primary-color);">Rp 0</strong>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">Jumlah Transaksi (Struk):</span>
+                        <strong id="shift-close-txcount-display">0 Transaksi</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed #cbd5e1; padding-top: 6px; margin-top: 6px;">
+                        <span style="font-weight: 700; color: var(--text-main);">Target Uang Fisik di Laci:</span>
+                        <strong id="shift-close-target-display" style="font-size: 15px; font-weight: 800; color: var(--primary-color);">Rp 0</strong>
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 10px;">
-                    <label style="font-weight: 700; font-size: 12px;">Total Uang Fisik Aktual di Laci Kasir (Rp) *</label>
-                    <input type="number" id="shift-input-fisik" class="form-control" placeholder="Hitung dan ketik total fisik uang..." style="font-size: 16px; font-weight: 800; color: #166534;" oninput="calcShiftSelisih()">
+                    <label style="font-weight: 700; font-size: 12.5px;">Total Uang Fisik Aktual di Laci Kasir (Rp) *</label>
+                    <input type="number" id="shift-input-fisik" class="form-control" placeholder="Hitung dan ketik total fisik uang di laci..." style="font-size: 16px; font-weight: 800; color: #166534;" oninput="calcShiftSelisih()">
                     <div id="shift-selisih-badge" style="margin-top: 4px;"></div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 15px;">
-                    <label style="font-weight: 700; font-size: 12px;">Catatan Pengeluaran Kasir / Keterangan</label>
-                    <textarea id="shift-input-catatan" class="form-control" rows="2" placeholder="Contoh: Beli kresek 15.000, aqua 5.000..."></textarea>
+                    <label style="font-weight: 700; font-size: 12.5px;">Catatan Pengeluaran Kasir / Keterangan</label>
+                    <textarea id="shift-input-catatan" class="form-control" rows="2" placeholder="Contoh: Beli kresek 15.000, aqua galon 20.000..."></textarea>
                 </div>
 
-                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shift-kasir')">Batal</button>
-                    <button type="button" class="btn btn-primary" style="font-weight: 700; background: #dc2626; border-color: #dc2626;" onclick="submitTutupShift()">Tutup Shift & Simpan Laporan</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary" style="font-size: 11px; padding: 6px 10px;" onclick="closeModal('modal-shift-kasir'); switchView('view-menu-laporan'); filterLaporan('shift');">
+                        📊 Lihat Riwayat Shift
+                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shift-kasir')">Batal</button>
+                        <button type="button" class="btn btn-primary" style="font-weight: 700; background: #dc2626; border-color: #dc2626;" onclick="submitTutupShift()">Tutup Shift & Simpan Laporan</button>
+                    </div>
                 </div>
             </div>
         </div>

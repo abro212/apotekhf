@@ -517,7 +517,7 @@ function switchView(viewId) {
  // Load view data
  if (viewId === 'view-dashboard') loadDashboard();
  if (viewId === 'view-cek-harga') loadCekHargaList();
- if (viewId === 'view-kasir') initPOS();
+ if (viewId === 'view-kasir') { initPOS(); updateShiftBarUI(); }
  if (viewId === 'view-master-obat') loadMasterObat();
  if (viewId === 'view-menu-penjualan') loadRiwayatPenjualan();
  if (viewId === 'view-menu-pembelian') initPembelian();
@@ -1790,6 +1790,15 @@ function setPosCartPreset(val) {
 async function posCheckout() {
     if (cart.length === 0) {
         alert('Keranjang belanja kosong!');
+        return;
+    }
+
+    const activeShift = getActiveShift();
+    if (!activeShift) {
+        const confirmBuka = confirm('⚠️ Perhatian: Shift Kasir belum dibuka!\n\nUntuk memulai transaksi kasir, harap buka shift terlebih dahulu dan masukkan modal awal kasir.\n\nBuka shift sekarang?');
+        if (confirmBuka) {
+            openShiftKasirModal();
+        }
         return;
     }
 
@@ -8800,6 +8809,36 @@ async function submitMutasiLaci() {
 // --------------------------------------------------------------------------
 // SHIFT KASIR & LAPORAN HARIAN
 // --------------------------------------------------------------------------
+function parseTxDateTime(str) {
+    if (!str) return null;
+    str = String(str).trim();
+    if (str.includes('T')) {
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? null : d;
+    }
+    const parts = str.split(' ');
+    if (parts.length >= 1) {
+        const dateParts = parts[0].split('/');
+        if (dateParts.length === 3) {
+            let day = parseInt(dateParts[0], 10);
+            let month = parseInt(dateParts[1], 10) - 1;
+            let year = parseInt(dateParts[2], 10);
+            if (year < 100) year += 2000;
+            let hours = 0, mins = 0, secs = 0;
+            if (parts[1]) {
+                const timeParts = parts[1].replace(/:/g, '.').split('.');
+                hours = parseInt(timeParts[0] || '0', 10);
+                mins = parseInt(timeParts[1] || '0', 10);
+                secs = parseInt(timeParts[2] || '0', 10);
+            }
+            const d = new Date(year, month, day, hours, mins, secs);
+            return isNaN(d.getTime()) ? null : d;
+        }
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+}
+
 function getActiveShift() {
     const raw = localStorage.getItem('apotek_active_shift');
     if (!raw) return null;
@@ -8808,21 +8847,50 @@ function getActiveShift() {
 
 function updateShiftBarUI() {
     const shift = getActiveShift();
+    const bar = document.getElementById('pos-shift-bar');
     const statusBadge = document.getElementById('pos-shift-status-badge');
     const infoText = document.getElementById('pos-shift-info-text');
+    const btnAction = document.getElementById('pos-shift-btn-action');
     if (!statusBadge) return;
 
     if (shift) {
-        statusBadge.textContent = `🟢 Shift Aktif: ${shift.jenis_shift}`;
+        if (bar) {
+            bar.style.background = '#f0fdf4';
+            bar.style.borderColor = '#bbf7d0';
+        }
+        statusBadge.textContent = `🟢 Shift Aktif: ${shift.jenis_shift} (${shift.nama_kasir})`;
         statusBadge.style.color = '#166534';
         if (infoText) {
-            infoText.textContent = `Modal: Rp ${formatMoney(shift.modal_awal)} | Kasir: ${shift.nama_kasir}`;
+            let bukaTime = '';
+            if (shift.buka_waktu) {
+                try {
+                    const d = new Date(shift.buka_waktu);
+                    bukaTime = ` | Buka: ${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`;
+                } catch(e) {}
+            }
+            infoText.textContent = `Modal Awal: Rp ${formatMoney(shift.modal_awal || 0)}${bukaTime}`;
+        }
+        if (btnAction) {
+            btnAction.textContent = '🔒 Tutup Shift Kasir';
+            btnAction.className = 'btn btn-secondary';
+            btnAction.style.color = '#b91c1c';
+            btnAction.style.borderColor = '#fca5a5';
         }
     } else {
-        statusBadge.textContent = '⚪ Shift: Belum Buka Shift';
+        if (bar) {
+            bar.style.background = '#fef2f2';
+            bar.style.borderColor = '#fecaca';
+        }
+        statusBadge.textContent = '🔴 Shift Kasir: Belum Dibuka';
         statusBadge.style.color = '#dc2626';
         if (infoText) {
-            infoText.textContent = 'Klik tombol di kanan untuk Buka Shift Kasir';
+            infoText.textContent = 'Buka shift terlebih dahulu sebelum melayani transaksi POS.';
+        }
+        if (btnAction) {
+            btnAction.textContent = '🔓 Buka Shift Kasir';
+            btnAction.className = 'btn btn-primary';
+            btnAction.style.color = '#ffffff';
+            btnAction.style.borderColor = 'var(--primary-color)';
         }
     }
 }
@@ -8870,6 +8938,7 @@ async function submitBukaShift() {
 
     if (!nama) {
         alert('Masukkan nama kasir yang bertugas!');
+        document.getElementById('shift-input-nama')?.focus();
         return;
     }
 
@@ -8889,54 +8958,78 @@ async function submitBukaShift() {
 
 async function loadShiftClosingData() {
     const shift = getActiveShift();
+    const nameEl = document.getElementById('shift-close-name-display');
     const modalEl = document.getElementById('shift-close-modal-display');
     const tunaiEl = document.getElementById('shift-close-tunai-display');
     const qrisEl = document.getElementById('shift-close-qris-display');
+    const countEl = document.getElementById('shift-close-txcount-display');
     const targetEl = document.getElementById('shift-close-target-display');
 
     if (!shift) {
+        if (nameEl) nameEl.textContent = 'Tidak Ada Shift Aktif';
         if (modalEl) modalEl.textContent = 'Rp 0';
         if (tunaiEl) tunaiEl.textContent = 'Rp 0';
         if (qrisEl) qrisEl.textContent = 'Rp 0';
+        if (countEl) countEl.textContent = '0 Transaksi';
         if (targetEl) targetEl.textContent = 'Rp 0';
         return;
     }
 
-    const modalAwal = shift.modal_awal || 0;
+    if (nameEl) {
+        let jamBuka = '';
+        if (shift.buka_waktu) {
+            try {
+                const dt = new Date(shift.buka_waktu);
+                jamBuka = ` (Buka Pkl ${String(dt.getHours()).padStart(2, '0')}.${String(dt.getMinutes()).padStart(2, '0')})`;
+            } catch(e) {}
+        }
+        nameEl.textContent = `Shift Aktif: ${shift.jenis_shift} - ${shift.nama_kasir}${jamBuka}`;
+    }
+
+    const modalAwal = parseFloat(shift.modal_awal || 0);
     if (modalEl) modalEl.textContent = `Rp ${formatMoney(modalAwal)}`;
 
-    // Query sales since shift opened
     try {
         if (!supabaseClient) return;
-        const today = new Date().toISOString().split('T')[0];
-        const dateObj = new Date();
-        const yy = String(dateObj.getFullYear()).substring(2);
-        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const dd = String(dateObj.getDate()).padStart(2, '0');
-        const todayPattern = `${dd}/${mm}/20${yy}%`;
 
-        const { data: sales } = await supabaseClient.from('transaksi_jual')
-            .select('metode_bayar, total_bayar, tanggal')
-            .like('tanggal', todayPattern);
+        const shiftStart = shift.buka_waktu ? new Date(shift.buka_waktu) : new Date(new Date().setHours(0,0,0,0));
 
-        let tunai = 0, qris = 0;
-        if (sales) {
+        const { data: sales, error } = await supabaseClient.from('transaksi_jual')
+            .select('id_jual, metode_bayar, total_bayar, tanggal, user')
+            .order('id_jual', { ascending: false })
+            .limit(300);
+
+        let tunai = 0, qris = 0, countTx = 0, totalOmset = 0;
+
+        if (sales && !error) {
             sales.forEach(s => {
-                const total = parseFloat(s.total_bayar || 0);
-                if (s.metode_bayar === 'CASH') tunai += total;
-                else if (s.metode_bayar === 'QRIS') qris += total;
+                const txDate = parseTxDateTime(s.tanggal);
+                if (txDate && txDate >= shiftStart) {
+                    countTx++;
+                    const total = parseFloat(s.total_bayar || 0);
+                    totalOmset += total;
+                    const method = String(s.metode_bayar || '').toUpperCase();
+                    if (method === 'CASH' || method === 'TUNAI') {
+                        tunai += total;
+                    } else {
+                        qris += total;
+                    }
+                }
             });
         }
 
         if (tunaiEl) tunaiEl.textContent = `Rp ${formatMoney(tunai)}`;
         if (qrisEl) qrisEl.textContent = `Rp ${formatMoney(qris)}`;
-        
+        if (countEl) countEl.textContent = `${countTx} Transaksi`;
+
         const targetFisik = modalAwal + tunai;
         if (targetEl) targetEl.textContent = `Rp ${formatMoney(targetFisik)}`;
         targetEl.dataset.target = targetFisik;
         targetEl.dataset.tunai = tunai;
         targetEl.dataset.qris = qris;
         targetEl.dataset.modal = modalAwal;
+        targetEl.dataset.count = countTx;
+        targetEl.dataset.omset = totalOmset;
 
         calcShiftSelisih();
     } catch (e) {
@@ -8947,22 +9040,25 @@ async function loadShiftClosingData() {
 function calcShiftSelisih() {
     const targetEl = document.getElementById('shift-close-target-display');
     const target = parseFloat(targetEl?.dataset.target || 0);
-    const fisik = parseFloat(document.getElementById('shift-input-fisik')?.value || 0);
+    const fisikInput = document.getElementById('shift-input-fisik');
     const badge = document.getElementById('shift-selisih-badge');
     if (!badge) return;
 
-    if (isNaN(fisik) || fisik <= 0) {
+    const valStr = fisikInput?.value;
+    if (valStr === '' || valStr === null || valStr === undefined) {
         badge.innerHTML = '';
         return;
     }
 
+    const fisik = parseFloat(valStr || 0);
     const diff = fisik - target;
-    if (diff === 0) {
-        badge.innerHTML = '<span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700;">✅ Uang Fisik TEPAT (Pas)</span>';
+
+    if (Math.abs(diff) < 1) {
+        badge.innerHTML = '<span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700; padding: 4px 10px; font-size: 12px;">✅ Uang Fisik TEPAT (Pas / Seimbang)</span>';
     } else if (diff > 0) {
-        badge.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">🟢 Selisih LEBIH: +Rp ${formatMoney(diff)}</span>`;
+        badge.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; padding: 4px 10px; font-size: 12px;">🟢 Selisih LEBIH: +Rp ${formatMoney(diff)}</span>`;
     } else {
-        badge.innerHTML = `<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:700;">🔴 Selisih KURANG: -Rp ${formatMoney(Math.abs(diff))}</span>`;
+        badge.innerHTML = `<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:700; padding: 4px 10px; font-size: 12px;">🔴 Selisih KURANG: -Rp ${formatMoney(Math.abs(diff))}</span>`;
     }
 }
 
@@ -8973,27 +9069,54 @@ async function submitTutupShift() {
         return;
     }
 
-    const fisik = parseFloat(document.getElementById('shift-input-fisik')?.value || 0);
+    const fisikVal = document.getElementById('shift-input-fisik')?.value;
+    if (fisikVal === '' || isNaN(parseFloat(fisikVal)) || parseFloat(fisikVal) < 0) {
+        alert('Harap hitung dan masukkan jumlah Uang Fisik Aktual di Laci Kasir!');
+        document.getElementById('shift-input-fisik')?.focus();
+        return;
+    }
+
+    const fisik = parseFloat(fisikVal);
     const targetEl = document.getElementById('shift-close-target-display');
     const target = parseFloat(targetEl?.dataset.target || 0);
     const tunai = parseFloat(targetEl?.dataset.tunai || 0);
     const qris = parseFloat(targetEl?.dataset.qris || 0);
+    const countTx = parseInt(targetEl?.dataset.count || 0);
+    const omset = parseFloat(targetEl?.dataset.omset || (tunai + qris));
     const modalAwal = parseFloat(targetEl?.dataset.modal || shift.modal_awal || 0);
     const catatan = document.getElementById('shift-input-catatan')?.value.trim() || '';
-
-    if (isNaN(fisik) || fisik < 0) {
-        alert('Masukkan jumlah uang fisik aktual di laci kasir!');
-        return;
-    }
-
     const selisih = fisik - target;
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
+
+    const selisihLabel = Math.abs(selisih) < 1 ? 'TEPAT / PAS (Rp 0)' : (selisih > 0 ? '+Rp ' + formatMoney(selisih) + ' (LEBIH)' : '-Rp ' + formatMoney(Math.abs(selisih)) + ' (KURANG)');
+
+    const confirmMsg = `Konfirmasi Tutup Shift Kasir:\n\n` +
+        `• Shift: ${shift.jenis_shift}\n` +
+        `• Kasir: ${shift.nama_kasir}\n` +
+        `• Modal Awal: Rp ${formatMoney(modalAwal)}\n` +
+        `• Penjualan Tunai: Rp ${formatMoney(tunai)}\n` +
+        `• Penjualan Non-Tunai: Rp ${formatMoney(qris)}\n` +
+        `• Total Transaksi: ${countTx} struk\n` +
+        `• Target Fisik di Laci: Rp ${formatMoney(target)}\n` +
+        `• Uang Fisik Aktual: Rp ${formatMoney(fisik)}\n` +
+        `• Status Selisih: ${selisihLabel}\n\n` +
+        `Lanjutkan tutup shift dan simpan laporan?`;
+
+    if (!confirm(confirmMsg)) return;
 
     try {
-        if (!supabaseClient) return;
+        if (!supabaseClient) throw new Error('Koneksi database tidak tersedia');
 
-        // Save into laporan_harian table
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        const timestampStr = `${day}/${month}/${year} ${hours}.${mins}.${secs}`;
+
         const laporanRecord = {
             tanggal: dateStr,
             shift: shift.jenis_shift,
@@ -9001,34 +9124,55 @@ async function submitTutupShift() {
             modal: String(modalAwal),
             total_uang: String(fisik),
             masuk: String(tunai),
-            catatan: `Fisik: Rp ${formatMoney(fisik)} | Target: Rp ${formatMoney(target)} | Selisih: Rp ${formatMoney(selisih)}. ${catatan}`,
+            catatan: `Target: Rp ${formatMoney(target)} | Fisik: Rp ${formatMoney(fisik)} | Selisih: ${selisihLabel}${catatan ? ' | Ket: ' + catatan : ''}`,
+            timestamp: timestampStr,
             saldo_kas_awal: String(modalAwal),
             saldo_kas_akhir: String(fisik),
             pembayaran_qris: String(qris),
-            user: currentUser?.nama_staf || 'cashier'
+            omset_shift: String(omset),
+            jumlah_orang: String(countTx),
+            penjualan_tunai_masuk: String(tunai),
+            selisih_kas: String(selisih),
+            user: currentUser?.nama_staf || shift.nama_kasir || 'cashier'
         };
 
         const { error } = await supabaseClient.from('laporan_harian').insert([laporanRecord]);
-        if (error) console.warn('Laporan harian insert warning:', error);
+        if (error) {
+            console.warn('Laporan harian insert warning:', error);
+            const fallbackRecord = {
+                tanggal: dateStr,
+                shift: shift.jenis_shift,
+                nama: shift.nama_kasir,
+                modal: String(modalAwal),
+                total_uang: String(fisik),
+                masuk: String(tunai),
+                catatan: `Fisik: Rp ${formatMoney(fisik)} | Target: Rp ${formatMoney(target)} | Selisih: ${selisihLabel}. ${catatan}`,
+                saldo_kas_awal: String(modalAwal),
+                saldo_kas_akhir: String(fisik),
+                pembayaran_qris: String(qris),
+                user: currentUser?.nama_staf || 'cashier'
+            };
+            const { error: errFallback } = await supabaseClient.from('laporan_harian').insert([fallbackRecord]);
+            if (errFallback) throw errFallback;
+        }
 
         localStorage.removeItem('apotek_active_shift');
+        const inputFisik = document.getElementById('shift-input-fisik');
+        if (inputFisik) inputFisik.value = '';
+        const inputCatatan = document.getElementById('shift-input-catatan');
+        if (inputCatatan) inputCatatan.value = '';
+        const badgeSelisih = document.getElementById('shift-selisih-badge');
+        if (badgeSelisih) badgeSelisih.innerHTML = '';
+
         updateShiftBarUI();
         closeModal('modal-shift-kasir');
 
-        alert(`✅ Shift ${shift.jenis_shift} Resmi Ditutup!\n\n` +
-              `Kasir: ${shift.nama_kasir}\n` +
-              `Modal Awal: Rp ${formatMoney(modalAwal)}\n` +
-              `Penjualan Tunai: Rp ${formatMoney(tunai)}\n` +
-              `Penjualan QRIS: Rp ${formatMoney(qris)}\n` +
-              `Target Laci: Rp ${formatMoney(target)}\n` +
-              `Uang Fisik: Rp ${formatMoney(fisik)}\n` +
-              `Status: ${selisih === 0 ? 'SEIMBANG (PAS)' : (selisih > 0 ? 'LEBIH +Rp ' + formatMoney(selisih) : 'KURANG -Rp ' + formatMoney(Math.abs(selisih)))}`);
+        alert(`✅ Shift ${shift.jenis_shift} Berhasil Ditutup!\n\nLaporan shift telah tersimpan ke dalam sistem.\nSelisih Kas: ${selisihLabel}`);
     } catch (e) {
         console.error('Error closing shift:', e);
-        alert('Gagal menutup shift kasir: ' + e.message);
+        alert('Gagal menutup shift kasir: ' + (e.message || e));
     }
 }
-
 // --------------------------------------------------------------------------
 // SETTLEMENT KONSINYASI (SALES-BY-SUBTRACTION)
 // --------------------------------------------------------------------------
