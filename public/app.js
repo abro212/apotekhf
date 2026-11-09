@@ -515,6 +515,7 @@ function switchView(viewId) {
  }
  
  // Load view data
+ if (viewId === 'view-dashboard') loadDashboard();
  if (viewId === 'view-cek-harga') loadCekHargaList();
  if (viewId === 'view-kasir') initPOS();
  if (viewId === 'view-master-obat') loadMasterObat();
@@ -527,7 +528,6 @@ function switchView(viewId) {
  if (viewId === 'view-cek-kesehatan') initCekKesehatan();
  if (viewId === 'view-kas') loadKasLedger();
  if (viewId === 'view-supplier-pelanggan') loadSupplierPelanggan();
-        loadPurchaseSuppliers(id_supplier);
  if (viewId === 'view-info') loadInfoStats();
     setTimeout(initTableDragToScroll, 100);
 }
@@ -556,6 +556,7 @@ function closeMobileSidebar() {
 // 1. DASHBOARD VIEW WIDGETS
 // --------------------------------------------------------------------------
 async function loadDashboard() {
+ if (!supabaseClient) checkSupabaseConfig();
  if (!supabaseClient) return;
  
  const menuIcons = {
