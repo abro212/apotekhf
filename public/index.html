@@ -22,7 +22,7 @@
     <meta name="twitter:description" content="Portal Manajemen Apotek Modern. Terintegrasi Kasir POS, Katalog Master Obat, Rekam Kesehatan, Kas Operasional, dan Stok Opname.">
     <meta name="twitter:image" content="https://apotekhf.vercel.app/logo_hf.png">
 
-    <link rel="stylesheet" href="style.css?v=20261109_10">
+    <link rel="stylesheet" href="style.css?v=20261109_12">
     <link rel="icon" type="image/png" href="logo_hf.png">
     <!-- Camera Barcode & QR Code Scanner Library -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -455,6 +455,17 @@
                     <div class="pos-layout">
                         <!-- Left Side: Item Search & Selection -->
                         <div class="view-card pos-section-wrapper" id="pos-catalog-container" style="padding: 20px;">
+                            <!-- Shift Kasir Status & Action Bar -->
+                            <div id="pos-shift-bar" style="display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 7px 12px; margin-bottom: 10px; font-size: 12px; flex-wrap: wrap; gap: 6px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <span style="font-weight: 700; color: #166534;" id="pos-shift-status-badge">🟢 Shift: Belum Buka</span>
+                                    <span style="color: #15803d; font-size: 11.5px;" id="pos-shift-info-text">Modal: Rp 0 | Kasir: -</span>
+                                </div>
+                                <button type="button" class="btn btn-secondary" style="padding: 3px 10px; font-size: 11px; font-weight: 700; background: #ffffff; border-radius: 6px;" onclick="openShiftKasirModal()">
+                                    📋 Shift Kasir (Buka / Tutup)
+                                </button>
+                            </div>
+
                             <!-- Customer Selection Bar (Unified 1-Line Flex) -->
                             <div class="pos-customer-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; background: #f8fafc; padding: 7px 10px; border: 1px solid var(--border-color); border-radius: 8px;">
                                 <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;">
@@ -562,9 +573,12 @@
                                     </div>
                                 </div>
 
-                                <!-- 5. Tombol Selesaikan -->
-                                <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700;" onclick="posCheckout()">
+                                <!-- 5. Tombol Selesaikan (Guardrail Anti-Nombok & Rollback) -->
+                                <button id="pos-checkout-btn" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 700; transition: all 0.2s;" onclick="posCheckout()">
                                     Selesaikan & Cetak Struk
+                                </button>
+                                <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 11.5px; font-weight: 600; color: #dc2626; border-color: #fca5a5; background: #fef2f2;" onclick="resetPosCart()">
+                                    ✕ Batal / Kosongkan Keranjang
                                 </button>
                             </div>
                         </div>
@@ -1174,16 +1188,26 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; flex-wrap: wrap;">
                             <div style="display: flex; gap: 8px; flex: 1; min-width: 260px; flex-wrap: wrap;">
                                 <input type="text" id="kas-search-input" class="form-control" style="flex: 1; min-width: 180px;" placeholder=" Cari kategori, keterangan, ID..." oninput="loadKasLedger(1)">
-                                <select id="kas-filter-jenis" class="form-control" style="width: 135px;" onchange="loadKasLedger(1)">
+                                <select id="kas-filter-jenis" class="form-control" style="width: 120px;" onchange="loadKasLedger(1)">
                                     <option value="ALL">Semua Tipe</option>
                                     <option value="MASUK">Masuk</option>
                                     <option value="KELUAR">Keluar</option>
                                 </select>
+                                <select id="kas-filter-laci" class="form-control" style="width: 145px; font-weight: 600;" onchange="loadKasLedger(1)">
+                                    <option value="ALL">Semua 4 Laci</option>
+                                    <option value="Laci Kasir">💵 Laci Kasir</option>
+                                    <option value="Rekening Bank">💳 Rekening Bank</option>
+                                    <option value="Kas Kecil">🪙 Kas Kecil</option>
+                                    <option value="Kas Besar">🏦 Kas Besar</option>
+                                </select>
                             </div>
                             <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
                                 <span class="badge badge-info" id="kas-count-badge" style="font-size: 12px; padding: 6px 12px;">0 Mutasi</span>
+                                <button class="btn btn-secondary" style="font-weight: 700; padding: 8px 12px; display: flex; align-items: center; gap: 6px;" onclick="showMutasiLaciModal()" title="Pindah Dana Antar Laci (Double-Entry ACID)">
+                                    🔄 Mutasi Antar Laci
+                                </button>
                                 <button class="btn btn-primary" style="font-weight: 700; padding: 8px 16px; display: flex; align-items: center; gap: 6px;" onclick="showAddKasModal()">
-                                    Mutasi Kas
+                                    + Catat Kas Masuk/Keluar
                                 </button>
                             </div>
                         </div>
@@ -2161,6 +2185,27 @@
                 </table>
             </div>
 
+            <h4 style="font-size: 14px; font-weight: 700; margin-top: 18px; margin-bottom: 8px; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                <span>Riwayat Batch & Expired Date (FEFO Anti-Zombie)</span>
+                <span class="badge" style="background:#f1f5f9; color:#475569; font-size:10.5px;" id="preview-batch-count">0 Batch</span>
+            </h4>
+            <div class="table-container" style="overflow-x: auto; max-height: 180px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 15px;">
+                <table class="data-table" style="width: 100%; min-width: 500px; font-size: 11.5px; margin: 0;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 5px 8px;">No Batch</th>
+                            <th style="padding: 5px 8px;">Expired Date</th>
+                            <th style="padding: 5px 8px;">Tgl Masuk</th>
+                            <th style="padding: 5px 8px; text-align: center;">Qty Masuk</th>
+                            <th style="padding: 5px 8px; text-align: center;">Status Batch</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-obat-batch-body">
+                        <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 10px;">Belum ada data batch.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
             <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
                 <button type="button" class="btn btn-primary" onclick="closeModal('modal-preview-obat'); editObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">Edit Obat</button>
                 <button type="button" class="btn btn-danger" onclick="closeModal('modal-preview-obat'); deleteObat(encodeURIComponent(document.getElementById('preview-obat-id').textContent))">Hapus Obat</button>
@@ -2848,7 +2893,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="app.js?v=20261109_11"></script>
+    <script src="app.js?v=20261109_12"></script>
 
     <!-- Modal Konfigurasi Database Supabase -->
     <div id="modal-db-config" class="modal-overlay hidden">
@@ -2886,6 +2931,185 @@
                     <button type="submit" class="btn btn-primary">Simpan & Terapkan</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+
+    <!-- Modal Shift Kasir (Laporan Harian Kasir) -->
+    <div id="modal-shift-kasir" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 520px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--primary-color);">📋 Manajemen Shift Kasir (Laporan Harian)</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeModal('modal-shift-kasir')">✕</button>
+            </div>
+
+            <!-- Tab Buka / Tutup Shift -->
+            <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                <button type="button" class="btn btn-primary" id="shift-tab-btn-open" style="flex: 1; padding: 6px; font-size: 12px; font-weight: 700;" onclick="switchShiftTab('open')">Buka Shift (Awal)</button>
+                <button type="button" class="btn btn-secondary" id="shift-tab-btn-close" style="flex: 1; padding: 6px; font-size: 12px; font-weight: 700;" onclick="switchShiftTab('close')">Tutup Shift (Closing)</button>
+            </div>
+
+            <!-- Form Buka Shift -->
+            <div id="shift-pane-open">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 12px; color: #166534;">
+                    Masukkan modal uang kembalian di laci kasir saat awal shift kerja dimulai.
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Pilih Shift Kerja *</label>
+                    <select id="shift-input-jenis" class="form-control" style="font-weight: 600;">
+                        <option value="PAGI">Shift 1 (PAGI)</option>
+                        <option value="SORE">Shift 2 (SORE)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Nama Kasir Bertugas *</label>
+                    <input type="text" id="shift-input-nama" class="form-control" placeholder="Nama Kasir..." style="font-weight: 600;">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 700; font-size: 12px;">Modal Awal Uang di Laci (Rp) *</label>
+                    <input type="number" id="shift-input-modal" class="form-control" placeholder="Contoh: 300000" style="font-size: 15px; font-weight: 800; color: #047857;" value="300000">
+                    <small style="color: var(--text-muted); font-size: 10.5px;">Uang pecahan untuk kembalian awal</small>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shift-kasir')">Batal</button>
+                    <button type="button" class="btn btn-primary" style="font-weight: 700;" onclick="submitBukaShift()">Mulai Shift Kasir</button>
+                </div>
+            </div>
+
+            <!-- Form Tutup Shift (Closing) -->
+            <div id="shift-pane-close" style="display: none;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 12px; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: var(--text-muted);">Modal Awal Shift:</span>
+                        <strong id="shift-close-modal-display">Rp 0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #047857;">Penjualan Tunai Shift Ini:</span>
+                        <strong id="shift-close-tunai-display" style="color: #047857;">Rp 0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span style="color: #0369a1;">Penjualan QRIS (Bypass Bank):</span>
+                        <strong id="shift-close-qris-display" style="color: #0369a1;">Rp 0</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-top: 1px dashed #cbd5e1; padding-top: 5px; margin-top: 5px;">
+                        <span style="font-weight: 700; color: var(--text-main);">Ekspektasi Uang Fisik di Laci:</span>
+                        <strong id="shift-close-target-display" style="font-size: 14px; font-weight: 800; color: var(--primary-color);">Rp 0</strong>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Total Uang Fisik Aktual di Laci Kasir (Rp) *</label>
+                    <input type="number" id="shift-input-fisik" class="form-control" placeholder="Hitung dan ketik total fisik uang..." style="font-size: 16px; font-weight: 800; color: #166534;" oninput="calcShiftSelisih()">
+                    <div id="shift-selisih-badge" style="margin-top: 4px;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 700; font-size: 12px;">Catatan Pengeluaran Kasir / Keterangan</label>
+                    <textarea id="shift-input-catatan" class="form-control" rows="2" placeholder="Contoh: Beli kresek 15.000, aqua 5.000..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shift-kasir')">Batal</button>
+                    <button type="button" class="btn btn-primary" style="font-weight: 700; background: #dc2626; border-color: #dc2626;" onclick="submitTutupShift()">Tutup Shift & Simpan Laporan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Mutasi Antar Laci Kas (Double-Entry ACID) -->
+    <div id="modal-mutasi-laci" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 480px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--primary-color);">🔄 Mutasi Antar Laci (Double-Entry)</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeModal('modal-mutasi-laci')">✕</button>
+            </div>
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 11.5px; color: var(--text-muted);">
+                Sistem akan mencatat 'Uang Keluar' di laci asal dan 'Uang Masuk' di laci tujuan secara atomik pada saat yang sama.
+            </div>
+            <div class="pembelian-form-row">
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Laci Asal (Sumber Uang) *</label>
+                    <select id="mutasi-laci-asal" class="form-control" style="font-weight: 600;">
+                        <option value="Laci Kasir">💵 Laci Kasir (Uang POS)</option>
+                        <option value="Rekening Bank">💳 Rekening Bank (QRIS)</option>
+                        <option value="Kas Kecil">🪙 Kas Kecil (Petty Cash)</option>
+                        <option value="Kas Besar" selected>🏦 Kas Besar (Brankas)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Laci Tujuan (Penerima) *</label>
+                    <select id="mutasi-laci-tujuan" class="form-control" style="font-weight: 600;">
+                        <option value="Laci Kasir" selected>💵 Laci Kasir (Uang POS)</option>
+                        <option value="Rekening Bank">💳 Rekening Bank (QRIS)</option>
+                        <option value="Kas Kecil">🪙 Kas Kecil (Petty Cash)</option>
+                        <option value="Kas Besar">🏦 Kas Besar (Brankas)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-weight: 700; font-size: 12px;">Nominal Mutasi (Rp) *</label>
+                <input type="number" id="mutasi-laci-nominal" class="form-control" placeholder="Contoh: 500000" style="font-size: 15px; font-weight: 800; color: #0f766e;">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="font-weight: 700; font-size: 12px;">Keterangan / Keperluan *</label>
+                <input type="text" id="mutasi-laci-ket" class="form-control" placeholder="Contoh: Setor uang fisik kasir ke bank, tambah modal kasir...">
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-mutasi-laci')">Batal</button>
+                <button type="button" class="btn btn-primary" style="font-weight: 700;" onclick="submitMutasiLaci()">Eksekusi Mutasi Kas</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pembayaran Konsinyasi (Sales-by-Subtraction Settlement) -->
+    <div id="modal-bayar-konsinyasi" class="modal-overlay hidden">
+        <div class="modal-content" style="max-width: 650px; width: 95%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: var(--primary-color);">📦 Settlement & Bayar Barang Konsinyasi (Laku Terjual)</h3>
+                <button type="button" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="closeModal('modal-bayar-konsinyasi')">✕</button>
+            </div>
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 11.5px; color: #166534;">
+                Tagihan dihitung dinamis (Sales-by-Subtraction): Hanya item konsinyasi yang <strong>laku terjual di POS</strong> dan belum pernah disetor ke supplier yang ditagihkan.
+            </div>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label style="font-weight: 700; font-size: 12px;">Mitra Supplier Konsinyasi:</label>
+                <div id="konsi-modal-supplier-name" style="font-size: 14px; font-weight: 800; color: var(--text-main);">-</div>
+            </div>
+            <div class="table-container" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 12px;">
+                <table class="data-table" style="font-size: 11.5px; margin: 0; min-width: 100%;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 4px 6px;">Nama Obat</th>
+                            <th style="padding: 4px 6px; text-align: center;">Qty Laku</th>
+                            <th style="padding: 4px 6px; text-align: right;">HPP Satuan</th>
+                            <th style="padding: 4px 6px; text-align: right;">Subtotal Bayar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="konsi-modal-items-body"></tbody>
+                </table>
+            </div>
+            <div class="pembelian-form-row">
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Sumber Laci Kas Bayar *</label>
+                    <select id="konsi-modal-laci" class="form-control" style="font-weight: 600;">
+                        <option value="Laci Kasir">💵 Laci Kasir (Kas Tunai)</option>
+                        <option value="Rekening Bank">💳 Rekening Bank (Transfer)</option>
+                        <option value="Kas Besar">🏦 Kas Besar (Brankas)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-weight: 700; font-size: 12px;">Total Yang Disetor (Rp)</label>
+                    <input type="text" id="konsi-modal-total-display" class="form-control" readonly style="font-size: 16px; font-weight: 800; color: #0f766e; background: #f8fafc;">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="font-weight: 700; font-size: 12px;">Catatan Pembayaran</label>
+                <input type="text" id="konsi-modal-catatan" class="form-control" placeholder="Contoh: Setoran konsinyasi periode 1-15 November...">
+            </div>
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('modal-bayar-konsinyasi')">Batal</button>
+                <button type="button" class="btn btn-primary" style="font-weight: 700;" onclick="submitBayarKonsinyasi()">Proses & Simpan Pembayaran</button>
+            </div>
         </div>
     </div>
 

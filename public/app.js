@@ -1717,6 +1717,7 @@ function updatePosCartTotals() {
         }
         const kembalian = uangBayar - totalHarga;
 
+        const checkoutBtn = document.getElementById('pos-checkout-btn');
         if (kembalianDisplay) {
             if (kembalian >= 0) {
                 kembalianDisplay.textContent = 'Rp ' + formatMoney(kembalian);
@@ -1725,12 +1726,27 @@ function updatePosCartTotals() {
                     kembalianRow.style.background = '#ecfdf5';
                     kembalianRow.style.borderColor = '#a7f3d0';
                 }
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.style.background = '';
+                    checkoutBtn.style.borderColor = '';
+                    checkoutBtn.style.cursor = 'pointer';
+                    checkoutBtn.textContent = 'Selesaikan & Cetak Struk';
+                }
             } else {
                 kembalianDisplay.textContent = 'Kurang Rp ' + formatMoney(Math.abs(kembalian));
                 kembalianDisplay.style.color = '#ef4444';
                 if (kembalianRow) {
                     kembalianRow.style.background = '#fef2f2';
                     kembalianRow.style.borderColor = '#fca5a5';
+                }
+                // Guardrail Anti-Nombok: Disable checkout if cash payment is insufficient
+                if (checkoutBtn) {
+                    checkoutBtn.disabled = true;
+                    checkoutBtn.style.background = '#dc2626';
+                    checkoutBtn.style.borderColor = '#dc2626';
+                    checkoutBtn.style.cursor = 'not-allowed';
+                    checkoutBtn.textContent = `⚠️ Kurang Rp ${formatMoney(Math.abs(kembalian))} (Anti-Nombok)`;
                 }
             }
         }
@@ -1812,14 +1828,20 @@ async function posCheckout() {
     try {
         if (!supabaseClient) return;
 
-        // ID Jual YYMMDD-user-suffix
+        // Auto-Numbering Sequence: YYMMDD-USERNAME-XXX
         const dateObj = new Date();
         const yy = String(dateObj.getFullYear()).substring(2);
         const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
         const dd = String(dateObj.getDate()).padStart(2, '0');
         const dateStr = `${yy}${mm}${dd}`;
-        const suffix = Math.random().toString(36).substring(2, 6).toLowerCase();
-        const id_jual = `${dateStr}-${(currentUser?.nama_staf || 'cashier').toLowerCase()}-${suffix}`;
+        const cleanUser = (currentUser?.nama_staf || 'CASHIER').toUpperCase().replace(/[^A-Z0-9]/g, '').substring(0, 8);
+        
+        // Sequence counter per user per day
+        const seqKey = `seq_${dateStr}_${cleanUser}`;
+        let seqNum = parseInt(localStorage.getItem(seqKey) || '0') + 1;
+        localStorage.setItem(seqKey, String(seqNum));
+        const seqStr = String(seqNum).padStart(3, '0');
+        const id_jual = `${dateStr}-${cleanUser}-${seqStr}`;
 
         // Date formatter DD/MM/YYYY hh.mm.ss
         const formatJSDate = (d) => {
@@ -6276,7 +6298,7 @@ async function loadTagihanData(page = currentTagihanPage, pageSize = currentTagi
  `;
 
  try {
- let query = supabaseClient.from('faktur_beli').select('*', { count: 'exact' }).eq('metode_bayar', 'TEMPO').order('tanggal_masuk', { ascending: false });
+ let query = supabaseClient.from('faktur_beli').select('*', { count: 'exact' }).eq('metode_bayar', 'TEMPO').neq('jenis_transaksi', 'KONSINYASI').order('tanggal_masuk', { ascending: false });
  if (q) {
  query = query.or(`nomor_faktur.ilike.%${q}%,supplier.ilike.%${q}%`);
  }
@@ -8275,4 +8297,769 @@ document.addEventListener('click', (e) => {
     if (container && !container.contains(e.target)) {
         closePurchaseDropdownMenu();
     }
+});
+
+
+// ==========================================================================
+// EKOSISTEM 4 LACI KAS, SHIFT KASIR, KONSINYASI & FEFO (SPESIFIKASI TAMBAHAN)
+// ==========================================================================
+
+// Helper: Tentukan 4 Laci dari row Kas
+function getLaciFromKasRow(r) {
+    const text = ((r.kategori || '') + ' ' + (r.keterangan || '')).toLowerCase();
+    if (text.includes('laci kasir') || text.includes('tunai nota') || text.includes('omzet penjualan tunai') || text.includes('dp tempo')) {
+        return 'Laci Kasir';
+    }
+    if (text.includes('rekening bank') || text.includes('qris') || text.includes('transfer')) {
+        return 'Rekening Bank';
+    }
+    if (text.includes('kas besar') || text.includes('brankas') || text.includes('setoran modal') || text.includes('tarik tunai')) {
+        return 'Kas Besar';
+    }
+    return 'Kas Kecil'; // Default petty cash: wifi, sewa, listrik, air, bonus, gaji, alat tulis
+}
+
+// Update Saldo 4 Laci di Dashboard Admin Real-Time
+async function update4LaciDashboard() {
+    if (!supabaseClient) return;
+    try {
+        const { data: rows } = await supabaseClient.from('kas').select('jenis_kas, jumlah, kategori, keterangan');
+        if (!rows) return;
+        
+        let saldos = { 'Laci Kasir': 0, 'Rekening Bank': 0, 'Kas Kecil': 0, 'Kas Besar': 0 };
+        
+        rows.forEach(r => {
+            const laci = getLaciFromKasRow(r);
+            const amt = parseFloat(r.jumlah || 0);
+            if (r.jenis_kas === 'MASUK') saldos[laci] += amt;
+            else if (r.jenis_kas === 'KELUAR') saldos[laci] -= amt;
+        });
+
+        const elKasir = document.getElementById('dash-laci-kasir');
+        const elBank = document.getElementById('dash-laci-bank');
+        const elKecil = document.getElementById('dash-laci-kecil');
+        const elBesar = document.getElementById('dash-laci-besar');
+
+        if (elKasir) elKasir.textContent = `Rp ${formatMoney(saldos['Laci Kasir'])}`;
+        if (elBank) elBank.textContent = `Rp ${formatMoney(saldos['Rekening Bank'])}`;
+        if (elKecil) elKecil.textContent = `Rp ${formatMoney(saldos['Kas Kecil'])}`;
+        if (elBesar) elBesar.textContent = `Rp ${formatMoney(saldos['Kas Besar'])}`;
+    } catch (e) {
+        console.warn('Error updating 4 laci dashboard:', e);
+    }
+}
+
+// Hook update4LaciDashboard into loadDashboard
+const originalLoadDashboard = typeof loadDashboard === 'function' ? loadDashboard : null;
+if (originalLoadDashboard) {
+    loadDashboard = async function() {
+        await originalLoadDashboard();
+        await update4LaciDashboard();
+    };
+}
+
+// Mutasi Antar Laci (Double-Entry ACID)
+function showMutasiLaciModal() {
+    document.getElementById('modal-mutasi-laci').classList.remove('hidden');
+    document.getElementById('mutasi-laci-nominal').value = '';
+    document.getElementById('mutasi-laci-ket').value = '';
+}
+
+async function submitMutasiLaci() {
+    const asal = document.getElementById('mutasi-laci-asal').value;
+    const tujuan = document.getElementById('mutasi-laci-tujuan').value;
+    const nominal = parseFloat(document.getElementById('mutasi-laci-nominal').value || 0);
+    const ket = document.getElementById('mutasi-laci-ket').value.trim();
+
+    if (asal === tujuan) {
+        alert('Laci Asal dan Laci Tujuan tidak boleh sama!');
+        return;
+    }
+    if (nominal <= 0) {
+        alert('Masukkan nominal mutasi yang valid (minimal Rp 1)!');
+        return;
+    }
+    if (!ket) {
+        alert('Isi keterangan keperluan mutasi dana!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+        const user = currentUser?.nama_staf || 'ADMIN';
+        const batchId = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+        // 1. Entry Keluar di Laci Asal
+        const outEntry = {
+            id_kas: 'MO-' + batchId,
+            tanggal: dateStr,
+            jenis_kas: 'KELUAR',
+            kategori: `[${asal}] Mutasi Keluar ke ${tujuan}`,
+            jumlah: String(nominal),
+            keterangan: `Mutasi Keluar ke ${tujuan} (${ket})`,
+            user: user
+        };
+
+        // 2. Entry Masuk di Laci Tujuan
+        const inEntry = {
+            id_kas: 'MI-' + batchId,
+            tanggal: dateStr,
+            jenis_kas: 'MASUK',
+            kategori: `[${tujuan}] Mutasi Masuk dari ${asal}`,
+            jumlah: String(nominal),
+            keterangan: `Mutasi Masuk dari ${asal} (${ket})`,
+            user: user
+        };
+
+        const { error } = await supabaseClient.from('kas').insert([outEntry, inEntry]);
+        if (error) throw error;
+
+        alert(`✅ Mutasi Dana Berhasil!\n\nRp ${formatMoney(nominal)} telah dipindahkan dari [${asal}] ke [${tujuan}].`);
+        closeModal('modal-mutasi-laci');
+        loadKasLedger(1);
+        update4LaciDashboard();
+    } catch (e) {
+        console.error('Mutasi laci error:', e);
+        alert('Gagal melakukan mutasi kas: ' + e.message);
+    }
+}
+
+// --------------------------------------------------------------------------
+// SHIFT KASIR & LAPORAN HARIAN
+// --------------------------------------------------------------------------
+function getActiveShift() {
+    const raw = localStorage.getItem('apotek_active_shift');
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+}
+
+function updateShiftBarUI() {
+    const shift = getActiveShift();
+    const statusBadge = document.getElementById('pos-shift-status-badge');
+    const infoText = document.getElementById('pos-shift-info-text');
+    if (!statusBadge) return;
+
+    if (shift) {
+        statusBadge.textContent = `🟢 Shift Aktif: ${shift.jenis_shift}`;
+        statusBadge.style.color = '#166534';
+        if (infoText) {
+            infoText.textContent = `Modal: Rp ${formatMoney(shift.modal_awal)} | Kasir: ${shift.nama_kasir}`;
+        }
+    } else {
+        statusBadge.textContent = '⚪ Shift: Belum Buka Shift';
+        statusBadge.style.color = '#dc2626';
+        if (infoText) {
+            infoText.textContent = 'Klik tombol di kanan untuk Buka Shift Kasir';
+        }
+    }
+}
+
+function openShiftKasirModal() {
+    const modal = document.getElementById('modal-shift-kasir');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+
+    const shift = getActiveShift();
+    if (shift) {
+        switchShiftTab('close');
+    } else {
+        switchShiftTab('open');
+    }
+}
+
+function switchShiftTab(tab) {
+    const btnOpen = document.getElementById('shift-tab-btn-open');
+    const btnClose = document.getElementById('shift-tab-btn-close');
+    const paneOpen = document.getElementById('shift-pane-open');
+    const paneClose = document.getElementById('shift-pane-close');
+
+    if (tab === 'open') {
+        if (btnOpen) btnOpen.className = 'btn btn-primary';
+        if (btnClose) btnClose.className = 'btn btn-secondary';
+        if (paneOpen) paneOpen.style.display = 'block';
+        if (paneClose) paneClose.style.display = 'none';
+
+        const nameInput = document.getElementById('shift-input-nama');
+        if (nameInput) nameInput.value = currentUser?.nama_staf || '';
+    } else {
+        if (btnOpen) btnOpen.className = 'btn btn-secondary';
+        if (btnClose) btnClose.className = 'btn btn-primary';
+        if (paneOpen) paneOpen.style.display = 'none';
+        if (paneClose) paneClose.style.display = 'block';
+        loadShiftClosingData();
+    }
+}
+
+async function submitBukaShift() {
+    const jenis = document.getElementById('shift-input-jenis')?.value || 'PAGI';
+    const nama = document.getElementById('shift-input-nama')?.value.trim();
+    const modal = parseFloat(document.getElementById('shift-input-modal')?.value || 0);
+
+    if (!nama) {
+        alert('Masukkan nama kasir yang bertugas!');
+        return;
+    }
+
+    const shiftData = {
+        jenis_shift: jenis,
+        nama_kasir: nama,
+        modal_awal: modal,
+        buka_waktu: new Date().toISOString(),
+        tanggal: new Date().toISOString().split('T')[0]
+    };
+
+    localStorage.setItem('apotek_active_shift', JSON.stringify(shiftData));
+    updateShiftBarUI();
+    closeModal('modal-shift-kasir');
+    alert(`✅ Shift ${jenis} Berhasil Dibuka!\n\nKasir: ${nama}\nModal Awal Laci: Rp ${formatMoney(modal)}`);
+}
+
+async function loadShiftClosingData() {
+    const shift = getActiveShift();
+    const modalEl = document.getElementById('shift-close-modal-display');
+    const tunaiEl = document.getElementById('shift-close-tunai-display');
+    const qrisEl = document.getElementById('shift-close-qris-display');
+    const targetEl = document.getElementById('shift-close-target-display');
+
+    if (!shift) {
+        if (modalEl) modalEl.textContent = 'Rp 0';
+        if (tunaiEl) tunaiEl.textContent = 'Rp 0';
+        if (qrisEl) qrisEl.textContent = 'Rp 0';
+        if (targetEl) targetEl.textContent = 'Rp 0';
+        return;
+    }
+
+    const modalAwal = shift.modal_awal || 0;
+    if (modalEl) modalEl.textContent = `Rp ${formatMoney(modalAwal)}`;
+
+    // Query sales since shift opened
+    try {
+        if (!supabaseClient) return;
+        const today = new Date().toISOString().split('T')[0];
+        const dateObj = new Date();
+        const yy = String(dateObj.getFullYear()).substring(2);
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        const todayPattern = `${dd}/${mm}/20${yy}%`;
+
+        const { data: sales } = await supabaseClient.from('transaksi_jual')
+            .select('metode_bayar, total_bayar, tanggal')
+            .like('tanggal', todayPattern);
+
+        let tunai = 0, qris = 0;
+        if (sales) {
+            sales.forEach(s => {
+                const total = parseFloat(s.total_bayar || 0);
+                if (s.metode_bayar === 'CASH') tunai += total;
+                else if (s.metode_bayar === 'QRIS') qris += total;
+            });
+        }
+
+        if (tunaiEl) tunaiEl.textContent = `Rp ${formatMoney(tunai)}`;
+        if (qrisEl) qrisEl.textContent = `Rp ${formatMoney(qris)}`;
+        
+        const targetFisik = modalAwal + tunai;
+        if (targetEl) targetEl.textContent = `Rp ${formatMoney(targetFisik)}`;
+        targetEl.dataset.target = targetFisik;
+        targetEl.dataset.tunai = tunai;
+        targetEl.dataset.qris = qris;
+        targetEl.dataset.modal = modalAwal;
+
+        calcShiftSelisih();
+    } catch (e) {
+        console.warn('Error loading shift closing stats:', e);
+    }
+}
+
+function calcShiftSelisih() {
+    const targetEl = document.getElementById('shift-close-target-display');
+    const target = parseFloat(targetEl?.dataset.target || 0);
+    const fisik = parseFloat(document.getElementById('shift-input-fisik')?.value || 0);
+    const badge = document.getElementById('shift-selisih-badge');
+    if (!badge) return;
+
+    if (isNaN(fisik) || fisik <= 0) {
+        badge.innerHTML = '';
+        return;
+    }
+
+    const diff = fisik - target;
+    if (diff === 0) {
+        badge.innerHTML = '<span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700;">✅ Uang Fisik TEPAT (Pas)</span>';
+    } else if (diff > 0) {
+        badge.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">🟢 Selisih LEBIH: +Rp ${formatMoney(diff)}</span>`;
+    } else {
+        badge.innerHTML = `<span class="badge" style="background:#fef2f2; color:#dc2626; font-weight:700;">🔴 Selisih KURANG: -Rp ${formatMoney(Math.abs(diff))}</span>`;
+    }
+}
+
+async function submitTutupShift() {
+    const shift = getActiveShift();
+    if (!shift) {
+        alert('Tidak ada shift aktif yang sedang berjalan!');
+        return;
+    }
+
+    const fisik = parseFloat(document.getElementById('shift-input-fisik')?.value || 0);
+    const targetEl = document.getElementById('shift-close-target-display');
+    const target = parseFloat(targetEl?.dataset.target || 0);
+    const tunai = parseFloat(targetEl?.dataset.tunai || 0);
+    const qris = parseFloat(targetEl?.dataset.qris || 0);
+    const modalAwal = parseFloat(targetEl?.dataset.modal || shift.modal_awal || 0);
+    const catatan = document.getElementById('shift-input-catatan')?.value.trim() || '';
+
+    if (isNaN(fisik) || fisik < 0) {
+        alert('Masukkan jumlah uang fisik aktual di laci kasir!');
+        return;
+    }
+
+    const selisih = fisik - target;
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+
+    try {
+        if (!supabaseClient) return;
+
+        // Save into laporan_harian table
+        const laporanRecord = {
+            tanggal: dateStr,
+            shift: shift.jenis_shift,
+            nama: shift.nama_kasir,
+            modal: String(modalAwal),
+            total_uang: String(fisik),
+            masuk: String(tunai),
+            catatan: `Fisik: Rp ${formatMoney(fisik)} | Target: Rp ${formatMoney(target)} | Selisih: Rp ${formatMoney(selisih)}. ${catatan}`,
+            saldo_kas_awal: String(modalAwal),
+            saldo_kas_akhir: String(fisik),
+            pembayaran_qris: String(qris),
+            user: currentUser?.nama_staf || 'cashier'
+        };
+
+        const { error } = await supabaseClient.from('laporan_harian').insert([laporanRecord]);
+        if (error) console.warn('Laporan harian insert warning:', error);
+
+        localStorage.removeItem('apotek_active_shift');
+        updateShiftBarUI();
+        closeModal('modal-shift-kasir');
+
+        alert(`✅ Shift ${shift.jenis_shift} Resmi Ditutup!\n\n` +
+              `Kasir: ${shift.nama_kasir}\n` +
+              `Modal Awal: Rp ${formatMoney(modalAwal)}\n` +
+              `Penjualan Tunai: Rp ${formatMoney(tunai)}\n` +
+              `Penjualan QRIS: Rp ${formatMoney(qris)}\n` +
+              `Target Laci: Rp ${formatMoney(target)}\n` +
+              `Uang Fisik: Rp ${formatMoney(fisik)}\n` +
+              `Status: ${selisih === 0 ? 'SEIMBANG (PAS)' : (selisih > 0 ? 'LEBIH +Rp ' + formatMoney(selisih) : 'KURANG -Rp ' + formatMoney(Math.abs(selisih)))}`);
+    } catch (e) {
+        console.error('Error closing shift:', e);
+        alert('Gagal menutup shift kasir: ' + e.message);
+    }
+}
+
+// --------------------------------------------------------------------------
+// SETTLEMENT KONSINYASI (SALES-BY-SUBTRACTION)
+// --------------------------------------------------------------------------
+async function loadTagihanKonsinyasi() {
+    const thead = document.getElementById('tagihan-table-head');
+    const tbody = document.getElementById('tagihan-table-body');
+    const mobileList = document.getElementById('tagihan-mobile-list');
+    const countBadge = document.getElementById('tagihan-count-badge');
+
+    if (thead) {
+        thead.innerHTML = `
+            <tr>
+                <th>Mitra Supplier</th>
+                <th>Item Konsinyasi Laku</th>
+                <th style="text-align: right;">Total Qty Laku</th>
+                <th style="text-align: right;">Total Kewajiban Bayar</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Aksi</th>
+            </tr>
+        `;
+    }
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Menghitung settlement konsinyasi (Sales-by-Subtraction)...</td></tr>';
+
+    try {
+        if (!supabaseClient) return;
+
+        // 1. Fetch all items marked as KONSINYASI from master_obat
+        const { data: konsiMeds } = await supabaseClient.from('master_obat')
+            .select('id_obat, nama_obat, supplier, harga_beli_sat_1, jenis_item')
+            .eq('jenis_item', 'KONSINYASI');
+
+        if (!konsiMeds || konsiMeds.length === 0) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">Tidak ada item bertipe Konsinyasi yang terdaftar di Master Obat.</td></tr>';
+            return;
+        }
+
+        const medIds = konsiMeds.map(m => m.id_obat);
+
+        // 2. Fetch sales from detail_jual for these medicines
+        const { data: sales } = await supabaseClient.from('detail_jual')
+            .select('id_obat, nama_obat, jumlah_beli, konversi_keluar')
+            .in('id_obat', medIds);
+
+        // 3. Fetch paid quantities from detail_bayar_konsi
+        const { data: paidLogs } = await supabaseClient.from('detail_bayar_konsi')
+            .select('id_obat, qty_laku_dibayar, subtotal_bayar');
+
+        // Aggregate sold per medicine
+        const soldMap = {};
+        if (sales) {
+            sales.forEach(s => {
+                const qty = parseFloat(s.konversi_keluar || s.jumlah_beli || 0);
+                soldMap[s.id_obat] = (soldMap[s.id_obat] || 0) + qty;
+            });
+        }
+
+        // Aggregate paid per medicine
+        const paidMap = {};
+        if (paidLogs) {
+            paidLogs.forEach(p => {
+                const qty = parseFloat(p.qty_laku_dibayar || 0);
+                paidMap[p.id_obat] = (paidMap[p.id_obat] || 0) + qty;
+            });
+        }
+
+        // Group by Supplier
+        const supplierSettlement = {};
+        let grandTotalHutangKonsi = 0;
+        let totalItemsLakuCount = 0;
+
+        konsiMeds.forEach(m => {
+            const sold = soldMap[m.id_obat] || 0;
+            const paid = paidMap[m.id_obat] || 0;
+            const unpaid = Math.max(0, sold - paid);
+
+            if (unpaid > 0) {
+                const supName = getSupplierDisplayName(m.supplier || 'Supplier Konsinyasi');
+                if (!supplierSettlement[supName]) {
+                    supplierSettlement[supName] = {
+                        supplier_raw: m.supplier,
+                        items: [],
+                        total_qty: 0,
+                        total_bayar: 0
+                    };
+                }
+                const hpp = parseFloat(m.harga_beli_sat_1 || 0);
+                const sub = unpaid * hpp;
+
+                supplierSettlement[supName].items.push({
+                    id_obat: m.id_obat,
+                    nama_obat: m.nama_obat,
+                    qty_unpaid: unpaid,
+                    hpp: hpp,
+                    subtotal: sub
+                });
+                supplierSettlement[supName].total_qty += unpaid;
+                supplierSettlement[supName].total_bayar += sub;
+                grandTotalHutangKonsi += sub;
+                totalItemsLakuCount++;
+            }
+        });
+
+        // Update Summary Cards
+        const val1 = document.getElementById('tagihan-summary-val1');
+        const val2 = document.getElementById('tagihan-summary-val2');
+        if (val1) val1.textContent = `Rp ${formatMoney(grandTotalHutangKonsi)}`;
+        if (val2) val2.textContent = `${Object.keys(supplierSettlement).length} Supplier`;
+
+        if (tbody) tbody.innerHTML = '';
+        if (mobileList) mobileList.innerHTML = '';
+
+        const supKeys = Object.keys(supplierSettlement);
+        if (supKeys.length === 0) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:25px; color:#10b981; font-weight:700;">✅ Seluruh barang konsinyasi yang laku sudah lunas disetorkan ke supplier.</td></tr>';
+            if (countBadge) countBadge.textContent = '0 Data';
+            return;
+        }
+
+        if (countBadge) countBadge.textContent = `${supKeys.length} Supplier`;
+
+        supKeys.forEach(supName => {
+            const sData = supplierSettlement[supName];
+            const tr = document.createElement('tr');
+            const encItems = encodeURIComponent(JSON.stringify(sData.items));
+            const encSup = encodeURIComponent(supName);
+
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(supName)}</strong></td>
+                <td>${sData.items.length} Macam Obat</td>
+                <td style="text-align: right; font-weight: 700;">${sData.total_qty} Unit</td>
+                <td style="text-align: right; font-weight: 800; color: #dc2626;">Rp ${formatMoney(sData.total_bayar)}</td>
+                <td style="text-align: center;"><span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700;">BELUM DISETOR</span></td>
+                <td style="text-align: center;">
+                    <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11.5px; font-weight: 700;" onclick="openBayarKonsinyasiModal('${encSup}', '${encItems}', ${sData.total_bayar})">
+                        Bayar Konsinyasi
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (e) {
+        console.error('Error loading konsinyasi settlement:', e);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#dc2626; padding:15px;">Gagal memuat settlement konsinyasi.</td></tr>';
+    }
+}
+
+let activeKonsiItemsToPay = [];
+let activeKonsiSupplierName = '';
+
+function openBayarKonsinyasiModal(encSup, encItems, total) {
+    try {
+        activeKonsiSupplierName = decodeURIComponent(encSup);
+        activeKonsiItemsToPay = JSON.parse(decodeURIComponent(encItems));
+        
+        document.getElementById('konsi-modal-supplier-name').textContent = activeKonsiSupplierName;
+        document.getElementById('konsi-modal-total-display').value = `Rp ${formatMoney(total)}`;
+        document.getElementById('konsi-modal-total-display').dataset.rawTotal = total;
+        document.getElementById('konsi-modal-catatan').value = `Setoran Konsinyasi ${activeKonsiSupplierName} (${activeKonsiItemsToPay.length} item)`;
+
+        const tbody = document.getElementById('konsi-modal-items-body');
+        if (tbody) {
+            tbody.innerHTML = '';
+            activeKonsiItemsToPay.forEach(it => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(it.nama_obat)}</td>
+                    <td style="text-align: center; font-weight: 700;">${it.qty_unpaid}</td>
+                    <td style="text-align: right;">Rp ${formatMoney(it.hpp)}</td>
+                    <td style="text-align: right; font-weight: 700; color: #0f766e;">Rp ${formatMoney(it.subtotal)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('modal-bayar-konsinyasi').classList.remove('hidden');
+    } catch (e) {
+        console.error(e);
+        alert('Gagal membuka modal bayar konsinyasi.');
+    }
+}
+
+async function submitBayarKonsinyasi() {
+    if (!activeKonsiItemsToPay || activeKonsiItemsToPay.length === 0) return;
+    const laci = document.getElementById('konsi-modal-laci').value;
+    const total = parseFloat(document.getElementById('konsi-modal-total-display').dataset.rawTotal || 0);
+    const catatan = document.getElementById('konsi-modal-catatan').value.trim();
+
+    if (total <= 0) {
+        alert('Total nominal bayar konsinyasi tidak valid!');
+        return;
+    }
+
+    try {
+        if (!supabaseClient) return;
+        const id_bayar = 'BK-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+        const now = new Date();
+        const dateStr = now.toISOString().split('T')[0];
+
+        // 1. Insert into pembayaran_konsi
+        const { error: bkErr } = await supabaseClient.from('pembayaran_konsi').insert([{
+            id_bayar: id_bayar,
+            tanggal_bayar: dateStr,
+            supplier: activeKonsiSupplierName,
+            total_bayar: String(total),
+            catatan: catatan
+        }]);
+        if (bkErr) throw bkErr;
+
+        // 2. Insert detail rows into detail_bayar_konsi
+        const details = activeKonsiItemsToPay.map(it => ({
+            id_detail: 'DBK-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            id_bayar: id_bayar,
+            id_obat: it.id_obat,
+            qty_laku_dibayar: String(it.qty_unpaid),
+            harga_beli_item: String(it.hpp),
+            subtotal_bayar: String(it.subtotal)
+        }));
+        const { error: dtlErr } = await supabaseClient.from('detail_bayar_konsi').insert(details);
+        if (dtlErr) throw dtlErr;
+
+        // 3. Record Cash Outflow in kas from selected Laci
+        await supabaseClient.from('kas').insert([{
+            id_kas: 'K' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+            tanggal: dateStr,
+            jenis_kas: 'KELUAR',
+            kategori: `[${laci}] Pembayaran Konsinyasi`,
+            jumlah: String(total),
+            keterangan: `Pembayaran Konsinyasi ${activeKonsiSupplierName} (${catatan})`,
+            user: currentUser?.nama_staf || 'cashier'
+        }]);
+
+        alert(`✅ Pembayaran Konsinyasi Berhasil!\n\nSupplier: ${activeKonsiSupplierName}\nTotal Disetor: Rp ${formatMoney(total)}\nSumber Dana: [${laci}]`);
+        closeModal('modal-bayar-konsinyasi');
+        loadTagihanKonsinyasi();
+        update4LaciDashboard();
+    } catch (e) {
+        console.error('Error bayar konsinyasi:', e);
+        alert('Gagal memproses pembayaran konsinyasi: ' + e.message);
+    }
+}
+
+// --------------------------------------------------------------------------
+// PELUNASAN HUTANG MULTI-FAKTUR & WRITE-OFF ROUNDING
+// --------------------------------------------------------------------------
+function calcTagihanWriteOff() {
+    const totalEl = document.getElementById('bayar-tagihan-total');
+    const total = parseFloat(totalEl?.dataset.total || 0);
+    const nominal = parseFloat(document.getElementById('bayar-tagihan-nominal')?.value || 0);
+    const potongan = parseFloat(document.getElementById('bayar-tagihan-potongan')?.value || 0);
+
+    const sisa = Math.max(0, total - (nominal + potongan));
+    const sisaEl = document.getElementById('bayar-tagihan-sisa');
+    if (sisaEl) sisaEl.textContent = `Rp ${formatMoney(sisa)}`;
+}
+
+function autoFillWriteOff() {
+    const totalEl = document.getElementById('bayar-tagihan-total');
+    const total = parseFloat(totalEl?.dataset.total || 0);
+    const nominal = parseFloat(document.getElementById('bayar-tagihan-nominal')?.value || 0);
+    
+    // Potongan pembulatan receh
+    const diff = Math.max(0, total - nominal);
+    const potInput = document.getElementById('bayar-tagihan-potongan');
+    if (potInput) potInput.value = diff;
+    calcTagihanWriteOff();
+}
+
+// Reset Cart in POS
+function resetPosCart() {
+    if (cart.length === 0) return;
+    if (confirm('Apakah Anda yakin ingin membatalkan dan mengosongkan seluruh isi keranjang?')) {
+        cart = [];
+        updateCartUI();
+        updatePosCartTotals();
+    }
+}
+
+// --------------------------------------------------------------------------
+// FEFO MULTI-BATCH ANTI-ZOMBIE (MODAL PREVIEW OBAT)
+// --------------------------------------------------------------------------
+async function loadPreviewObatBatches(id_obat) {
+    const tbody = document.getElementById('preview-obat-batch-body');
+    const countBadge = document.getElementById('preview-batch-count');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 8px;">Memuat batch FEFO...</td></tr>';
+
+    try {
+        if (!supabaseClient) return;
+
+        // Fetch batches from log_beli
+        const { data: batches } = await supabaseClient.from('log_beli')
+            .select('no_batch, expired_date, tanggal_masuk, jumlah_masuk, satuan_masuk, status_batch')
+            .eq('id_obat', id_obat)
+            .not('no_batch', 'is', null)
+            .order('expired_date', { ascending: true });
+
+        if (!batches || batches.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 8px;">Belum ada nomor batch tercatat untuk obat ini.</td></tr>';
+            if (countBadge) countBadge.textContent = '0 Batch';
+            return;
+        }
+
+        if (countBadge) countBadge.textContent = `${batches.length} Batch`;
+        tbody.innerHTML = '';
+
+        const today = new Date();
+
+        batches.forEach(b => {
+            const tr = document.createElement('tr');
+            const expStr = b.expired_date || '-';
+            let expDateObj = null;
+            if (b.expired_date) expDateObj = new Date(b.expired_date);
+
+            let statusBadge = '<span class="badge" style="background:#ecfdf5; color:#047857; font-weight:700;">AKTIF</span>';
+            
+            // Anti-Zombie validation: if status_batch == 'HABIS' or past ED
+            if (b.status_batch === 'HABIS') {
+                statusBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b; font-weight:600;">HABIS</span>';
+            } else if (expDateObj && expDateObj < today) {
+                statusBadge = '<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:700;">KADALUARSA</span>';
+            } else if (expDateObj) {
+                const diffDays = Math.ceil((expDateObj - today) / (1000 * 60 * 60 * 24));
+                if (diffDays <= 30) {
+                    statusBadge = `<span class="badge" style="background:#fef2f2; color:#b91c1c; font-weight:700;">KRITIS (${diffDays} hr)</span>`;
+                } else if (diffDays <= 90) {
+                    statusBadge = `<span class="badge" style="background:#fffbeb; color:#b45309; font-weight:700;">WASPADA (${diffDays} hr)</span>`;
+                }
+            }
+
+            tr.innerHTML = `
+                <td style="padding: 4px 8px; font-weight: 700; font-family: monospace;">${escapeHtml(b.no_batch || '-')}</td>
+                <td style="padding: 4px 8px;">${expStr}</td>
+                <td style="padding: 4px 8px; color: var(--text-muted);">${(b.tanggal_masuk || '').substring(0, 10)}</td>
+                <td style="padding: 4px 8px; text-align: center;">${b.jumlah_masuk || 0} ${escapeHtml(b.satuan_masuk || '')}</td>
+                <td style="padding: 4px 8px; text-align: center;">${statusBadge}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.warn('Error loading batches:', e);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc2626; padding: 8px;">Gagal memuat batch.</td></tr>';
+    }
+}
+
+// --------------------------------------------------------------------------
+// CRM REKAM MEDIS & WHATSAPP PASIEN
+// --------------------------------------------------------------------------
+async function sendHasilCheckupWA(id_kontrol) {
+    if (!supabaseClient) return;
+    try {
+        const { data: k } = await supabaseClient.from('kontrol_pasien').select('*').eq('id_trans', id_kontrol).single();
+        if (!k) return;
+
+        // Fetch patient WA
+        let wa = '';
+        if (k.id) {
+            const { data: p } = await supabaseClient.from('daftar_pasien').select('whatsapp').eq('id', k.id).single();
+            if (p) wa = p.whatsapp;
+        }
+
+        if (!wa) {
+            wa = prompt('Masukkan nomor WhatsApp Pasien (contoh: 08123456789):');
+            if (!wa) return;
+        }
+
+        let cleanWA = wa.replace(/[^0-9]/g, '');
+        if (cleanWA.startsWith('0')) cleanWA = '62' + cleanWA.substring(1);
+
+        const textMsg = `*HASIL PEMERIKSAAN KESEHATAN - APOTEK HF*\n\n` +
+                        `Nama Pasien: *${k.nama || '-'}*\n` +
+                        `Tanggal: ${k.tgl || '-'}\n` +
+                        `------------------------------\n` +
+                        `• Tensi Darah: *${k.tensi || '-'}* mmHg\n` +
+                        `• Gula Darah: *${k.gula || '-'}* mg/dL\n` +
+                        `• Asam Urat: *${k.asam_urat || '-'}* mg/dL\n` +
+                        `• Kolesterol: *${k.kolesterol || '-'}* mg/dL\n` +
+                        `------------------------------\n` +
+                        `Rekomendasi Obat: ${k.obat || '-'}\n` +
+                        `Catatan: ${k.keterangan || '-'}\n\n` +
+                        `_Terima kasih telah mempercayakan kesehatan Anda kepada Apotek HF._`;
+
+        const waUrl = `https://wa.me/${cleanWA}?text=${encodeURIComponent(textMsg)}`;
+        window.open(waUrl, '_blank');
+    } catch (e) {
+        console.error(e);
+        alert('Gagal menyiapkan pengiriman WhatsApp: ' + e.message);
+    }
+}
+
+// Hook updateShiftBarUI into initPOS
+const originalInitPOS = typeof initPOS === 'function' ? initPOS : null;
+if (originalInitPOS) {
+    initPOS = async function() {
+        await originalInitPOS();
+        updateShiftBarUI();
+    };
+}
+
+// Auto update 4 Laci when DOM content loaded
+document.addEventListener('DOMContentLoaded', () => {
+    update4LaciDashboard();
+    updateShiftBarUI();
 });
